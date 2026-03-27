@@ -17,6 +17,7 @@ type AppScreenProps = PropsWithChildren<{
   contentContainerStyle?: StyleProp<ViewStyle>;
   scroll?: boolean;
   edges?: Edge[];
+  contentHorizontalPadding?: boolean;
   scrollProps?: Omit<ScrollViewProps, 'contentContainerStyle'>;
 }>;
 
@@ -26,6 +27,7 @@ export function AppScreen({
   contentContainerStyle,
   scroll = false,
   edges = ['top', 'left', 'right'],
+  contentHorizontalPadding = true,
   scrollProps,
 }: AppScreenProps) {
   const { theme } = useAppTheme();
@@ -49,7 +51,10 @@ export function AppScreen({
           {...scrollProps}
           contentContainerStyle={[
             styles.scrollContent,
-            { paddingHorizontal: theme.tokens.spacing.md, paddingBottom: theme.tokens.spacing.xxl },
+            {
+              paddingHorizontal: contentHorizontalPadding ? theme.tokens.spacing.md : 0,
+              paddingBottom: theme.tokens.spacing.xxl,
+            },
             contentContainerStyle,
           ]}
           showsVerticalScrollIndicator={false}
@@ -57,7 +62,17 @@ export function AppScreen({
           {children}
         </ScrollView>
       ) : (
-        <View style={[styles.content, { paddingHorizontal: theme.tokens.spacing.md }, contentContainerStyle]}>{children}</View>
+        <View
+          style={[
+            styles.content,
+            {
+              paddingHorizontal: contentHorizontalPadding ? theme.tokens.spacing.md : 0,
+            },
+            contentContainerStyle,
+          ]}
+        >
+          {children}
+        </View>
       )}
     </SafeAreaView>
   );

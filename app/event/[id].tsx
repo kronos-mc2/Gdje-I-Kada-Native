@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo } from 'react';
-import { Linking, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { Linking, ScrollView, StyleSheet, View } from 'react-native';
 
 import { AppButton, AppCard, AppHeader, AppScreen, AppText } from '@/components/primitives';
 import { useEventsQuery } from '@/core/api/query-hooks';
@@ -41,13 +41,8 @@ export default function EventDetailsScreen() {
 
   const openMap = () => {
     const coordinates = `${event.coordinates.latitude},${event.coordinates.longitude}`;
-    const label = encodeURIComponent(event.where[locale]);
-    const url =
-      Platform.OS === 'ios'
-        ? `http://maps.apple.com/?ll=${coordinates}&q=${label}`
-        : Platform.OS === 'android'
-          ? `geo:${coordinates}?q=${coordinates}(${label})`
-          : `https://www.google.com/maps/search/?api=1&query=${coordinates}`;
+    const query = encodeURIComponent(`${event.where[locale]} ${coordinates}`);
+    const url = `https://www.google.com/maps/search/?api=1&query=${query}`;
 
     Linking.openURL(url);
   };

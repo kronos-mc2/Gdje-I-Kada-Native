@@ -1,59 +1,22 @@
-import { useRouter } from 'expo-router';
+import { StyleSheet, View } from 'react-native';
 
-import { AppHeader, AppIconButton, AppScreen } from '@/components/primitives';
-import { useI18n } from '@/core/i18n/use-i18n';
-import { EventsContent } from '@/features/events/components/events-content';
-import { EventsHeaderControls } from '@/features/events/components/events-header-controls';
-import { useEventsScreenModel } from '@/features/events/hooks/use-events-screen-model';
+import { EventsMapExperience } from '@/features/events/components/events-map-experience';
+import { useEventsMapScreenModel } from '@/features/events/hooks/use-events-map-screen-model';
+import { useAppTheme } from '@/core/theme';
 
 export default function EventsScreen() {
-  const router = useRouter();
-  const { t } = useI18n();
-
-  const {
-    eventFilter,
-    eventsView,
-    searchQuery,
-    eventsForRender,
-    userLocation,
-    isLoading,
-    isRefetching,
-    refetch,
-    setEventFilter,
-    setEventsView,
-    setSearchQuery,
-    openEventDetails,
-    locale,
-  } = useEventsScreenModel();
+  const { theme } = useAppTheme();
+  const { events, userLocation, locale } = useEventsMapScreenModel();
 
   return (
-    <AppScreen>
-      <AppHeader
-        title={t('appName')}
-        subtitle={t('events')}
-        right={<AppIconButton icon="add" accessibilityLabel={t('createEvent')} onPress={() => router.push('/create-event')} />}
-      />
-
-      <EventsHeaderControls
-        eventFilter={eventFilter}
-        eventsView={eventsView}
-        searchQuery={searchQuery}
-        onFilterChange={setEventFilter}
-        onViewChange={setEventsView}
-        onSearchChange={setSearchQuery}
-      />
-
-      <EventsContent
-        view={eventsView}
-        locale={locale}
-        userLocation={userLocation}
-        events={eventsForRender}
-        showDistance={eventFilter === 'nearby'}
-        isLoading={isLoading}
-        isRefetching={isRefetching}
-        onRefresh={refetch}
-        onEventPress={openEventDetails}
-      />
-    </AppScreen>
+    <View style={[styles.screen, { backgroundColor: theme.colors.background }]}>
+      <EventsMapExperience events={events} locale={locale} userLocation={userLocation} />
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+  },
+});

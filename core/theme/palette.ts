@@ -15,6 +15,9 @@ export const darkColors: ThemeColors = {
   warning: '#C4B298',
   danger: '#D39B9B',
   info: '#B6C0D1',
+  mapAccent: '#8B5CF6',
+  mapAccentSoft: 'rgba(139, 92, 246, 0.24)',
+  mapOverlay: 'rgba(76, 29, 149, 0.16)',
   overlay: 'rgba(5, 8, 12, 0.64)',
   glassTint: 'rgba(255, 255, 255, 0.13)',
 };
@@ -34,6 +37,9 @@ export const lightColors: ThemeColors = {
   warning: '#7A6551',
   danger: '#885555',
   info: '#4C5E7A',
+  mapAccent: '#6D28D9',
+  mapAccentSoft: 'rgba(109, 40, 217, 0.16)',
+  mapOverlay: 'rgba(109, 40, 217, 0.10)',
   overlay: 'rgba(26, 32, 43, 0.30)',
   glassTint: 'rgba(255, 255, 255, 0.44)',
 };

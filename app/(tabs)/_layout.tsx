@@ -21,7 +21,7 @@ export default function TabLayout() {
     <NativeTabs
       minimizeBehavior="onScrollDown"
       blurEffect={theme.isDark ? 'systemChromeMaterialDark' : 'systemChromeMaterialLight'}
-      backgroundColor={Platform.OS === 'android' ? 'rgba(10, 12, 16, 0.78)' : undefined}
+      backgroundColor={Platform.OS === 'android' ? (theme.isDark ? 'rgba(8, 12, 18, 0.80)' : 'rgba(246, 247, 250, 0.86)') : undefined}
       disableIndicator
       iconColor={{
         default: theme.colors.textMuted,

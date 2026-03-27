@@ -2,11 +2,11 @@ import { RefreshControl, ScrollView, View } from 'react-native';
 
 import { AppText } from '@/components/primitives';
 import { EventCard } from '@/components/events/event-card';
-import { EventsMap } from '@/components/events/events-map';
 import { useI18n } from '@/core/i18n/use-i18n';
 import { Coordinates, EventsView, Locale } from '@/core/types/domain';
 import { useAppTheme } from '@/core/theme';
 import { AppEvent } from '@/core/types/domain';
+import { EventsMapExperience } from '@/features/events/components/events-map-experience';
 
 type EventsWithDistance = {
   event: AppEvent;
@@ -42,7 +42,7 @@ export function EventsContent({
   if (view === 'map') {
     return (
       <View style={{ flex: 1 }}>
-        <EventsMap
+        <EventsMapExperience
           events={events.map(({ event }) => event)}
           locale={locale}
           userLocation={userLocation}

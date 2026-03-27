@@ -40,7 +40,7 @@ export function EventsHeaderControls({
         ))}
       </View>
 
-      <AppInput value={searchQuery} onChangeText={onSearchChange} placeholder={t('searchPlaceholder')} />
+      {eventsView === 'list' ? <AppInput value={searchQuery} onChangeText={onSearchChange} placeholder={t('searchPlaceholder')} /> : null}
 
       <View style={styles.row}>
         {VIEWS.map((view) => (

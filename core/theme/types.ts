@@ -17,6 +17,9 @@ export type ThemeColors = {
   warning: string;
   danger: string;
   info: string;
+  mapAccent: string;
+  mapAccentSoft: string;
+  mapOverlay: string;
   overlay: string;
   glassTint: string;
 };

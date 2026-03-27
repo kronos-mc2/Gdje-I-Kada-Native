@@ -1,0 +1,26 @@
+import { Coordinates } from '@/core/types/domain';
+
+export type EventMapMarker = {
+  id: string;
+  coordinate: Coordinates;
+  title: string;
+  subtitle?: string;
+  coverImageUri?: string;
+  isSelected: boolean;
+};
+
+export type MapCameraState = {
+  center: Coordinates;
+  zoomLevel?: number;
+  latitudeDelta?: number;
+  longitudeDelta?: number;
+};
+
+export type EventMapSurfaceProps = {
+  markers: EventMapMarker[];
+  initialCenter: Coordinates;
+  focusCoordinate?: Coordinates | null;
+  searchMarker?: Coordinates | null;
+  onMarkerPress: (id: string) => void;
+  onCameraStateChange?: (camera: MapCameraState) => void;
+};
