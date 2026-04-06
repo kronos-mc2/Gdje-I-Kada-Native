@@ -2,7 +2,7 @@ import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Alert } from 'react-native';
 
-import { AppButton, AppHeader, AppInput, AppScreen } from '@/components/primitives';
+import { AppButton, AppDateTimeField, AppHeader, AppInput, AppScreen } from '@/components/primitives';
 import { useI18n } from '@/core/i18n/use-i18n';
 import { useAppStore } from '@/core/store/app-store';
 
@@ -37,7 +37,7 @@ const INITIAL_FORM: FormState = {
 
 export default function CreateEventScreen() {
   const router = useRouter();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
 
   const createEvent = useAppStore((state) => state.createEvent);
   const setEventFilter = useAppStore((state) => state.setEventFilter);
@@ -53,7 +53,6 @@ export default function CreateEventScreen() {
       { key: 'whereEn', label: t('locationLabel') + ' (EN)', placeholder: 'Example: Sports Hall' },
       { key: 'aboutHr', label: t('aboutLabel') + ' (HR)', placeholder: 'Kratki opis eventa', multiline: true },
       { key: 'aboutEn', label: t('aboutLabel') + ' (EN)', placeholder: 'Short event description', multiline: true },
-      { key: 'whenISO', label: t('dateLabel'), placeholder: '2026-07-18T20:00:00Z' },
     ],
     [t],
   );
@@ -103,6 +102,8 @@ export default function CreateEventScreen() {
           style={field.multiline ? { minHeight: 96, textAlignVertical: 'top' } : undefined}
         />
       ))}
+
+      <AppDateTimeField label={t('dateLabel')} locale={locale} valueISO={form.whenISO} onChangeISO={(value) => updateField('whenISO', value)} />
 
       <AppButton title={t('submit')} variant="glass" onPress={onSubmit} style={{ marginTop: 8 }} />
     </AppScreen>

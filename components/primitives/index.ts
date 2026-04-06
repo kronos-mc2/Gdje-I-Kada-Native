@@ -1,5 +1,6 @@
 export { AppButton } from '@/components/primitives/app-button';
 export { AppCard } from '@/components/primitives/app-card';
+export { AppDateTimeField } from '@/components/primitives/app-date-time-field';
 export { AppHeader } from '@/components/primitives/app-header';
 export { AppIconButton } from '@/components/primitives/app-icon-button';
 export { AppInput } from '@/components/primitives/app-input';

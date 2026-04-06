@@ -21,6 +21,7 @@ function RootNavigator() {
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: theme.colors.background } }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="create-event" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="entrance-map-picker" options={{ presentation: 'fullScreenModal' }} />
         <Stack.Screen name="event/[id]" options={{ presentation: 'card' }} />
       </Stack>
     </>

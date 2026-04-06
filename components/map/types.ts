@@ -21,6 +21,7 @@ export type EventMapSurfaceProps = {
   initialCenter: Coordinates;
   focusCoordinate?: Coordinates | null;
   searchMarker?: Coordinates | null;
+  interactive?: boolean;
   onMarkerPress: (id: string) => void;
   onCameraStateChange?: (camera: MapCameraState) => void;
 };

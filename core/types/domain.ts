@@ -3,6 +3,7 @@ export type Locale = 'hr' | 'en';
 export type LocalizedText = Record<Locale, string>;
 
 export type EventFilter = 'nearby' | 'joined' | 'created';
+export type EventVisibility = 'public' | 'private';
 
 export type EventsView = 'list' | 'map';
 
@@ -19,6 +20,9 @@ export type AppEvent = {
   whenISO: string;
   type: EventFilter;
   coordinates: Coordinates;
+  entranceCoordinates?: Coordinates;
+  entryInstructions?: LocalizedText;
+  visibility?: EventVisibility;
   participantCount: number;
 };
 

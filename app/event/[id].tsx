@@ -64,6 +64,36 @@ export default function EventDetailsScreen() {
 
         <AppCard variant="glass" style={styles.aboutCard}>
           <AppText variant="body">{event.about[locale]}</AppText>
+          {event.entryInstructions ? (
+            <View style={styles.metaBlock}>
+              <AppText variant="caption" color="textMuted">
+                {t('entryInstructions')}
+              </AppText>
+              <AppText variant="body" style={styles.metaValue}>
+                {event.entryInstructions[locale]}
+              </AppText>
+            </View>
+          ) : null}
+          {event.visibility ? (
+            <View style={styles.metaBlock}>
+              <AppText variant="caption" color="textMuted">
+                {t('eventVisibility')}
+              </AppText>
+              <AppText variant="body" style={styles.metaValue}>
+                {event.visibility === 'private' ? t('privateEvent') : t('publicEvent')}
+              </AppText>
+            </View>
+          ) : null}
+          {event.entranceCoordinates ? (
+            <View style={styles.metaBlock}>
+              <AppText variant="caption" color="textMuted">
+                {t('entrancePin')}
+              </AppText>
+              <AppText variant="body" style={styles.metaValue}>
+                {event.entranceCoordinates.latitude.toFixed(5)}, {event.entranceCoordinates.longitude.toFixed(5)}
+              </AppText>
+            </View>
+          ) : null}
           <AppText variant="caption" color="textSecondary" style={styles.participants}>
             {event.participantCount} {t('participants')}
           </AppText>
@@ -101,6 +131,12 @@ const styles = StyleSheet.create({
   },
   participants: {
     marginTop: 12,
+  },
+  metaBlock: {
+    marginTop: 12,
+  },
+  metaValue: {
+    marginTop: 2,
   },
   actions: {
     gap: 10,

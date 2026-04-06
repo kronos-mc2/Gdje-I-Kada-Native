@@ -27,6 +27,7 @@ export function EventMapSurface({
   initialCenter,
   focusCoordinate,
   searchMarker,
+  interactive = true,
   onMarkerPress,
   onCameraStateChange,
 }: EventMapSurfaceProps) {
@@ -85,6 +86,10 @@ export function EventMapSurface({
         mapStyle={theme.isDark ? MAPLIBRE_STYLE_URL_DARK : MAPLIBRE_STYLE_URL_LIGHT}
         logoEnabled={false}
         localizeLabels
+        scrollEnabled={interactive}
+        zoomEnabled={interactive}
+        rotateEnabled={interactive}
+        pitchEnabled={interactive}
         onRegionDidChange={(feature) => {
           const region = feature as RegionFeature;
           const [longitude, latitude] = region.geometry.coordinates;

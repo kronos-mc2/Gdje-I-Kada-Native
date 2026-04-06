@@ -32,6 +32,7 @@ const config: ExpoConfig = {
   plugins: [
     'expo-router',
     '@maplibre/maplibre-react-native',
+    '@react-native-community/datetimepicker',
     [
       'expo-splash-screen',
       {

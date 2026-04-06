@@ -4,7 +4,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 
 import { USER_LOCATION } from '@/core/data/mock-data';
 import { ThemePreference } from '@/core/theme/types';
-import { AppEvent, Coordinates, EventFilter, EventsView, Locale, UserProfile } from '@/core/types/domain';
+import { AppEvent, Coordinates, EventFilter, EventVisibility, EventsView, Locale, UserProfile } from '@/core/types/domain';
 
 export type CreateEventInput = {
   titleHr: string;
@@ -15,6 +15,10 @@ export type CreateEventInput = {
   aboutEn: string;
   whenISO: string;
   coordinates: Coordinates;
+  entranceCoordinates?: Coordinates;
+  entryInstructionsHr?: string;
+  entryInstructionsEn?: string;
+  visibility?: EventVisibility;
 };
 
 type AppStore = {
@@ -27,6 +31,7 @@ type AppStore = {
   createdEvents: AppEvent[];
   userLocation: Coordinates;
   userProfile: UserProfile | null;
+  fypEntranceCoordinates: Coordinates | null;
   setLocale: (locale: Locale) => void;
   setThemePreference: (themePreference: ThemePreference) => void;
   setEventFilter: (filter: EventFilter) => void;
@@ -34,6 +39,8 @@ type AppStore = {
   setSearchQuery: (value: string) => void;
   toggleJoined: (eventId: string) => void;
   createEvent: (payload: CreateEventInput) => void;
+  setFypEntranceCoordinates: (coordinates: Coordinates) => void;
+  clearFypEntranceCoordinates: () => void;
   signInDemoUser: () => void;
   signOut: () => void;
 };
@@ -46,6 +53,12 @@ const createEventEntity = (payload: CreateEventInput): AppEvent => ({
   whenISO: payload.whenISO,
   type: 'created',
   coordinates: payload.coordinates,
+  entranceCoordinates: payload.entranceCoordinates,
+  entryInstructions:
+    payload.entryInstructionsHr && payload.entryInstructionsEn
+      ? { hr: payload.entryInstructionsHr, en: payload.entryInstructionsEn }
+      : undefined,
+  visibility: payload.visibility ?? 'public',
   participantCount: 1,
 });
 
@@ -61,6 +74,7 @@ export const useAppStore = create<AppStore>()(
       createdEvents: [],
       userLocation: USER_LOCATION,
       userProfile: null,
+      fypEntranceCoordinates: null,
       setLocale: (locale) => set({ locale }),
       setThemePreference: (themePreference) => set({ themePreference }),
       setEventFilter: (eventFilter) => set({ eventFilter }),
@@ -81,6 +95,12 @@ export const useAppStore = create<AppStore>()(
         set((state) => ({
           createdEvents: [event, ...state.createdEvents],
         }));
+      },
+      setFypEntranceCoordinates: (coordinates) => {
+        set({ fypEntranceCoordinates: coordinates });
+      },
+      clearFypEntranceCoordinates: () => {
+        set({ fypEntranceCoordinates: null });
       },
       signInDemoUser: () => {
         set({

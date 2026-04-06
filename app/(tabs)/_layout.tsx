@@ -50,20 +50,20 @@ export default function TabLayout() {
         <Label>{t('events')}</Label>
       </NativeTabs.Trigger>
 
-      <NativeTabs.Trigger name="social">
+      <NativeTabs.Trigger name="fyp">
         <Icon
-          sf={{ default: 'person.3', selected: 'person.3.fill' }}
-          androidSrc={<VectorIcon family={Ionicons} name="people-outline" />}
+          sf={{ default: 'sparkles', selected: 'sparkles' }}
+          androidSrc={<VectorIcon family={Ionicons} name="sparkles-outline" />}
         />
-        <Label>{t('social')}</Label>
+        <Label>{t('fyp')}</Label>
       </NativeTabs.Trigger>
 
-      <NativeTabs.Trigger name="messages">
+      <NativeTabs.Trigger name="social">
         <Icon
-          sf={{ default: 'message', selected: 'message.fill' }}
-          androidSrc={<VectorIcon family={Ionicons} name="chatbubble-ellipses-outline" />}
+          sf={{ default: 'bubble.left.and.bubble.right', selected: 'bubble.left.and.bubble.right.fill' }}
+          androidSrc={<VectorIcon family={Ionicons} name="chatbubbles-outline" />}
         />
-        <Label>{t('messages')}</Label>
+        <Label>{t('social')}</Label>
       </NativeTabs.Trigger>
 
       <NativeTabs.Trigger name="profile">

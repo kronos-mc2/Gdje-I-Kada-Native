@@ -14,6 +14,7 @@ export function EventMapSurface({
   initialCenter,
   focusCoordinate,
   searchMarker,
+  interactive = true,
   onMarkerPress,
   onCameraStateChange,
 }: EventMapSurfaceProps) {
@@ -44,6 +45,10 @@ export function EventMapSurface({
         // iOS intentionally uses MapKit renderer (no Google provider).
         mapType="standard"
         userInterfaceStyle={theme.isDark ? 'dark' : 'light'}
+        scrollEnabled={interactive}
+        zoomEnabled={interactive}
+        rotateEnabled={interactive}
+        pitchEnabled={interactive}
         initialRegion={{
           latitude: initialCenter.latitude,
           longitude: initialCenter.longitude,
