@@ -18,6 +18,7 @@ export type MapCameraState = {
 
 export type EventMapSurfaceProps = {
   markers: EventMapMarker[];
+  userLocation: Coordinates;
   initialCenter: Coordinates;
   focusCoordinate?: Coordinates | null;
   searchMarker?: Coordinates | null;

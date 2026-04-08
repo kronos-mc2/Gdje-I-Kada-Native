@@ -28,7 +28,7 @@ export function EventMap({
   onSelectEvent,
   onCameraStateChange,
 }: EventMapProps) {
-  const initialCenter = events[0]?.coordinates ?? userLocation;
+  const initialCenter = userLocation;
 
   const markers = useMemo(
     () =>
@@ -46,6 +46,7 @@ export function EventMap({
   return (
     <EventMapSurface
       markers={markers}
+      userLocation={userLocation}
       initialCenter={initialCenter}
       focusCoordinate={focusCoordinate}
       searchMarker={searchMarker}

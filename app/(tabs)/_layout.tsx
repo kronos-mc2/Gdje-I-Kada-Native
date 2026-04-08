@@ -58,6 +58,14 @@ export default function TabLayout() {
         <Label>{t('fyp')}</Label>
       </NativeTabs.Trigger>
 
+      <NativeTabs.Trigger name="calendar">
+        <Icon
+          sf={{ default: 'calendar.badge.clock', selected: 'calendar.badge.clock' }}
+          androidSrc={<VectorIcon family={Ionicons} name="today-outline" />}
+        />
+        <Label>{t('myEvents')}</Label>
+      </NativeTabs.Trigger>
+
       <NativeTabs.Trigger name="social">
         <Icon
           sf={{ default: 'bubble.left.and.bubble.right', selected: 'bubble.left.and.bubble.right.fill' }}

@@ -4,7 +4,17 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 
 import { USER_LOCATION } from '@/core/data/mock-data';
 import { ThemePreference } from '@/core/theme/types';
-import { AppEvent, Coordinates, EventFilter, EventVisibility, EventsView, Locale, UserProfile } from '@/core/types/domain';
+import {
+  AppEvent,
+  Coordinates,
+  EventFilter,
+  EventVisibility,
+  EventsView,
+  Locale,
+  LocationConsent,
+  LocationSource,
+  UserProfile,
+} from '@/core/types/domain';
 
 export type CreateEventInput = {
   titleHr: string;
@@ -28,8 +38,12 @@ type AppStore = {
   eventsView: EventsView;
   searchQuery: string;
   joinedEventIds: string[];
+  likedEventIds: string[];
+  favoriteEventIds: string[];
   createdEvents: AppEvent[];
   userLocation: Coordinates;
+  locationConsent: LocationConsent;
+  locationSource: LocationSource;
   userProfile: UserProfile | null;
   fypEntranceCoordinates: Coordinates | null;
   setLocale: (locale: Locale) => void;
@@ -38,9 +52,14 @@ type AppStore = {
   setEventsView: (view: EventsView) => void;
   setSearchQuery: (value: string) => void;
   toggleJoined: (eventId: string) => void;
+  toggleLiked: (eventId: string) => void;
+  toggleFavorite: (eventId: string) => void;
   createEvent: (payload: CreateEventInput) => void;
   setFypEntranceCoordinates: (coordinates: Coordinates) => void;
   clearFypEntranceCoordinates: () => void;
+  setUserLocation: (coordinates: Coordinates) => void;
+  setLocationConsent: (consent: LocationConsent) => void;
+  setLocationSource: (source: LocationSource) => void;
   signInDemoUser: () => void;
   signOut: () => void;
 };
@@ -71,8 +90,12 @@ export const useAppStore = create<AppStore>()(
       eventsView: 'list',
       searchQuery: '',
       joinedEventIds: ['2'],
+      likedEventIds: [],
+      favoriteEventIds: [],
       createdEvents: [],
       userLocation: USER_LOCATION,
+      locationConsent: 'unknown',
+      locationSource: 'default',
       userProfile: null,
       fypEntranceCoordinates: null,
       setLocale: (locale) => set({ locale }),
@@ -89,6 +112,20 @@ export const useAppStore = create<AppStore>()(
             : [eventId, ...state.joinedEventIds],
         }));
       },
+      toggleLiked: (eventId) => {
+        const isLiked = get().likedEventIds.includes(eventId);
+
+        set((state) => ({
+          likedEventIds: isLiked ? state.likedEventIds.filter((id) => id !== eventId) : [eventId, ...state.likedEventIds],
+        }));
+      },
+      toggleFavorite: (eventId) => {
+        const isFavorite = get().favoriteEventIds.includes(eventId);
+
+        set((state) => ({
+          favoriteEventIds: isFavorite ? state.favoriteEventIds.filter((id) => id !== eventId) : [eventId, ...state.favoriteEventIds],
+        }));
+      },
       createEvent: (payload) => {
         const event = createEventEntity(payload);
 
@@ -101,6 +138,15 @@ export const useAppStore = create<AppStore>()(
       },
       clearFypEntranceCoordinates: () => {
         set({ fypEntranceCoordinates: null });
+      },
+      setUserLocation: (coordinates) => {
+        set({ userLocation: coordinates });
+      },
+      setLocationConsent: (locationConsent) => {
+        set({ locationConsent });
+      },
+      setLocationSource: (locationSource) => {
+        set({ locationSource });
       },
       signInDemoUser: () => {
         set({
@@ -121,7 +167,11 @@ export const useAppStore = create<AppStore>()(
         locale: state.locale,
         themePreference: state.themePreference,
         joinedEventIds: state.joinedEventIds,
+        likedEventIds: state.likedEventIds,
+        favoriteEventIds: state.favoriteEventIds,
         createdEvents: state.createdEvents,
+        locationConsent: state.locationConsent,
+        locationSource: state.locationSource,
         userProfile: state.userProfile,
       }),
     },

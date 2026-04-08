@@ -1,13 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Platform, StyleSheet, View } from 'react-native';
+import { Alert, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Ionicons from '@expo/vector-icons/Ionicons';
 
 import { EventDetailSheet, EventMap } from '@/components/map';
+import { AppText } from '@/components/primitives';
 import { MapSearchBar, MapSearchResults } from '@/components/search';
 import { useI18n } from '@/core/i18n/use-i18n';
+import { useAppStore } from '@/core/store/app-store';
 import { useAppTheme } from '@/core/theme';
 import { AppEvent, Coordinates, Locale } from '@/core/types/domain';
 import { useEventMapSearch } from '@/features/events/hooks/use-event-map-search';
+import { useMapLocationBootstrap } from '@/features/events/hooks/use-map-location-bootstrap';
 
 type EventsMapExperienceProps = {
   events: AppEvent[];
@@ -20,9 +24,12 @@ export function EventsMapExperience({ events, locale, userLocation }: EventsMapE
   const { t } = useI18n();
   const { theme } = useAppTheme();
   const insets = useSafeAreaInsets();
+  const locationConsent = useAppStore((state) => state.locationConsent);
+  const setLocationConsent = useAppStore((state) => state.setLocationConsent);
+  const { requestPreciseLocationNow } = useMapLocationBootstrap();
 
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
-  const [focusCoordinate, setFocusCoordinate] = useState<Coordinates | null>(null);
+  const [focusCoordinate, setFocusCoordinate] = useState<Coordinates | null>(userLocation);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchPanelVisible, setIsSearchPanelVisible] = useState(false);
   const { results: searchResults, isSearching } = useEventMapSearch({ events, query: searchQuery, locale });
@@ -39,6 +46,14 @@ export function EventsMapExperience({ events, locale, userLocation }: EventsMapE
       setSelectedEventId(null);
     }
   }, [selectedEventId, eventsById]);
+
+  useEffect(() => {
+    if (selectedEventId || searchQuery.trim().length > 0) {
+      return;
+    }
+
+    setFocusCoordinate(userLocation);
+  }, [searchQuery, selectedEventId, userLocation]);
 
   const showSearchResults = isSearchPanelVisible && searchQuery.trim().length > 0;
   const detailBottomInset = Platform.OS === 'android' ? insets.bottom + 92 : insets.bottom + 62;
@@ -117,6 +132,48 @@ export function EventsMapExperience({ events, locale, userLocation }: EventsMapE
         />
       </View>
 
+      <Pressable
+        onPress={() => {
+          if (locationConsent !== 'accepted') {
+            Alert.alert(t('locationConsentTitle'), t('locationConsentBody'), [
+              {
+                text: t('notNow'),
+                style: 'cancel',
+                onPress: () => setLocationConsent('rejected'),
+              },
+              {
+                text: t('allow'),
+                onPress: () => {
+                  setLocationConsent('accepted');
+                  void requestPreciseLocationNow();
+                },
+              },
+            ]);
+          } else {
+            void requestPreciseLocationNow();
+          }
+
+          setFocusCoordinate(userLocation);
+          setSelectedEventId(null);
+          setIsSearchPanelVisible(false);
+        }}
+        style={({ pressed }) => [
+          styles.recenterButton,
+          {
+            bottom: detailBottomInset + 10,
+            right: theme.tokens.spacing.md,
+            borderColor: theme.colors.border,
+            backgroundColor: theme.colors.surfaceElevated,
+            opacity: pressed ? 0.82 : 1,
+          },
+        ]}
+      >
+        <Ionicons name="locate-outline" size={17} color={theme.colors.textPrimary} />
+        <AppText variant="caption" style={styles.recenterLabel}>
+          {t('recenterMap')}
+        </AppText>
+      </Pressable>
+
       {selectedEvent ? (
         <EventDetailSheet
           key={selectedEvent.id}
@@ -137,5 +194,19 @@ const styles = StyleSheet.create({
   },
   topOverlay: {
     position: 'absolute',
+  },
+  recenterButton: {
+    position: 'absolute',
+    minHeight: 38,
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  recenterLabel: {
+    marginTop: 1,
   },
 });

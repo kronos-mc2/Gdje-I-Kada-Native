@@ -1,6 +1,6 @@
 import { Alert, StyleSheet, View } from 'react-native';
 
-import { AppButton, AppCard, AppHeader, AppScreen, AppText, SectionHeader, ThemeToggle } from '@/components/primitives';
+import { AppButton, AppCard, AppScreen, AppText, SectionHeader, ThemeToggle } from '@/components/primitives';
 import { useI18n } from '@/core/i18n/use-i18n';
 import { useAppStore } from '@/core/store/app-store';
 import { useAppTheme } from '@/core/theme';
@@ -10,7 +10,7 @@ const LANGUAGES: Locale[] = ['hr', 'en'];
 
 export default function ProfileScreen() {
   const { t, locale } = useI18n();
-  const { preference, resolvedMode } = useAppTheme();
+  const { preference } = useAppTheme();
 
   const userProfile = useAppStore((state) => state.userProfile);
   const themePreference = useAppStore((state) => state.themePreference);
@@ -31,8 +31,6 @@ export default function ProfileScreen() {
 
   return (
     <AppScreen scroll>
-      <AppHeader title={t('profile')} subtitle={resolvedMode === 'dark' ? t('themeDark') : t('themeLight')} />
-
       <AppCard variant="glass" style={styles.profileCard}>
         {userProfile ? (
           <>

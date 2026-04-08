@@ -12,6 +12,9 @@ export type Coordinates = {
   longitude: number;
 };
 
+export type LocationConsent = 'unknown' | 'accepted' | 'rejected';
+export type LocationSource = 'default' | 'device' | 'capital' | 'ip';
+
 export type AppEvent = {
   id: string;
   title: LocalizedText;

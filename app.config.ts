@@ -13,9 +13,13 @@ const config: ExpoConfig = {
   ios: {
     bundleIdentifier: 'com.anonymous.GdjeIKadaNative',
     supportsTablet: true,
+    infoPlist: {
+      NSLocationWhenInUseUsageDescription: 'Precizna lokacija se koristi za centriranje mape i prikaz dogadaja u tvojoj blizini.',
+    },
   },
   android: {
     package: 'com.anonymous.GdjeIKadaNative',
+    permissions: ['ACCESS_COARSE_LOCATION', 'ACCESS_FINE_LOCATION'],
     adaptiveIcon: {
       backgroundColor: '#E6F4FE',
       foregroundImage: './assets/images/android-icon-foreground.png',

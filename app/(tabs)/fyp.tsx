@@ -1,383 +1,251 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, StyleSheet, View } from 'react-native';
+import { useMemo } from 'react';
+import { FlatList, ListRenderItemInfo, Pressable, Share, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { EventCard } from '@/components/events/event-card';
-import { EventMap } from '@/components/map';
-import { MapSearchResults } from '@/components/search';
-import { AppButton, AppCard, AppDateTimeField, AppHeader, AppInput, AppScreen, AppText, SectionHeader } from '@/components/primitives';
-import { useEventsQuery } from '@/core/api/query-hooks';
+import { AppText } from '@/components/primitives';
+import { useFeedQuery } from '@/core/api/query-hooks';
+import { getEventCoverUri } from '@/core/events/event-cover';
 import { useI18n } from '@/core/i18n/use-i18n';
 import { useAppStore } from '@/core/store/app-store';
 import { useAppTheme } from '@/core/theme';
-import { useLocationSearch } from '@/features/events/hooks/use-location-search';
-import { AppEvent, Coordinates, EventVisibility } from '@/core/types/domain';
-
-type FypSegment = 'joined' | 'created' | 'create';
-
-type CreateFormState = {
-  title: string;
-  address: string;
-  whenISO: string;
-  about: string;
-  steps: string;
-  visibility: EventVisibility;
-};
-
-const INITIAL_FORM: CreateFormState = {
-  title: '',
-  address: '',
-  whenISO: '',
-  about: '',
-  steps: '',
-  visibility: 'public',
-};
-const ENTRANCE_PICKER_WIDTH = 300;
-const ENTRANCE_PICKER_HEIGHT = 170;
+import { AppEvent } from '@/core/types/domain';
+import { formatEventDate } from '@/core/utils/date';
 
 function sortByDate(events: AppEvent[]) {
   return [...events].sort((a, b) => new Date(a.whenISO).getTime() - new Date(b.whenISO).getTime());
+}
+
+type ActionButtonProps = {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  value?: number;
+  active?: boolean;
+  onPress: () => void;
+};
+
+function ActionButton({ icon, label, value, active = false, onPress }: ActionButtonProps) {
+  const { theme } = useAppTheme();
+
+  return (
+    <Pressable style={({ pressed }) => [styles.actionWrap, { opacity: pressed ? 0.78 : 1 }]} onPress={onPress}>
+      <View style={[styles.actionIconWrap, { borderColor: theme.colors.border, backgroundColor: theme.colors.overlay }]}>
+        <Ionicons name={icon} size={22} color={active ? theme.colors.accent : theme.colors.textPrimary} />
+      </View>
+      <AppText variant="caption" style={styles.actionLabel}>
+        {value ?? label}
+      </AppText>
+    </Pressable>
+  );
 }
 
 export default function FypScreen() {
   const router = useRouter();
   const { t, locale } = useI18n();
   const { theme } = useAppTheme();
+  const insets = useSafeAreaInsets();
+  const { height, width } = useWindowDimensions();
 
-  const { data: fetchedEvents = [] } = useEventsQuery();
-
+  const { data: fetchedEvents = [] } = useFeedQuery();
   const createdEvents = useAppStore((state) => state.createdEvents);
   const joinedEventIds = useAppStore((state) => state.joinedEventIds);
-  const createEvent = useAppStore((state) => state.createEvent);
-  const pickedEntranceCoordinates = useAppStore((state) => state.fypEntranceCoordinates);
-  const clearFypEntranceCoordinates = useAppStore((state) => state.clearFypEntranceCoordinates);
+  const likedEventIds = useAppStore((state) => state.likedEventIds);
+  const favoriteEventIds = useAppStore((state) => state.favoriteEventIds);
+  const toggleJoined = useAppStore((state) => state.toggleJoined);
+  const toggleLiked = useAppStore((state) => state.toggleLiked);
+  const toggleFavorite = useAppStore((state) => state.toggleFavorite);
 
-  const [activeSegment, setActiveSegment] = useState<FypSegment>('joined');
-  const [form, setForm] = useState<CreateFormState>(INITIAL_FORM);
-  const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
-  const [entranceCoordinate, setEntranceCoordinate] = useState<Coordinates | null>(null);
-  const lastSyncedLocationId = useRef<string | null>(null);
+  const feedEvents = useMemo(() => sortByDate([...createdEvents, ...fetchedEvents]), [createdEvents, fetchedEvents]);
+  const itemHeight = Math.max(420, height - insets.top - insets.bottom);
 
-  const { data: locationResults = [], isFetching: isSearchingLocations } = useLocationSearch(form.address, locale);
-
-  const allEvents = useMemo(() => [...createdEvents, ...fetchedEvents], [createdEvents, fetchedEvents]);
-
-  const joinedEvents = useMemo(
-    () => sortByDate(allEvents.filter((event) => joinedEventIds.includes(event.id))),
-    [allEvents, joinedEventIds],
-  );
-
-  const createdEventsForFyp = useMemo(() => sortByDate(allEvents.filter((event) => event.type === 'created')), [allEvents]);
-
-  const selectedLocation =
-    locationResults.find((result) => result.id === selectedLocationId) ??
-    (locationResults.length > 0 ? locationResults[0] : null);
-
-  useEffect(() => {
-    if (locationResults.length === 0) {
-      setSelectedLocationId(null);
-      return;
+  const onShare = async (event: AppEvent) => {
+    try {
+      await Share.share({
+        title: event.title[locale],
+        message: `${event.title[locale]}\n${event.where[locale]}\n${event.about[locale]}`,
+      });
+    } catch {
+      // ignore native share dismiss/errors
     }
-
-    if (!selectedLocationId || !locationResults.some((result) => result.id === selectedLocationId)) {
-      setSelectedLocationId(locationResults[0].id);
-    }
-  }, [locationResults, selectedLocationId]);
-
-  useEffect(() => {
-    if (!selectedLocation) {
-      setEntranceCoordinate(null);
-      lastSyncedLocationId.current = null;
-      return;
-    }
-
-    if (selectedLocation.id === lastSyncedLocationId.current) {
-      return;
-    }
-
-    setEntranceCoordinate(selectedLocation.coordinates);
-    lastSyncedLocationId.current = selectedLocation.id;
-  }, [selectedLocation]);
-
-  useEffect(() => {
-    if (!pickedEntranceCoordinates) {
-      return;
-    }
-
-    setEntranceCoordinate(pickedEntranceCoordinates);
-    clearFypEntranceCoordinates();
-  }, [pickedEntranceCoordinates, clearFypEntranceCoordinates]);
-
-  const openEventDetails = (eventId: string) => {
-    router.push({ pathname: '/event/[id]', params: { id: eventId } });
   };
 
-  const updateForm = (key: keyof CreateFormState, value: string | EventVisibility) => {
-    setForm((current) => ({ ...current, [key]: value }));
-  };
+  const renderFeedItem = ({ item }: ListRenderItemInfo<AppEvent>) => {
+    const isJoined = joinedEventIds.includes(item.id);
+    const isLiked = likedEventIds.includes(item.id);
+    const isFavorite = favoriteEventIds.includes(item.id);
+    const likeCount = item.participantCount + (isLiked ? 1 : 0);
 
-  const onCreateEvent = () => {
-    if (!form.title.trim() || !form.address.trim() || !form.steps.trim() || !form.whenISO.trim()) {
-      Alert.alert(t('validation'), t('fillAllFields'));
-      return;
-    }
+    return (
+      <View style={[styles.slide, { height: itemHeight, width }]}>
+        <Image source={{ uri: getEventCoverUri(item.id, 1080, 1920) }} style={StyleSheet.absoluteFill} contentFit="cover" />
+        <View style={styles.backdrop} />
 
-    if (Number.isNaN(new Date(form.whenISO).getTime())) {
-      Alert.alert(t('validation'), t('invalidDate'));
-      return;
-    }
-
-    if (!selectedLocation) {
-      Alert.alert(t('validation'), t('noLocationsFound'));
-      return;
-    }
-
-    const baseCoordinates = selectedLocation.coordinates;
-
-    createEvent({
-      titleHr: form.title,
-      titleEn: form.title,
-      whereHr: form.address,
-      whereEn: form.address,
-      aboutHr: form.about || form.steps,
-      aboutEn: form.about || form.steps,
-      whenISO: form.whenISO,
-      coordinates: baseCoordinates,
-      entranceCoordinates: entranceCoordinate ?? baseCoordinates,
-      entryInstructionsHr: form.steps,
-      entryInstructionsEn: form.steps,
-      visibility: form.visibility,
-    });
-
-    setForm(INITIAL_FORM);
-    setEntranceCoordinate(null);
-    setSelectedLocationId(null);
-    setActiveSegment('created');
-
-    Alert.alert(t('addNewEvent'), t('eventCreated'));
-  };
-
-  const renderEventSection = (events: AppEvent[], emptyLabel: string) => {
-    if (events.length === 0) {
-      return (
-        <AppCard variant="glass" style={{ marginTop: 8 }}>
-          <AppText variant="body" color="textMuted">
-            {emptyLabel}
+        <View style={[styles.topMeta, { paddingTop: insets.top + 6 }]}>
+          <AppText variant="caption" color="textMuted">
+            {t('fypReelsSubtitle')}
           </AppText>
-        </AppCard>
-      );
-    }
+        </View>
 
-    return events.map((event) => <EventCard key={event.id} event={event} locale={locale} onPress={() => openEventDetails(event.id)} />);
+        <View style={styles.rightActions}>
+          <ActionButton
+            icon={isLiked ? 'heart' : 'heart-outline'}
+            label={t('like')}
+            value={likeCount}
+            active={isLiked}
+            onPress={() => toggleLiked(item.id)}
+          />
+          <ActionButton
+            icon={isFavorite ? 'bookmark' : 'bookmark-outline'}
+            label={t('favorite')}
+            active={isFavorite}
+            onPress={() => toggleFavorite(item.id)}
+          />
+          <ActionButton icon="share-social-outline" label={t('shares')} onPress={() => onShare(item)} />
+        </View>
+
+        <View style={styles.bottomContent}>
+          <AppText variant="title">{item.title[locale]}</AppText>
+          <AppText variant="body" color="textSecondary" style={styles.metaLine}>
+            {item.where[locale]}
+          </AppText>
+          <AppText variant="caption" color="textMuted" style={styles.metaLine}>
+            {formatEventDate(item.whenISO, locale)}
+          </AppText>
+          <AppText variant="body" numberOfLines={3} style={styles.about}>
+            {item.about[locale]}
+          </AppText>
+
+          <View style={styles.bottomActionsRow}>
+            <Pressable
+              onPress={() => toggleJoined(item.id)}
+              style={({ pressed }) => [
+                styles.cta,
+                {
+                  borderColor: theme.colors.border,
+                  backgroundColor: theme.colors.overlay,
+                  opacity: pressed ? 0.82 : 1,
+                },
+              ]}
+            >
+              <AppText variant="bodyStrong">{isJoined ? t('leaveEvent') : t('joinEvent')}</AppText>
+            </Pressable>
+
+            <Pressable
+              onPress={() => router.push({ pathname: '/event/[id]', params: { id: item.id } })}
+              style={({ pressed }) => [
+                styles.cta,
+                {
+                  borderColor: theme.colors.border,
+                  backgroundColor: theme.colors.overlay,
+                  opacity: pressed ? 0.82 : 1,
+                },
+              ]}
+            >
+              <AppText variant="bodyStrong">{t('details')}</AppText>
+            </Pressable>
+          </View>
+
+          <AppText variant="caption" color="textMuted" style={styles.swipeHint}>
+            {t('feedHintSwipe')}
+          </AppText>
+        </View>
+      </View>
+    );
   };
 
   return (
-    <AppScreen scroll>
-      <AppHeader title={t('fyp')} subtitle={t('fypSubtitle')} />
-
-      <View style={styles.segmentRow}>
-        <AppButton
-          title={t('joined')}
-          variant={activeSegment === 'joined' ? 'primary' : 'glass'}
-          style={styles.segmentButton}
-          onPress={() => setActiveSegment('joined')}
+    <SafeAreaView edges={['left', 'right']} style={[styles.screen, { backgroundColor: theme.colors.background }]}>
+      {feedEvents.length === 0 ? (
+        <View style={styles.emptyWrap}>
+          <AppText variant="headline">{t('noFeedEvents')}</AppText>
+        </View>
+      ) : (
+        <FlatList
+          data={feedEvents}
+          keyExtractor={(item) => item.id}
+          renderItem={renderFeedItem}
+          pagingEnabled
+          showsVerticalScrollIndicator={false}
+          decelerationRate="fast"
+          snapToAlignment="start"
+          snapToInterval={itemHeight}
         />
-        <AppButton
-          title={t('created')}
-          variant={activeSegment === 'created' ? 'primary' : 'glass'}
-          style={styles.segmentButton}
-          onPress={() => setActiveSegment('created')}
-        />
-        <AppButton
-          title={t('createEvent')}
-          variant={activeSegment === 'create' ? 'primary' : 'glass'}
-          style={styles.segmentButton}
-          onPress={() => setActiveSegment('create')}
-        />
-      </View>
-
-      {activeSegment === 'joined' ? (
-        <>
-          <SectionHeader title={t('joined')} subtitle={`${joinedEvents.length}`} />
-          {renderEventSection(joinedEvents, t('noJoinedEvents'))}
-        </>
-      ) : null}
-
-      {activeSegment === 'created' ? (
-        <>
-          <SectionHeader title={t('created')} subtitle={`${createdEventsForFyp.length}`} />
-          {renderEventSection(createdEventsForFyp, t('noCreatedEvents'))}
-        </>
-      ) : null}
-
-      {activeSegment === 'create' ? (
-        <>
-          <SectionHeader title={t('createOnFyp')} subtitle={t('createEvent')} />
-
-          <AppCard variant="glass" style={styles.createCard}>
-            <AppInput
-              label={t('titleLabel')}
-              value={form.title}
-              onChangeText={(value) => updateForm('title', value)}
-              placeholder={t('titleLabel')}
-            />
-
-            <AppInput
-              label={t('addressLabel')}
-              value={form.address}
-              onChangeText={(value) => {
-                updateForm('address', value);
-                setSelectedLocationId(null);
-                lastSyncedLocationId.current = null;
-              }}
-              placeholder={t('locationLabel')}
-            />
-
-            <MapSearchResults
-              visible={form.address.trim().length > 0}
-              loading={isSearchingLocations}
-              query={form.address}
-              results={locationResults}
-              searchingLabel={t('searchingLocations')}
-              noResultsLabel={t('noLocationsFound')}
-              hintLabel={t('typeToSearchLocation')}
-              providerLabel={t('mapSearchSource')}
-              onSelectResult={(result) => {
-                setSelectedLocationId(result.id);
-                const fullAddress = result.subtitle ? `${result.title}, ${result.subtitle}` : result.title;
-                updateForm('address', fullAddress);
-              }}
-            />
-
-            <AppText variant="label" color="textMuted" style={styles.inlineLabel}>
-              {t('dragDropEntrance')}
-            </AppText>
-            <View style={[styles.entrancePicker, { borderColor: theme.colors.border, backgroundColor: theme.colors.surfaceElevated }]}>
-              {selectedLocation ? (
-                <EventMap
-                  events={[]}
-                  locale={locale}
-                  userLocation={selectedLocation.coordinates}
-                  selectedEventId={null}
-                  focusCoordinate={selectedLocation.coordinates}
-                  searchMarker={entranceCoordinate}
-                  interactive={false}
-                  onSelectEvent={() => undefined}
-                />
-              ) : null}
-            </View>
-            <AppButton
-              title={t('openMapPicker')}
-              variant="secondary"
-              style={styles.openMapButton}
-              disabled={!selectedLocation}
-              onPress={() => {
-                if (!selectedLocation) {
-                  return;
-                }
-
-                router.push({
-                  pathname: '/entrance-map-picker' as any,
-                  params: {
-                    centerLat: String(selectedLocation.coordinates.latitude),
-                    centerLng: String(selectedLocation.coordinates.longitude),
-                    pinLat: String((entranceCoordinate ?? selectedLocation.coordinates).latitude),
-                    pinLng: String((entranceCoordinate ?? selectedLocation.coordinates).longitude),
-                  },
-                });
-              }}
-            />
-            <AppText variant="caption" color="textMuted" style={styles.helpText}>
-              {selectedLocation ? t('mapPinPreview') : t('typeToSearchLocation')}
-            </AppText>
-
-            <AppInput
-              label={t('stepByStep')}
-              value={form.steps}
-              onChangeText={(value) => updateForm('steps', value)}
-              multiline
-              style={styles.multilineInput}
-              placeholder={t('stepByStep')}
-            />
-
-            <AppDateTimeField label={t('dateLabel')} locale={locale} valueISO={form.whenISO} onChangeISO={(value) => updateForm('whenISO', value)} />
-
-            <AppInput
-              label={t('aboutLabel')}
-              value={form.about}
-              onChangeText={(value) => updateForm('about', value)}
-              multiline
-              style={styles.multilineInput}
-              placeholder={t('aboutLabel')}
-            />
-
-            <AppText variant="label" color="textMuted" style={styles.inlineLabel}>
-              {t('eventVisibility')}
-            </AppText>
-            <View style={styles.visibilityRow}>
-              <AppButton
-                title={t('publicOption')}
-                variant={form.visibility === 'public' ? 'primary' : 'secondary'}
-                style={styles.visibilityButton}
-                onPress={() => updateForm('visibility', 'public')}
-              />
-              <AppButton
-                title={t('privateOption')}
-                variant={form.visibility === 'private' ? 'primary' : 'secondary'}
-                style={styles.visibilityButton}
-                onPress={() => updateForm('visibility', 'private')}
-              />
-            </View>
-
-            <AppButton title={t('submit')} variant="glass" style={{ marginTop: 10 }} onPress={onCreateEvent} />
-          </AppCard>
-        </>
-      ) : null}
-    </AppScreen>
+      )}
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  segmentRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 14,
-  },
-  segmentButton: {
+  screen: {
     flex: 1,
-    minHeight: 42,
   },
-  createCard: {
-    marginTop: 6,
+  slide: {
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingBottom: 18,
   },
-  inlineLabel: {
-    marginBottom: 6,
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(10, 13, 20, 0.44)',
   },
-  entrancePicker: {
-    width: ENTRANCE_PICKER_WIDTH,
-    maxWidth: '100%',
-    alignSelf: 'center',
-    height: ENTRANCE_PICKER_HEIGHT,
+  topMeta: {
+    zIndex: 1,
+  },
+  rightActions: {
+    position: 'absolute',
+    right: 12,
+    bottom: 180,
+    zIndex: 2,
+    gap: 12,
+  },
+  actionWrap: {
+    alignItems: 'center',
+    gap: 4,
+  },
+  actionIconWrap: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
     borderWidth: 1,
-    borderRadius: 14,
-    marginBottom: 8,
-    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  openMapButton: {
-    marginBottom: 8,
+  actionLabel: {
+    textAlign: 'center',
   },
-  helpText: {
-    marginBottom: 14,
+  bottomContent: {
+    zIndex: 1,
+    paddingRight: 70,
   },
-  multilineInput: {
-    minHeight: 92,
-    textAlignVertical: 'top',
+  metaLine: {
+    marginTop: 4,
   },
-  visibilityRow: {
+  about: {
+    marginTop: 10,
+  },
+  bottomActionsRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 10,
+    marginTop: 14,
   },
-  visibilityButton: {
+  cta: {
+    borderWidth: 1,
+    borderRadius: 12,
+    minHeight: 42,
     flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+  },
+  swipeHint: {
+    marginTop: 12,
+  },
+  emptyWrap: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
   },
 });

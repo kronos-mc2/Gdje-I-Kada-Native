@@ -13,6 +13,15 @@ export const fetchEvents = async (): Promise<AppEvent[]> => {
   return response.data;
 };
 
+export const fetchFeed = async (): Promise<AppEvent[]> => {
+  if (useMockApi) {
+    return getMockEvents();
+  }
+
+  const response = await apiClient.get<AppEvent[]>('/feed');
+  return response.data;
+};
+
 export const fetchFriends = async (): Promise<Friend[]> => {
   if (useMockApi) {
     return getMockFriends();
