@@ -1,32 +1,28 @@
-import { Alert, StyleSheet, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { StyleSheet, View } from 'react-native';
 
 import { AppButton, AppCard, AppScreen, AppText, SectionHeader, ThemeToggle } from '@/components/primitives';
 import { useI18n } from '@/core/i18n/use-i18n';
 import { useAppStore } from '@/core/store/app-store';
+import { useAuthStore } from '@/core/store/auth-store';
 import { useAppTheme } from '@/core/theme';
 import { Locale } from '@/core/types/domain';
 
 const LANGUAGES: Locale[] = ['hr', 'en'];
 
 export default function ProfileScreen() {
+  const router = useRouter();
   const { t, locale } = useI18n();
   const { preference } = useAppTheme();
 
-  const userProfile = useAppStore((state) => state.userProfile);
+  const userProfile = useAuthStore((state) => state.user);
+  const clearAuth = useAuthStore((state) => state.clearAuth);
   const themePreference = useAppStore((state) => state.themePreference);
   const setThemePreference = useAppStore((state) => state.setThemePreference);
   const setLocale = useAppStore((state) => state.setLocale);
-  const signInDemoUser = useAppStore((state) => state.signInDemoUser);
-  const signOut = useAppStore((state) => state.signOut);
-
-  const onGooglePress = () => {
-    if (userProfile) {
-      signOut();
-      return;
-    }
-
-    signInDemoUser();
-    Alert.alert(t('signInGoogle'), t('googleSoon'));
+  const handleSignOut = () => {
+    clearAuth();
+    router.replace('/(auth)');
   };
 
   return (
@@ -62,15 +58,7 @@ export default function ProfileScreen() {
       <SectionHeader title={t('theme')} subtitle={preference === 'system' ? t('themeSystem') : undefined} />
       <ThemeToggle value={themePreference} onChange={setThemePreference} />
 
-      <AppButton
-        title={userProfile ? t('signOut') : t('signInGoogle')}
-        variant="glass"
-        style={styles.authButton}
-        onPress={onGooglePress}
-      />
-      <AppText variant="caption" color="textMuted" style={{ marginTop: 10 }}>
-        {t('googleSoon')}
-      </AppText>
+      <AppButton title={t('signOut')} variant="glass" style={styles.authButton} onPress={handleSignOut} />
     </AppScreen>
   );
 }

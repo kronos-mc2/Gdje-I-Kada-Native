@@ -46,3 +46,34 @@ export type UserProfile = {
   name: string;
   email: string;
 };
+
+export type AuthResponse = {
+  accessToken: string;
+  user: UserProfile;
+};
+
+export type LoginPayload = {
+  email: string;
+  password: string;
+};
+
+export type RegisterPayload = {
+  name: string;
+  email: string;
+  password: string;
+};
+
+export type CreateEventPayload = {
+  titleHr: string;
+  titleEn: string;
+  whereHr: string;
+  whereEn: string;
+  aboutHr: string;
+  aboutEn: string;
+  whenISO: string;
+  coordinates: Coordinates;
+  entranceCoordinates?: Coordinates;
+  entryInstructionsHr?: string;
+  entryInstructionsEn?: string;
+  visibility?: EventVisibility;
+};

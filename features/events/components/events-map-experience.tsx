@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -25,17 +25,65 @@ export function EventsMapExperience({ events, locale, userLocation }: EventsMapE
   const { theme } = useAppTheme();
   const insets = useSafeAreaInsets();
   const locationConsent = useAppStore((state) => state.locationConsent);
+  const locationSource = useAppStore((state) => state.locationSource);
   const setLocationConsent = useAppStore((state) => state.setLocationConsent);
   const { requestPreciseLocationNow } = useMapLocationBootstrap();
 
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
-  const [focusCoordinate, setFocusCoordinate] = useState<Coordinates | null>(userLocation);
+  const [focusCoordinate, setFocusCoordinate] = useState<Coordinates | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchPanelVisible, setIsSearchPanelVisible] = useState(false);
   const { results: searchResults, isSearching } = useEventMapSearch({ events, query: searchQuery, locale });
 
   const eventsById = useMemo(() => new Map(events.map((event) => [event.id, event])), [events]);
   const selectedEvent = selectedEventId ? eventsById.get(selectedEventId) ?? null : null;
+  const hasAutoCenteredOnDeviceRef = useRef(false);
+  const focusResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const queueOneShotFocus = useCallback((coordinate: Coordinates) => {
+    const nextFocus = {
+      latitude: coordinate.latitude,
+      longitude: coordinate.longitude,
+    };
+
+    setFocusCoordinate(nextFocus);
+
+    if (focusResetTimerRef.current) {
+      clearTimeout(focusResetTimerRef.current);
+    }
+
+    focusResetTimerRef.current = setTimeout(() => {
+      setFocusCoordinate((current) => {
+        if (!current) {
+          return null;
+        }
+
+        const isSameTarget =
+          Math.abs(current.latitude - nextFocus.latitude) < 0.000001 &&
+          Math.abs(current.longitude - nextFocus.longitude) < 0.000001;
+
+        return isSameTarget ? null : current;
+      });
+    }, 900);
+  }, []);
+
+  const recenterToLatestKnownLocation = useCallback(() => {
+    const latestUserLocation = useAppStore.getState().userLocation;
+    queueOneShotFocus(latestUserLocation);
+    setSelectedEventId(null);
+    setIsSearchPanelVisible(false);
+  }, [queueOneShotFocus]);
+
+  const runRecenterFlow = useCallback(
+    async (shouldRequestPrecise: boolean) => {
+      if (shouldRequestPrecise) {
+        await requestPreciseLocationNow();
+      }
+
+      recenterToLatestKnownLocation();
+    },
+    [recenterToLatestKnownLocation, requestPreciseLocationNow],
+  );
 
   useEffect(() => {
     if (!selectedEventId) {
@@ -48,12 +96,22 @@ export function EventsMapExperience({ events, locale, userLocation }: EventsMapE
   }, [selectedEventId, eventsById]);
 
   useEffect(() => {
-    if (selectedEventId || searchQuery.trim().length > 0) {
+    if (locationSource !== 'device' || hasAutoCenteredOnDeviceRef.current) {
       return;
     }
 
-    setFocusCoordinate(userLocation);
-  }, [searchQuery, selectedEventId, userLocation]);
+    hasAutoCenteredOnDeviceRef.current = true;
+    queueOneShotFocus(userLocation);
+  }, [locationSource, queueOneShotFocus, userLocation]);
+
+  useEffect(
+    () => () => {
+      if (focusResetTimerRef.current) {
+        clearTimeout(focusResetTimerRef.current);
+      }
+    },
+    [],
+  );
 
   const showSearchResults = isSearchPanelVisible && searchQuery.trim().length > 0;
   const detailBottomInset = Platform.OS === 'android' ? insets.bottom + 92 : insets.bottom + 62;
@@ -75,10 +133,7 @@ export function EventsMapExperience({ events, locale, userLocation }: EventsMapE
 
           setSelectedEventId(eventId);
           setSearchQuery(event.title[locale]);
-          setFocusCoordinate({
-            latitude: event.coordinates.latitude,
-            longitude: event.coordinates.longitude,
-          });
+          queueOneShotFocus(event.coordinates);
           setIsSearchPanelVisible(false);
         }}
       />
@@ -122,10 +177,7 @@ export function EventsMapExperience({ events, locale, userLocation }: EventsMapE
             setSelectedEventId(result.eventId);
             const event = eventsById.get(result.eventId);
             if (event) {
-              setFocusCoordinate({
-                latitude: event.coordinates.latitude,
-                longitude: event.coordinates.longitude,
-              });
+              queueOneShotFocus(event.coordinates);
             }
             setIsSearchPanelVisible(false);
           }}
@@ -139,23 +191,22 @@ export function EventsMapExperience({ events, locale, userLocation }: EventsMapE
               {
                 text: t('notNow'),
                 style: 'cancel',
-                onPress: () => setLocationConsent('rejected'),
+                onPress: () => {
+                  setLocationConsent('rejected');
+                  recenterToLatestKnownLocation();
+                },
               },
               {
                 text: t('allow'),
                 onPress: () => {
                   setLocationConsent('accepted');
-                  void requestPreciseLocationNow();
+                  void runRecenterFlow(true);
                 },
               },
             ]);
           } else {
-            void requestPreciseLocationNow();
+            void runRecenterFlow(true);
           }
-
-          setFocusCoordinate(userLocation);
-          setSelectedEventId(null);
-          setIsSearchPanelVisible(false);
         }}
         style={({ pressed }) => [
           styles.recenterButton,

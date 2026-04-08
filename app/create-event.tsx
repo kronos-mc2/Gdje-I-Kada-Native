@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { Alert } from 'react-native';
 
 import { AppButton, AppDateTimeField, AppHeader, AppInput, AppScreen } from '@/components/primitives';
+import { useCreateEventMutation } from '@/core/api/query-hooks';
 import { useI18n } from '@/core/i18n/use-i18n';
 import { useAppStore } from '@/core/store/app-store';
 
@@ -38,8 +39,8 @@ const INITIAL_FORM: FormState = {
 export default function CreateEventScreen() {
   const router = useRouter();
   const { t, locale } = useI18n();
+  const { mutateAsync: createEvent, isPending: isSubmitting } = useCreateEventMutation();
 
-  const createEvent = useAppStore((state) => state.createEvent);
   const setEventFilter = useAppStore((state) => state.setEventFilter);
   const userLocation = useAppStore((state) => state.userLocation);
 
@@ -61,7 +62,7 @@ export default function CreateEventScreen() {
     setForm((current) => ({ ...current, [key]: value }));
   };
 
-  const onSubmit = () => {
+  const onSubmit = async () => {
     const hasMissingField = Object.values(form).some((value) => value.length === 0);
 
     if (hasMissingField) {
@@ -74,17 +75,21 @@ export default function CreateEventScreen() {
       return;
     }
 
-    createEvent({
-      ...form,
-      coordinates: {
-        latitude: userLocation.latitude + randomOffset(),
-        longitude: userLocation.longitude + randomOffset(),
-      },
-    });
+    try {
+      await createEvent({
+        ...form,
+        coordinates: {
+          latitude: userLocation.latitude + randomOffset(),
+          longitude: userLocation.longitude + randomOffset(),
+        },
+      });
 
-    setEventFilter('created');
-    Alert.alert(t('addNewEvent'), t('eventCreated'));
-    router.replace('/(tabs)');
+      setEventFilter('created');
+      Alert.alert(t('addNewEvent'), t('eventCreated'));
+      router.replace('/(tabs)');
+    } catch {
+      Alert.alert(t('validation'), t('eventCreateFailed'));
+    }
   };
 
   return (
@@ -105,7 +110,13 @@ export default function CreateEventScreen() {
 
       <AppDateTimeField label={t('dateLabel')} locale={locale} valueISO={form.whenISO} onChangeISO={(value) => updateField('whenISO', value)} />
 
-      <AppButton title={t('submit')} variant="glass" onPress={onSubmit} style={{ marginTop: 8 }} />
+      <AppButton
+        title={isSubmitting ? t('loading') : t('submit')}
+        variant="glass"
+        disabled={isSubmitting}
+        onPress={() => void onSubmit()}
+        style={{ marginTop: 8 }}
+      />
     </AppScreen>
   );
 }

@@ -12,9 +12,12 @@ const config: ExpoConfig = {
   newArchEnabled: true,
   ios: {
     bundleIdentifier: 'com.anonymous.GdjeIKadaNative',
+    usesAppleSignIn: true,
     supportsTablet: true,
     infoPlist: {
       NSLocationWhenInUseUsageDescription: 'Precizna lokacija se koristi za centriranje mape i prikaz dogadaja u tvojoj blizini.',
+      NSLocationAlwaysAndWhenInUseUsageDescription: 'Lokacija se koristi za precizno centriranje mape i prikaz dogadaja u blizini.',
+      NSLocationAlwaysUsageDescription: 'Lokacija se koristi za precizno centriranje mape i prikaz dogadaja u blizini.',
     },
   },
   android: {
@@ -35,6 +38,14 @@ const config: ExpoConfig = {
   },
   plugins: [
     'expo-router',
+    [
+      'expo-build-properties',
+      {
+        android: {
+          usesCleartextTraffic: true,
+        },
+      },
+    ],
     '@maplibre/maplibre-react-native',
     '@react-native-community/datetimepicker',
     [

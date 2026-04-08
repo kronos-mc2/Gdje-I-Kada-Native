@@ -9,17 +9,15 @@ export function useEventsMapScreenModel() {
   const { locale } = useI18n();
   const { data: fetchedEvents = [] } = useEventsQuery();
 
-  const { createdEvents, userLocation } = useAppStore(
+  const { userLocation } = useAppStore(
     useShallow((state) => ({
-      createdEvents: state.createdEvents,
       userLocation: state.userLocation,
     })),
   );
 
   const events = useMemo(
-    () =>
-      [...createdEvents, ...fetchedEvents].sort((a, b) => new Date(a.whenISO).getTime() - new Date(b.whenISO).getTime()),
-    [createdEvents, fetchedEvents],
+    () => [...fetchedEvents].sort((a, b) => new Date(a.whenISO).getTime() - new Date(b.whenISO).getTime()),
+    [fetchedEvents],
   );
 
   return {

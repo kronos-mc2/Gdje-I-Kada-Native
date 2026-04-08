@@ -49,7 +49,6 @@ export default function FypScreen() {
   const { height, width } = useWindowDimensions();
 
   const { data: fetchedEvents = [] } = useFeedQuery();
-  const createdEvents = useAppStore((state) => state.createdEvents);
   const joinedEventIds = useAppStore((state) => state.joinedEventIds);
   const likedEventIds = useAppStore((state) => state.likedEventIds);
   const favoriteEventIds = useAppStore((state) => state.favoriteEventIds);
@@ -57,7 +56,7 @@ export default function FypScreen() {
   const toggleLiked = useAppStore((state) => state.toggleLiked);
   const toggleFavorite = useAppStore((state) => state.toggleFavorite);
 
-  const feedEvents = useMemo(() => sortByDate([...createdEvents, ...fetchedEvents]), [createdEvents, fetchedEvents]);
+  const feedEvents = useMemo(() => sortByDate(fetchedEvents), [fetchedEvents]);
   const itemHeight = Math.max(420, height - insets.top - insets.bottom);
 
   const onShare = async (event: AppEvent) => {

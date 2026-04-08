@@ -4,7 +4,7 @@ import Supercluster from 'supercluster';
 
 import { AppText } from '@/components/primitives';
 import { MapMarkerBadge } from '@/components/map/map-marker-badge';
-import { EventMapSurfaceProps } from '@/components/map/types';
+import { EventMapMarker, EventMapSurfaceProps } from '@/components/map/types';
 import { MAP_DEFAULT_ZOOM, MAP_FOCUS_ZOOM, MAPLIBRE_STYLE_URL_DARK, MAPLIBRE_STYLE_URL_LIGHT } from '@/core/maps/map-config';
 import { useAppTheme } from '@/core/theme';
 
@@ -18,9 +18,11 @@ type RegionFeature = GeoJSON.Feature<
 
 type MapLibreModule = typeof import('@maplibre/maplibre-react-native');
 type MarkerFeatureProperties = {
-  id: string;
+  markerKey: string;
 };
 type Bounds = [number, number, number, number];
+const isValidCoordinate = (latitude: number, longitude: number) =>
+  Number.isFinite(latitude) && Number.isFinite(longitude) && Math.abs(latitude) <= 90 && Math.abs(longitude) <= 180;
 
 const hasMapLibreNativeModule = Boolean(NativeModules?.MLRNModule);
 const mapLibreModule: MapLibreModule | null = hasMapLibreNativeModule
@@ -41,24 +43,36 @@ export function EventMapSurface({
 }: EventMapSurfaceProps) {
   const { theme } = useAppTheme();
   const mapLibreCameraRef = useRef<any>(null);
+  const initialCameraSettingsRef = useRef({
+    centerCoordinate: [initialCenter.longitude, initialCenter.latitude] as [number, number],
+    zoomLevel: MAP_DEFAULT_ZOOM,
+  });
   const annotationRefs = useRef<Record<string, { refresh?: () => void } | null>>({});
   const [currentZoom, setCurrentZoom] = useState<number>(MAP_DEFAULT_ZOOM);
   const [currentBounds, setCurrentBounds] = useState<Bounds | null>(null);
 
-  const markerById = useMemo(() => new Map(markers.map((marker) => [marker.id, marker])), [markers]);
+  const validMarkers = useMemo(
+    () => markers.filter((marker) => isValidCoordinate(marker.coordinate.latitude, marker.coordinate.longitude)),
+    [markers],
+  );
+  const indexedMarkers = useMemo(
+    () => validMarkers.map((marker, index) => ({ marker, markerKey: `${marker.id}:${index}` })),
+    [validMarkers],
+  );
+  const markerByKey = useMemo(() => new Map(indexedMarkers.map((entry) => [entry.markerKey, entry.marker])), [indexedMarkers]);
   const clusterPoints = useMemo<GeoJSON.Feature<GeoJSON.Point, MarkerFeatureProperties>[]>(
     () =>
-      markers.map((marker) => ({
+      indexedMarkers.map(({ marker, markerKey }) => ({
         type: 'Feature',
         geometry: {
           type: 'Point',
           coordinates: [marker.coordinate.longitude, marker.coordinate.latitude],
         },
         properties: {
-          id: marker.id,
+          markerKey,
         },
       })),
-    [markers],
+    [indexedMarkers],
   );
 
   const clusterIndex = useMemo(() => {
@@ -96,6 +110,66 @@ export function EventMapSurface({
     return clusterIndex.getClusters([west, south, east, north], zoom);
   }, [activeBounds, clusterIndex, currentZoom]);
 
+  const renderItems = useMemo(
+    () =>
+      clusters.reduce<
+        (
+          | {
+              kind: 'cluster';
+              key: string;
+              clusterId: number;
+              count: number;
+              latitude: number;
+              longitude: number;
+            }
+          | { kind: 'marker'; key: string; markerKey: string; marker: EventMapMarker }
+        )[]
+      >((acc, feature) => {
+        const [longitude, latitude] = feature.geometry.coordinates as [number, number];
+        if (!isValidCoordinate(latitude, longitude)) {
+          return acc;
+        }
+
+        const properties = feature.properties as {
+          cluster?: boolean;
+          cluster_id?: number;
+          point_count?: number;
+          markerKey?: string;
+        };
+
+        if (properties.cluster && typeof properties.cluster_id === 'number') {
+          acc.push({
+            kind: 'cluster',
+            key: `cluster-${properties.cluster_id}`,
+            clusterId: properties.cluster_id,
+            count: properties.point_count ?? 0,
+            latitude,
+            longitude,
+          });
+          return acc;
+        }
+
+        const markerKey = properties.markerKey;
+        if (!markerKey) {
+          return acc;
+        }
+
+        const marker = markerByKey.get(markerKey);
+        if (!marker) {
+          return acc;
+        }
+
+        acc.push({
+          kind: 'marker',
+          key: `marker-${markerKey}`,
+          markerKey,
+          marker,
+        });
+        return acc;
+      }, []),
+    [clusters, markerByKey],
+  );
+
   useEffect(() => {
     if (!focusCoordinate || !mapLibreModule || !mapLibreCameraRef.current) {
       return;
@@ -115,8 +189,8 @@ export function EventMapSurface({
     }
 
     const refreshAll = () => {
-      for (const marker of markers) {
-        annotationRefs.current[marker.id]?.refresh?.();
+      for (const entry of indexedMarkers) {
+        annotationRefs.current[entry.markerKey]?.refresh?.();
       }
     };
 
@@ -125,7 +199,7 @@ export function EventMapSurface({
     return () => {
       timers.forEach((timer) => clearTimeout(timer));
     };
-  }, [markers]);
+  }, [indexedMarkers]);
 
   if (!mapLibreModule) {
     return (
@@ -181,31 +255,22 @@ export function EventMapSurface({
       >
         <Camera
           ref={mapLibreCameraRef}
-          defaultSettings={{
-            centerCoordinate: [initialCenter.longitude, initialCenter.latitude],
-            zoomLevel: MAP_DEFAULT_ZOOM,
-          }}
+          defaultSettings={initialCameraSettingsRef.current}
         />
 
-        {clusters.map((feature) => {
-          const [longitude, latitude] = feature.geometry.coordinates as [number, number];
-          const properties = feature.properties as { cluster?: boolean; cluster_id?: number; point_count?: number; id?: string };
-
-          if (properties.cluster && typeof properties.cluster_id === 'number') {
-            const clusterId = properties.cluster_id;
-            const count = properties.point_count ?? 0;
-
+        {renderItems.map((item) => {
+          if (item.kind === 'cluster') {
             return (
               <PointAnnotation
-                key={`cluster-${clusterId}`}
-                id={`cluster-${clusterId}`}
-                coordinate={[longitude, latitude]}
+                key={item.key}
+                id={item.key}
+                coordinate={[item.longitude, item.latitude]}
                 anchor={{ x: 0.5, y: 0.5 }}
                 onSelected={() => {
-                  const expansionZoom = clusterIndex.getClusterExpansionZoom(clusterId);
+                  const expansionZoom = clusterIndex.getClusterExpansionZoom(item.clusterId);
 
                   mapLibreCameraRef.current?.setCamera({
-                    centerCoordinate: [longitude, latitude],
+                    centerCoordinate: [item.longitude, item.latitude],
                     zoomLevel: expansionZoom + 0.35,
                     animationDuration: 380,
                     animationMode: 'easeTo',
@@ -222,27 +287,23 @@ export function EventMapSurface({
                   ]}
                 >
                   <AppText variant="caption" style={styles.clusterLabel}>
-                    {count}
+                    {item.count}
                   </AppText>
                 </View>
               </PointAnnotation>
             );
           }
 
-          const markerId = properties.id;
-          const marker = markerId ? markerById.get(markerId) : null;
-          if (!marker) {
-            return null;
-          }
+          const marker = item.marker;
 
           return (
             <PointAnnotation
-              key={marker.id}
-              id={marker.id}
+              key={item.key}
+              id={item.key}
               coordinate={[marker.coordinate.longitude, marker.coordinate.latitude]}
               anchor={{ x: 0.5, y: 1 }}
               ref={(ref) => {
-                annotationRefs.current[marker.id] = ref;
+                annotationRefs.current[item.markerKey] = ref;
               }}
               onSelected={() => onMarkerPress(marker.id)}
             >
@@ -250,9 +311,9 @@ export function EventMapSurface({
                 selected={marker.isSelected}
                 coverImageUri={marker.coverImageUri}
                 onImageLoad={() => {
-                  annotationRefs.current[marker.id]?.refresh?.();
+                  annotationRefs.current[item.markerKey]?.refresh?.();
                   setTimeout(() => {
-                    annotationRefs.current[marker.id]?.refresh?.();
+                    annotationRefs.current[item.markerKey]?.refresh?.();
                   }, 120);
                 }}
               />

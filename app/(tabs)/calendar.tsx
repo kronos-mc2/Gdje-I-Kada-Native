@@ -26,15 +26,14 @@ export default function CalendarScreen() {
   const { theme } = useAppTheme();
   const { data: fetchedEvents = [] } = useEventsQuery();
 
-  const createdEvents = useAppStore((state) => state.createdEvents);
   const joinedEventIds = useAppStore((state) => state.joinedEventIds);
 
   const [activeFilter, setActiveFilter] = useState<CalendarFilter>('all');
   const [selectedDay, setSelectedDay] = useState<string>(todayKey());
 
   const allEvents = useMemo(
-    () => [...createdEvents, ...fetchedEvents].sort((a, b) => new Date(a.whenISO).getTime() - new Date(b.whenISO).getTime()),
-    [createdEvents, fetchedEvents],
+    () => [...fetchedEvents].sort((a, b) => new Date(a.whenISO).getTime() - new Date(b.whenISO).getTime()),
+    [fetchedEvents],
   );
 
   const filteredEvents = useMemo(() => {

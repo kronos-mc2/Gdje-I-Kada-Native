@@ -162,6 +162,7 @@ export function useMapLocationBootstrap() {
 
   const hasPromptedRef = useRef(false);
   const isResolvingRef = useRef(false);
+  const hasAttemptedAutoPreciseRef = useRef(false);
 
   const requestPreciseLocationNow = useCallback(async () => {
     const preciseCoordinates = await resolvePreciseDeviceLocation();
@@ -239,6 +240,36 @@ export function useMapLocationBootstrap() {
       isResolvingRef.current = false;
     };
   }, [consent, locationSource, requestPreciseLocationNow, setLocationSource, setUserLocation]);
+
+  useEffect(() => {
+    if (consent !== 'accepted') {
+      hasAttemptedAutoPreciseRef.current = false;
+      return;
+    }
+
+    if (locationSource === 'default' || isResolvingRef.current || hasAttemptedAutoPreciseRef.current) {
+      return;
+    }
+
+    let cancelled = false;
+    isResolvingRef.current = true;
+    hasAttemptedAutoPreciseRef.current = true;
+
+    const resolve = async () => {
+      await requestPreciseLocationNow();
+
+      if (!cancelled) {
+        isResolvingRef.current = false;
+      }
+    };
+
+    void resolve();
+
+    return () => {
+      cancelled = true;
+      isResolvingRef.current = false;
+    };
+  }, [consent, locationSource, requestPreciseLocationNow]);
 
   return {
     requestPreciseLocationNow,

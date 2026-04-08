@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 
 import { EventMapSurface } from '@/components/map/event-map-surface';
 import { MapCameraState } from '@/components/map/types';
@@ -28,7 +28,8 @@ export function EventMap({
   onSelectEvent,
   onCameraStateChange,
 }: EventMapProps) {
-  const initialCenter = userLocation;
+  const initialCenterRef = useRef<Coordinates>(userLocation);
+  const initialCenter = initialCenterRef.current;
 
   const markers = useMemo(
     () =>

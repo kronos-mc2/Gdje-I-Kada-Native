@@ -16,12 +16,10 @@ export default function EventDetailsScreen() {
   const { t, locale } = useI18n();
   const { data: fetchedEvents = [] } = useEventsQuery();
 
-  const createdEvents = useAppStore((state) => state.createdEvents);
   const joinedEventIds = useAppStore((state) => state.joinedEventIds);
   const toggleJoined = useAppStore((state) => state.toggleJoined);
 
-  const allEvents = useMemo(() => [...createdEvents, ...fetchedEvents], [createdEvents, fetchedEvents]);
-  const event = useMemo(() => allEvents.find((item) => item.id === eventId), [allEvents, eventId]);
+  const event = useMemo(() => fetchedEvents.find((item) => item.id === eventId), [fetchedEvents, eventId]);
 
   if (!event) {
     return (
