@@ -53,7 +53,7 @@ export default function RegisterScreen() {
         password,
       });
 
-      setAuth(response);
+      await setAuth(response);
       router.replace('/(tabs)');
     } catch (error: unknown) {
       const status =

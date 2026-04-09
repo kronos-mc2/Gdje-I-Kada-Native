@@ -20,8 +20,8 @@ export default function ProfileScreen() {
   const themePreference = useAppStore((state) => state.themePreference);
   const setThemePreference = useAppStore((state) => state.setThemePreference);
   const setLocale = useAppStore((state) => state.setLocale);
-  const handleSignOut = () => {
-    clearAuth();
+  const handleSignOut = async () => {
+    await clearAuth();
     router.replace('/(auth)');
   };
 
@@ -58,7 +58,7 @@ export default function ProfileScreen() {
       <SectionHeader title={t('theme')} subtitle={preference === 'system' ? t('themeSystem') : undefined} />
       <ThemeToggle value={themePreference} onChange={setThemePreference} />
 
-      <AppButton title={t('signOut')} variant="glass" style={styles.authButton} onPress={handleSignOut} />
+      <AppButton title={t('signOut')} variant="glass" style={styles.authButton} onPress={() => void handleSignOut()} />
     </AppScreen>
   );
 }

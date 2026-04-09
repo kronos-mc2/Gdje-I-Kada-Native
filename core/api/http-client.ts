@@ -44,7 +44,7 @@ apiClient.interceptors.response.use(
 
     const shouldAutoLogout = Platform.OS === 'web';
     if (status === 401 && !isAuthPath && shouldAutoLogout) {
-      useAuthStore.getState().clearAuth();
+      void useAuthStore.getState().clearAuth();
     }
 
     return Promise.reject(error);

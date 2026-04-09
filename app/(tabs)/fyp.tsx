@@ -81,10 +81,7 @@ export default function FypScreen() {
         <Image source={{ uri: getEventCoverUri(item.id, 1080, 1920) }} style={StyleSheet.absoluteFill} contentFit="cover" />
         <View style={styles.backdrop} />
 
-        <View style={[styles.topMeta, { paddingTop: insets.top + 6 }]}>
-          <AppText variant="caption" color="textMuted">
-            {t('fypReelsSubtitle')}
-          </AppText>
+        <View>
         </View>
 
         <View style={styles.rightActions}>
@@ -117,19 +114,6 @@ export default function FypScreen() {
           </AppText>
 
           <View style={styles.bottomActionsRow}>
-            <Pressable
-              onPress={() => toggleJoined(item.id)}
-              style={({ pressed }) => [
-                styles.cta,
-                {
-                  borderColor: theme.colors.border,
-                  backgroundColor: theme.colors.overlay,
-                  opacity: pressed ? 0.82 : 1,
-                },
-              ]}
-            >
-              <AppText variant="bodyStrong">{isJoined ? t('leaveEvent') : t('joinEvent')}</AppText>
-            </Pressable>
 
             <Pressable
               onPress={() => router.push({ pathname: '/event/[id]', params: { id: item.id } })}
@@ -145,10 +129,6 @@ export default function FypScreen() {
               <AppText variant="bodyStrong">{t('details')}</AppText>
             </Pressable>
           </View>
-
-          <AppText variant="caption" color="textMuted" style={styles.swipeHint}>
-            {t('feedHintSwipe')}
-          </AppText>
         </View>
       </View>
     );
@@ -195,7 +175,7 @@ const styles = StyleSheet.create({
   rightActions: {
     position: 'absolute',
     right: 12,
-    bottom: 180,
+    bottom: 100,
     zIndex: 2,
     gap: 12,
   },

@@ -52,7 +52,7 @@ export default function LoginScreen() {
       setIsSubmitting(true);
       try {
         const response = await loginWithGoogle(idToken);
-        setAuth(response);
+        await setAuth(response);
         router.replace('/(tabs)');
       } catch {
         Alert.alert(t('authError'), t('googleLoginFailed'));
@@ -68,7 +68,7 @@ export default function LoginScreen() {
       setIsSubmitting(true);
       try {
         const response = await loginWithApple(idToken, name);
-        setAuth(response);
+        await setAuth(response);
         router.replace('/(tabs)');
       } catch {
         Alert.alert(t('authError'), t('appleLoginFailed'));
@@ -153,7 +153,7 @@ export default function LoginScreen() {
         password,
       });
 
-      setAuth(response);
+      await setAuth(response);
       router.replace('/(tabs)');
     } catch (error: unknown) {
       const apiMessage =
