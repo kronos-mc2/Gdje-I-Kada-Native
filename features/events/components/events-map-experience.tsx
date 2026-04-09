@@ -4,7 +4,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
 import { EventDetailSheet, EventMap } from '@/components/map';
-import { AppText } from '@/components/primitives';
 import { MapSearchBar, MapSearchResults } from '@/components/search';
 import { useI18n } from '@/core/i18n/use-i18n';
 import { useAppStore } from '@/core/store/app-store';
@@ -67,6 +66,15 @@ export function EventsMapExperience({ events, locale, userLocation }: EventsMapE
     }, 900);
   }, []);
 
+  const clearPendingFocus = useCallback(() => {
+    if (focusResetTimerRef.current) {
+      clearTimeout(focusResetTimerRef.current);
+      focusResetTimerRef.current = null;
+    }
+
+    setFocusCoordinate(null);
+  }, []);
+
   const recenterToLatestKnownLocation = useCallback(() => {
     const latestUserLocation = useAppStore.getState().userLocation;
     queueOneShotFocus(latestUserLocation);
@@ -76,7 +84,7 @@ export function EventsMapExperience({ events, locale, userLocation }: EventsMapE
 
   const runRecenterFlow = useCallback(
     async (shouldRequestPrecise: boolean) => {
-      if (shouldRequestPrecise) {
+      if (shouldRequestPrecise && Platform.OS !== 'android') {
         await requestPreciseLocationNow();
       }
 
@@ -125,6 +133,9 @@ export function EventsMapExperience({ events, locale, userLocation }: EventsMapE
         selectedEventId={selectedEventId}
         searchMarker={null}
         focusCoordinate={focusCoordinate}
+        onCameraStateChange={() => {
+          clearPendingFocus();
+        }}
         onSelectEvent={(eventId) => {
           const event = eventsById.get(eventId);
           if (!event) {
@@ -220,9 +231,6 @@ export function EventsMapExperience({ events, locale, userLocation }: EventsMapE
         ]}
       >
         <Ionicons name="locate-outline" size={17} color={theme.colors.textPrimary} />
-        <AppText variant="caption" style={styles.recenterLabel}>
-          {t('recenterMap')}
-        </AppText>
       </Pressable>
 
       {selectedEvent ? (
@@ -256,8 +264,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-  },
-  recenterLabel: {
-    marginTop: 1,
   },
 });

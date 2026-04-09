@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { NativeModules, StyleSheet, View } from 'react-native';
 import Supercluster from 'supercluster';
 
@@ -13,6 +13,7 @@ type RegionFeature = GeoJSON.Feature<
   {
     zoomLevel?: number;
     visibleBounds?: [GeoJSON.Position, GeoJSON.Position];
+    isUserInteraction?: boolean;
   }
 >;
 
@@ -21,6 +22,12 @@ type MarkerFeatureProperties = {
   markerKey: string;
 };
 type Bounds = [number, number, number, number];
+type CameraCommand = {
+  key: string;
+  centerCoordinate: [number, number];
+  zoomLevel: number;
+  animationDuration: number;
+};
 const isValidCoordinate = (latitude: number, longitude: number) =>
   Number.isFinite(latitude) && Number.isFinite(longitude) && Math.abs(latitude) <= 90 && Math.abs(longitude) <= 180;
 
@@ -48,8 +55,26 @@ export function EventMapSurface({
     zoomLevel: MAP_DEFAULT_ZOOM,
   });
   const annotationRefs = useRef<Record<string, { refresh?: () => void } | null>>({});
+  const cameraCommandResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [currentZoom, setCurrentZoom] = useState<number>(MAP_DEFAULT_ZOOM);
   const [currentBounds, setCurrentBounds] = useState<Bounds | null>(null);
+  const [cameraCommand, setCameraCommand] = useState<CameraCommand | null>(null);
+  const disableUserFollowMode = useCallback(() => {
+    mapLibreCameraRef.current?.setNativeProps?.({
+      followUserLocation: false,
+      followUserMode: null,
+    });
+  }, []);
+  const queueCameraCommand = useCallback((centerCoordinate: [number, number], zoomLevel: number, animationDuration: number) => {
+    disableUserFollowMode();
+
+    setCameraCommand({
+      key: `${centerCoordinate[0]}:${centerCoordinate[1]}:${zoomLevel}:${Date.now()}`,
+      centerCoordinate,
+      zoomLevel,
+      animationDuration,
+    });
+  }, [disableUserFollowMode]);
 
   const validMarkers = useMemo(
     () => markers.filter((marker) => isValidCoordinate(marker.coordinate.latitude, marker.coordinate.longitude)),
@@ -171,17 +196,35 @@ export function EventMapSurface({
   );
 
   useEffect(() => {
-    if (!focusCoordinate || !mapLibreModule || !mapLibreCameraRef.current) {
+    if (!focusCoordinate || !mapLibreModule) {
       return;
     }
 
-    mapLibreCameraRef.current.setCamera({
-      centerCoordinate: [focusCoordinate.longitude, focusCoordinate.latitude],
-      zoomLevel: MAP_FOCUS_ZOOM,
-      animationDuration: 560,
-      animationMode: 'easeTo',
-    });
-  }, [focusCoordinate]);
+    queueCameraCommand([focusCoordinate.longitude, focusCoordinate.latitude], MAP_FOCUS_ZOOM, 560);
+  }, [focusCoordinate, queueCameraCommand]);
+
+  useEffect(() => {
+    if (!cameraCommand) {
+      if (cameraCommandResetTimerRef.current) {
+        clearTimeout(cameraCommandResetTimerRef.current);
+        cameraCommandResetTimerRef.current = null;
+      }
+      return;
+    }
+
+    cameraCommandResetTimerRef.current = setTimeout(() => {
+      disableUserFollowMode();
+      setCameraCommand((current) => (current?.key === cameraCommand.key ? null : current));
+      cameraCommandResetTimerRef.current = null;
+    }, cameraCommand.animationDuration + 220);
+
+    return () => {
+      if (cameraCommandResetTimerRef.current) {
+        clearTimeout(cameraCommandResetTimerRef.current);
+        cameraCommandResetTimerRef.current = null;
+      }
+    };
+  }, [cameraCommand, disableUserFollowMode]);
 
   useEffect(() => {
     if (!mapLibreModule) {
@@ -200,6 +243,23 @@ export function EventMapSurface({
       timers.forEach((timer) => clearTimeout(timer));
     };
   }, [indexedMarkers]);
+
+  useEffect(() => {
+    disableUserFollowMode();
+
+    const timers = [120, 450, 900, 1500].map((delayMs) =>
+      setTimeout(() => {
+        disableUserFollowMode();
+      }, delayMs),
+    );
+
+    return () => {
+      timers.forEach((timer) => clearTimeout(timer));
+      if (cameraCommandResetTimerRef.current) {
+        clearTimeout(cameraCommandResetTimerRef.current);
+      }
+    };
+  }, [disableUserFollowMode]);
 
   if (!mapLibreModule) {
     return (
@@ -226,6 +286,8 @@ export function EventMapSurface({
         rotateEnabled={interactive}
         pitchEnabled={interactive}
         onRegionDidChange={(feature) => {
+          disableUserFollowMode();
+
           const region = feature as RegionFeature;
           const [longitude, latitude] = region.geometry.coordinates;
           const zoomLevel = region.properties?.zoomLevel;
@@ -249,6 +311,7 @@ export function EventMapSurface({
             onCameraStateChange?.({
               center: { latitude, longitude },
               zoomLevel,
+              isUserInteraction: region.properties?.isUserInteraction,
             });
           }
         }}
@@ -256,7 +319,24 @@ export function EventMapSurface({
         <Camera
           ref={mapLibreCameraRef}
           defaultSettings={initialCameraSettingsRef.current}
+          followUserLocation={false}
+          onUserTrackingModeChange={(event: { nativeEvent?: { payload?: { followUserLocation?: boolean } } }) => {
+            if (event.nativeEvent?.payload?.followUserLocation) {
+              disableUserFollowMode();
+            }
+          }}
         />
+
+        {cameraCommand ? (
+          <Camera
+            key={cameraCommand.key}
+            centerCoordinate={cameraCommand.centerCoordinate}
+            zoomLevel={cameraCommand.zoomLevel}
+            animationDuration={cameraCommand.animationDuration}
+            animationMode="easeTo"
+            followUserLocation={false}
+          />
+        ) : null}
 
         {renderItems.map((item) => {
           if (item.kind === 'cluster') {
@@ -268,13 +348,7 @@ export function EventMapSurface({
                 anchor={{ x: 0.5, y: 0.5 }}
                 onSelected={() => {
                   const expansionZoom = clusterIndex.getClusterExpansionZoom(item.clusterId);
-
-                  mapLibreCameraRef.current?.setCamera({
-                    centerCoordinate: [item.longitude, item.latitude],
-                    zoomLevel: expansionZoom + 0.35,
-                    animationDuration: 380,
-                    animationMode: 'easeTo',
-                  });
+                  queueCameraCommand([item.longitude, item.latitude], expansionZoom + 0.35, 380);
                 }}
               >
                 <View

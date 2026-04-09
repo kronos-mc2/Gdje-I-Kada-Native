@@ -1,4 +1,5 @@
 import * as AppleAuthentication from 'expo-apple-authentication';
+import * as AuthSession from 'expo-auth-session';
 import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
 import { Link, useRouter } from 'expo-router';
@@ -22,13 +23,29 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const redirectUri = AuthSession.makeRedirectUri({
+    scheme: 'gdjeikadanative',
+  });
 
   const [googleRequest, googleResponse, promptGoogleAsync] = Google.useIdTokenAuthRequest({
     iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
     androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
     webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+    redirectUri,
     scopes: ['openid', 'profile', 'email'],
   });
+
+  useEffect(() => {
+    if (Platform.OS !== 'android') {
+      return;
+    }
+
+    void WebBrowser.warmUpAsync();
+
+    return () => {
+      void WebBrowser.coolDownAsync();
+    };
+  }, []);
 
   const onGoogleLogin = useCallback(
     async (idToken: string) => {
@@ -162,7 +179,15 @@ export default function LoginScreen() {
           title={t('signInGoogle')}
           variant="secondary"
           disabled={!googleRequest || isSubmitting}
-          onPress={() => void promptGoogleAsync()}
+          onPress={() =>
+            void promptGoogleAsync(
+              Platform.OS === 'android'
+                ? {
+                    showInRecents: true,
+                  }
+                : undefined,
+            )
+          }
         />
         <AppButton
           title={t('signInApple')}

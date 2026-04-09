@@ -14,6 +14,7 @@ export type MapCameraState = {
   zoomLevel?: number;
   latitudeDelta?: number;
   longitudeDelta?: number;
+  isUserInteraction?: boolean;
 };
 
 export type EventMapSurfaceProps = {
