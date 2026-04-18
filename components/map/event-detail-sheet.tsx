@@ -3,10 +3,12 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
 import { BlurView } from 'expo-blur';
 import { GlassView, isGlassEffectAPIAvailable, isLiquidGlassAvailable } from 'expo-glass-effect';
+import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Platform, Pressable, Share, StyleSheet, View } from 'react-native';
+import { Alert, Platform, Pressable, Share, StyleSheet, View } from 'react-native';
 
-import { AppText } from '@/components/primitives';
+import { AppButton, AppText } from '@/components/primitives';
+import { useJoinEventMutation, useLeaveEventMutation } from '@/core/api/query-hooks';
 import { getEventCoverUri } from '@/core/events/event-cover';
 import { useI18n } from '@/core/i18n/use-i18n';
 import { useAppTheme } from '@/core/theme';
@@ -22,13 +24,20 @@ type EventDetailSheetProps = {
 };
 
 export function EventDetailSheet({ event, locale, onClose, topInset = 0, bottomInset = 0 }: EventDetailSheetProps) {
+  const router = useRouter();
   const { t } = useI18n();
   const { theme } = useAppTheme();
+  const joinEventMutation = useJoinEventMutation();
+  const leaveEventMutation = useLeaveEventMutation();
   const sheetRef = useRef<BottomSheet>(null);
   const [sheetIndex, setSheetIndex] = useState(0);
   const canUseLiquidGlass = useMemo(() => Platform.OS === 'ios' && isLiquidGlassAvailable() && isGlassEffectAPIAvailable(), []);
   const coverUri = useMemo(() => getEventCoverUri(event.id), [event.id]);
   const snapPoints = useMemo(() => ['34%', '72%'], []);
+  const isJoined = event.joinedByMe === true;
+  const isJoinDisabled = (!isJoined && event.canJoin === false) || joinEventMutation.isPending || leaveEventMutation.isPending;
+  const hasOrganizerRating = (event.organizerRatingCount ?? 0) > 0;
+  const priceLabel = formatPrice(event);
 
   useEffect(() => {
     setSheetIndex(0);
@@ -45,6 +54,32 @@ export function EventDetailSheet({ event, locale, onClose, topInset = 0, bottomI
       });
     } catch {
       // ignore share cancel/errors from native UI
+    }
+  };
+
+  const onToggleJoin = async () => {
+    try {
+      if (isJoined) {
+        await leaveEventMutation.mutateAsync(event.id);
+        Alert.alert(t('eventLeft'));
+        return;
+      }
+
+      const joinedEvent = await joinEventMutation.mutateAsync(event.id);
+      if (joinedEvent.attendanceStatus === 'waitlisted') {
+        Alert.alert(t('eventJoined'), t('onWaitlist'));
+        return;
+      }
+
+      Alert.alert(t('eventJoined'), t('joinEventChatPrompt'), [
+        { text: t('notNow'), style: 'cancel' },
+        {
+          text: t('openMessages'),
+          onPress: () => router.push('/(tabs)/messages'),
+        },
+      ]);
+    } catch {
+      Alert.alert(isJoined ? t('leaveEventFailed') : t('joinEventFailed'));
     }
   };
 
@@ -182,7 +217,7 @@ export function EventDetailSheet({ event, locale, onClose, topInset = 0, bottomI
               {event.participantCount} {t('participants')}
             </AppText>
             <AppText variant="caption" color="textSecondary">
-              {t(event.type)}
+              {getAttendanceModeLabel(event, t)}
             </AppText>
           </View>
         </View>
@@ -190,6 +225,14 @@ export function EventDetailSheet({ event, locale, onClose, topInset = 0, bottomI
         <AppText variant="body" color="textSecondary" style={styles.aboutText}>
           {event.about[locale]}
         </AppText>
+
+        <AppButton
+          title={isJoined ? t('leaveEvent') : t('joinEvent')}
+          variant={isJoined ? 'secondary' : 'primary'}
+          disabled={isJoinDisabled}
+          onPress={onToggleJoin}
+          style={styles.joinButton}
+        />
 
         {sheetIndex >= 1 ? (
           <View style={styles.expandedBlock}>
@@ -199,6 +242,27 @@ export function EventDetailSheet({ event, locale, onClose, topInset = 0, bottomI
             <AppText variant="body" color="textSecondary" style={styles.expandedText}>
               {event.about[locale]}
             </AppText>
+
+            <View style={styles.detailGrid}>
+              <DetailRow label={t('attendanceMode')} value={getAttendanceModeLabel(event, t)} />
+              <DetailRow label={t('eventVisibility')} value={getVisibilityLabel(event, t)} />
+              {priceLabel ? <DetailRow label={t('priceAmountLabel')} value={priceLabel} /> : null}
+              {event.capacity ? <DetailRow label={t('capacityLabel')} value={String(event.capacity)} /> : null}
+              <DetailRow
+                label={t('organizerRating')}
+                value={
+                  hasOrganizerRating
+                    ? `${event.organizerRatingAverage?.toFixed(1) ?? '0.0'} (${event.organizerRatingCount})`
+                    : t('notRatedYet')
+                }
+              />
+              {event.entranceCoordinates ? (
+                <DetailRow label={t('entrancePin')} value={formatCoordinates(event.entranceCoordinates.latitude, event.entranceCoordinates.longitude)} />
+              ) : null}
+              {event.entryInstructions ? (
+                <DetailRow label={t('entryInstructions')} value={event.entryInstructions[locale]} />
+              ) : null}
+            </View>
           </View>
         ) : null}
       </BottomSheetView>
@@ -271,6 +335,9 @@ const styles = StyleSheet.create({
   aboutText: {
     marginTop: 12,
   },
+  joinButton: {
+    marginTop: 12,
+  },
   expandedBlock: {
     marginTop: 10,
     paddingTop: 10,
@@ -278,4 +345,54 @@ const styles = StyleSheet.create({
   expandedText: {
     marginTop: 6,
   },
+  detailGrid: {
+    marginTop: 12,
+    gap: 9,
+  },
+  detailRow: {
+    gap: 2,
+  },
 });
+
+type TranslateFn = ReturnType<typeof useI18n>['t'];
+
+function DetailRow({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.detailRow}>
+      <AppText variant="caption" color="textMuted">
+        {label}
+      </AppText>
+      <AppText variant="body" color="textSecondary">
+        {value}
+      </AppText>
+    </View>
+  );
+}
+
+function getAttendanceModeLabel(event: AppEvent, t: TranslateFn) {
+  switch (event.attendanceMode) {
+    case 'waitlist':
+      return t('waitlistAttendance');
+    case 'paid':
+      return t('paidAttendance');
+    case 'open':
+    default:
+      return t('openAttendance');
+  }
+}
+
+function getVisibilityLabel(event: AppEvent, t: TranslateFn) {
+  return event.visibility === 'friends' ? t('friendsOption') : t('publicOption');
+}
+
+function formatPrice(event: AppEvent) {
+  if (event.attendanceMode !== 'paid' || event.priceAmount == null) {
+    return null;
+  }
+
+  return `${Number(event.priceAmount).toFixed(2)} ${event.priceCurrency ?? 'EUR'}`;
+}
+
+function formatCoordinates(latitude: number, longitude: number) {
+  return `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
+}

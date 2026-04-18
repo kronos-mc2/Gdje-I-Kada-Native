@@ -23,8 +23,8 @@ Dokumentacija je dio zadatka, ne naknadni posao. Ako kod i dokumentacija nisu us
 | 0 | Dokumentacija i smjer | Rijeseno | README i FAZE definiraju sto se gradi i kojim redom. |
 | 1 | Glavni tabovi i navigacija | Rijeseno | App ima tocnih 5 tabova: Mapa, FYP, Kalendar, Poruke, Profil. |
 | 2 | Event domain i baza | Rijeseno | Event model pokriva creator, lokaciju, ulaz, visibility, join pravila i media. |
-| 3 | Mapa MVP+ | Nije poceto | Mapa ima search, date filter, nearby logiku, detalje i join flow. |
-| 4 | Join state i event details | Nije poceto | Join/leave i detalji su server-side i dijele se izmedu mape, FYP-a i kalendara. |
+| 3 | Mapa MVP+ | Rijeseno | Mapa ima search, date filter, nearby logiku, detalje i join flow. |
+| 4 | Join state i event details | U tijeku | Join/leave i detalji su server-side i dijele se izmedu mape, FYP-a i kalendara. |
 | 5 | Reels/FYP | Nije poceto | FYP radi kao reels feed s media preloadom, likeovima i shareom. |
 | 6 | Kalendar | Nije poceto | Kalendar prikazuje joined evente u mjesecnom gridu. |
 | 7 | Poruke i event chat | Nije poceto | Poruke imaju chat roomove, event grupe, event share card i pollove. |
@@ -152,7 +152,7 @@ Zavrsna biljeska:
 
 ## Faza 3 - Mapa MVP+
 
-Status: Nije poceto
+Status: Rijeseno
 
 Cilj:
 
@@ -167,16 +167,16 @@ Postojece stanje:
 
 Zadaci:
 
-- [ ] Dodati date filter UI odmah ispod search bara.
-- [ ] Prosiriti `useEventsQuery` da prima query parametre.
-- [ ] Backend `/api/events` dodati `from`, `to`, `lat`, `lng`, `radiusKm`, `query`.
-- [ ] Dodati nearby sortiranje ili radius filter.
-- [ ] U detaljima prikazati entrance pin i entry instructions.
-- [ ] U detaljima prikazati media preview.
-- [ ] U detaljima prikazati organizer rating.
-- [ ] Dodati join/leave CTA u map detail sheet.
-- [ ] Nakon joina pitati korisnika zeli li otvoriti event chat.
-- [ ] Zadrzati iOS Liquid Glass na search/filter/sheet povrsinama.
+- [x] Dodati date filter UI odmah ispod search bara.
+- [x] Prosiriti `useEventsQuery` da prima query parametre.
+- [x] Backend `/api/events` dodati `from`, `to`, `lat`, `lng`, `radiusKm`, `query`.
+- [x] Dodati nearby sortiranje ili radius filter.
+- [x] U detaljima prikazati entrance pin i entry instructions.
+- [x] U detaljima prikazati media preview.
+- [x] U detaljima prikazati organizer rating.
+- [x] Dodati join/leave CTA u map detail sheet.
+- [x] Nakon joina pitati korisnika zeli li otvoriti event chat.
+- [x] Zadrzati iOS Liquid Glass na search/filter/sheet povrsinama.
 
 Definition of done:
 
@@ -184,9 +184,15 @@ Definition of done:
 - Klik na pin otvara detalje s korisnim informacijama.
 - Join radi kroz backend, ne samo lokalni store.
 
+Zavrsna biljeska:
+
+2026-04-18 - Napravljeno: mapa sada salje backendu `from`, `to`, `lat`, `lng`, `radiusKm` i `query` kroz `useEventsQuery(params)`, prikazuje date filter chipove ispod search bara i ima `+` floating gumb iznad recenter gumba za otvaranje create event flowa. Backend `GET /api/events` filtrira public/published evente po datumu, radiusu i search queryju te sortira po udaljenosti kad su poslane koordinate. `EventDetailSheet` prikazuje cover/media preview, attendance, entrance podatke, cijenu/kapacitet, organizer rating i join/leave CTA. Nakon uspjesnog joina korisnik dobiva prompt za otvaranje Poruka. Datoteke: `app/(tabs)/index.tsx`, `features/events/hooks/use-events-map-screen-model.ts`, `features/events/components/events-map-experience.tsx`, `components/map/event-detail-sheet.tsx`, `core/api/query-hooks.ts`, `core/api/services.ts`, `core/types/domain.ts`, `core/i18n/translations.ts`, backend `EventController`, `EventService`, `EventMapper`, `EventMapper.xml`, `AppEventDto`, `EventRow`, `README.md`, `FAZE.md`. Testirano: backend `export JAVA_HOME=$(/usr/libexec/java_home) && ./mvnw test`, frontend `npx tsc --noEmit`, frontend `npm run lint`. Faza 3 je zatvorena i ne radi se ponovno bez nove dopune ili regresije.
+
+Regresijska dopuna 2026-04-18: nakon login-a na iOS-u `react-native-maps` je crashao u `AIRMap insertReactSubview` dok je projekt bio na RN new architecture interopu (`newArchEnabled: true`). Overlay workaround je uklonjen jer proizvod treba native map marker. `components/map/event-map-surface.ios.tsx` ponovno koristi native `Marker` child s lokalnim image assetom `assets/images/map-marker.png`. Buduci da `react-native-reanimated` zahtijeva New Architecture, projekt ostaje na `newArchEnabled: true`, a `scripts/patch-react-native-maps-airmap.js` kroz `postinstall` patcha `AIRMap.m` da ignorira `nil` subview. Nakon ove promjene obavezan je native rebuild iOS appa. Testirano: frontend `npx pod-install ios`, frontend `npx tsc --noEmit`, frontend `npm run lint`.
+
 ## Faza 4 - Join state i shared event details
 
-Status: Nije poceto
+Status: U tijeku
 
 Cilj:
 
@@ -195,10 +201,11 @@ Event details i join state trebaju biti isti kroz mapu, FYP, kalendar i direct d
 Zadaci backend:
 
 - [ ] `GET /api/events/{id}`.
-- [ ] `POST /api/events/{id}/join`.
-- [ ] `DELETE /api/events/{id}/join`.
+- [x] `POST /api/events/{id}/join`.
+- [x] `DELETE /api/events/{id}/join`.
 - [ ] `GET /api/users/me/events`.
-- [ ] Vracati `joinedByMe`, `likedByMe`, `attendanceStatus` i `canJoin`.
+- [x] Vracati `joinedByMe`, `attendanceStatus` i `canJoin` kroz `/api/events`.
+- [ ] Vracati `likedByMe` kad se doda server-side like model.
 
 Zadaci frontend:
 

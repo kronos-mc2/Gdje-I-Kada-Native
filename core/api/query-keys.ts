@@ -1,5 +1,6 @@
 export const queryKeys = {
-  events: ['events'] as const,
+  eventsRoot: ['events'] as const,
+  events: (params?: unknown) => ['events', params ?? {}] as const,
   feed: ['feed'] as const,
   friends: ['friends'] as const,
   conversations: ['conversations'] as const,

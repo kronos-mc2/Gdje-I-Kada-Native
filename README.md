@@ -10,6 +10,12 @@ Repo struktura:
 - `Gdje-I-Kada-Native/` - Expo React Native aplikacija.
 - `backend/` - Spring Boot backend.
 
+Pravilo dokumentacije:
+
+- Nakon svake bitne promjene aplikacije azurirati `README.md` i `FAZE.md`.
+- Ako se faza rijesi, u `FAZE.md` joj promijeni status u `Rijeseno` i dodaj zavrsnu biljesku da se ista faza kasnije ne radi ponovno bez nove dopune ili regresije.
+- Dokumentacija je dio implementacije; kod se ne smatra dovrsenim ako README/FAZE opisuju staro stanje.
+
 Glavna ideja aplikacije:
 
 Aplikacija pomaze korisniku pronaci evente oko sebe, pregledati ih na mapi ili kroz Reels/FYP feed, pridruziti se eventu, otvoriti detalje, komunicirati kroz privatne i event chatove, vidjeti svoj kalendar eventova i urediti profil/postavke. Cilj je native-feeling aplikacija za iOS i Android, s posebnim naglaskom na iOS Liquid Glass gdje god ima smisla, ali uz dobar Android fallback.
@@ -78,8 +84,10 @@ Backend trenutno ima:
 - `POST /api/auth/google`
 - `POST /api/auth/apple`
 - `GET /api/auth/me`
-- `GET /api/events`
+- `GET /api/events?from=&to=&lat=&lng=&radiusKm=&query=`
 - `POST /api/events`
+- `POST /api/events/{id}/join`
+- `DELETE /api/events/{id}/join`
 - `GET /api/feed`
 - `GET /api/social/friends`
 - `GET /api/messages/conversations`
@@ -132,7 +140,7 @@ Trenutni event model:
 - Service: `EventService`.
 - Mapper: `EventMapper` i `EventMapper.xml`.
 
-Event trenutno podrzava naslov, lokaciju, adresu, opis, start/end datum, coordinates, entrance coordinates, entry instructions, creator user id, visibility `public/friends`, attendance mode `open/waitlist/paid`, cijenu za paid evente, capacity, status, organizer rating agregate i participant count. Baza ima tablice za media, participants, likes i organizer ratings. Jos ne postoje pun UI/API flow za upload media, join/leave endpointi, placanje, rating submit, event chat ni reels-specific metadata.
+Event trenutno podrzava naslov, lokaciju, adresu, opis, start/end datum, coordinates, entrance coordinates, entry instructions, creator user id, visibility `public/friends`, attendance mode `open/waitlist/paid`, cijenu za paid evente, capacity, status, organizer rating agregate, participant count, `joinedByMe`, `attendanceStatus` i `canJoin`. Baza ima tablice za media, participants, likes i organizer ratings. Join/leave radi kroz backend za map detail sheet. Jos ne postoje pun UI/API flow za upload media, placanje, rating submit, event chat ni reels-specific metadata.
 
 Kad implementiras nove stvari, nadogradi postojece:
 
@@ -210,29 +218,32 @@ Postoji:
 
 Trenutno ponasanje:
 
-- App dohvat eventova radi preko `useEventsQuery()` i `/api/events`.
-- Eventi su sortirani po datumu.
+- App dohvat eventova radi preko `useEventsQuery(params)` i `/api/events?from=&to=&lat=&lng=&radiusKm=&query=`.
+- `use-events-map-screen-model.ts` salje user lokaciju, radius 50 km, debounced search query i date filter range.
+- Eventi se na backendu filtriraju po datumu, radiusu i search queryju, a ako su `lat/lng` poslani sortiraju se po blizini pa po `start_at`.
 - Mapa se inicijalno centrira na `userLocation`.
 - Ako korisnik dopusti lokaciju, pokusava se dohvatiti precizna lokacija.
 - Ako nema precizne lokacije, koristi se IP/capital fallback.
 - Event pinovi su clickable.
 - Klik na pin otvara `EventDetailSheet`.
 - Sheet ima collapsed i expanded state.
-- Event detalji u sheetu prikazuju cover sliku, naslov, mjesto, datum, broj sudionika, type i opis.
+- Event detalji u sheetu prikazuju cover sliku/media preview, naslov, mjesto, datum, broj sudionika, attendance mode, opis, join/leave CTA, entrance coordinates/instructions, cijenu/kapacitet i organizer rating.
 - Share koristi native `Share.share`.
+- Nakon uspjesnog joina sheet pita korisnika zeli li otvoriti `Poruke`; stvarni event chat room jos nije implementiran.
+- Na mapi postoji `+` floating gumb iznad recenter gumba koji vodi na `app/create-event.tsx`.
 - Android mapa ima MapLibre i clustering preko `supercluster`.
 - iOS mapa koristi MapKit.
+- iOS map surface (`components/map/event-map-surface.ios.tsx`) koristi native `react-native-maps` `Marker` s lokalnim `image` assetom `assets/images/map-marker.png`.
+- `scripts/patch-react-native-maps-airmap.js` se vrti kroz `postinstall` i dodaje guard u `react-native-maps` `AIRMap.m` za `nil` subview koji je rusio iOS nakon login-a u RN new architecture interopu.
 - iOS search bar i event detail sheet vec koriste Liquid Glass/Blur fallback.
 
 Sto fali za finalni zahtjev:
 
-- Filter po datumu odmah ispod search bara.
 - Jasna lokalna pretraga adresa ili remote geocoding search za lokacije. Postoji `services/locationSearch`, ali trenutno map search koristi event search.
-- Backend filtering po geo bounding boxu/radiusu, datumu i queryju. Trenutno frontend dobiva sve public evente.
-- Distanca od korisnika i sortiranje po blizini.
-- Prikaz tocnog entrance pina u detaljima i na mapi.
-- Detalji koji ukljucuju slike/videe, organizer rating, join state, cijenu/ticket state, waitlist state.
-- Join flow koji nakon joina pita korisnika zeli li uci u event messages grupu.
+- Prikaz posebnog entrance pina direktno na mapi, ne samo u detaljima.
+- Event-specific remote cover slike kao native iOS marker nisu podrzane kroz `Marker.image`, jer `react-native-maps` za `image` prima lokalni asset; za to bi trebalo custom marker view rjesenje nakon sto se potvrdi stabilan native setup.
+- Pravi media upload/video playback umjesto cover preview helpera.
+- Stvarni event chat room iza prompta nakon joina.
 - Razlikovanje `public`, `friends`, `waitlist`, `open/free`, `paid` i drugih attendance pravila.
 
 ### Reels/FYP
@@ -415,29 +426,36 @@ Frontend API URL:
 
 `EventController`:
 
-- `GET /api/events` -> `EventService.getEvents()`
+- `GET /api/events?from=&to=&lat=&lng=&radiusKm=&query=` -> `EventService.getEvents(...)`
 - `GET /api/feed` -> `EventService.getFeed()`
 - `POST /api/events` -> `EventService.createEvent()`
+- `POST /api/events/{id}/join` -> `EventService.joinEvent()`
+- `DELETE /api/events/{id}/join` -> `EventService.leaveEvent()`
 
 `EventService`:
 
 - Validira osnovna required polja.
-- Parsira `whenISO`.
-- Normalizira `visibility` na `public` ili `private`.
+- Parsira `startAt`/`whenISO`, `endAt`, `from` i `to`.
+- Validira map query parametre `lat`, `lng` i `radiusKm`.
+- Normalizira `visibility` na `public` ili `friends`.
+- Normalizira `attendanceMode` na `open`, `waitlist` ili `paid`.
 - Kreira `id` prefiksa `created-`.
 - `participantCount` inicijalno postavlja na `1`.
+- Join upisuje `event_participants.status` kao `joined` ili `waitlisted`, leave ga mijenja u `left`.
 - Mapira `EventRow` u `AppEventDto`.
 
 `EventMapper.xml`:
 
-- `findAll` vraca samo `visibility = 'public'`, sort ASC.
+- `findAll` vraca samo `visibility = 'public'` i `status = 'published'`, podrzava date/search/radius filtere i per-user participant status.
 - `findFeed` vraca samo `visibility = 'public'`, sort DESC.
-- `insert` sprema osnovna event polja.
+- `findById` vraca event i participant status za korisnika.
+- `insert` sprema prosirena event polja.
+- `upsertParticipant`, `incrementParticipantCount` i `decrementParticipantCount` odrzavaju join/leave state.
 
 Ogranicenje:
 
 - Trenutni `event_type` je vise frontend filter/prototip (`nearby`, `joined`, `created`) nego pravi domain model.
-- `visibility = private` postoji u bazi, ali private eventi se ne vracaju kroz public endpoint i nema friends access logike.
+- `visibility = friends` postoji u bazi, ali friends eventi se ne vracaju kroz public endpoint i nema friends access logike.
 
 ### Ciljani event domain
 
@@ -566,8 +584,8 @@ Detaljni operativni plan i status svake faze vodi se u `FAZE.md`. README drzi sa
 - Faza 0 - Dokumentacija i smjer: rijeseno 2026-04-18.
 - Faza 1 - Glavni tabovi i navigacija: rijeseno 2026-04-18.
 - Faza 2 - Event domain i baza: rijeseno 2026-04-18.
-- Faza 3 - Mapa MVP+: sljedeca faza.
-- Faza 4 - Join state i event details.
+- Faza 3 - Mapa MVP+: rijeseno 2026-04-18.
+- Faza 4 - Join state i event details: djelomicno zapoceto kroz join/leave endpoint i map sheet state.
 - Faza 5 - Reels/FYP.
 - Faza 6 - Kalendar.
 - Faza 7 - Poruke i event chat.
@@ -600,12 +618,12 @@ Kad se status faze promijeni, prvo azuriraj `FAZE.md`, a zatim ovaj sazetak ako 
 - `app/entrance-map-picker.tsx` je povezan u create event flow i puni `entranceCoordinates`.
 - Ako korisnik ne odabere entrance pin, create flow koristi zadnju poznatu korisnicku lokaciju kao event coordinates.
 - `EventDetailScreen` (`app/event/[id].tsx`) zna prikazati `address`, `entryInstructions`, `visibility`, `attendanceMode`, paid price, capacity, `endAt`, organizer rating i `entranceCoordinates` ako postoje.
-- `EventDetailSheet` na mapi jos ne prikazuje entrance data ni join button.
+- `EventDetailSheet` na mapi prikazuje entrance data, organizer rating, attendance/cijenu/kapacitet i join/leave button.
 - `favoriteEventIds` postoji u `app-store.ts`, ali finalni proizvod ne treba saveanje.
-- Joined/liked/favorite su lokalni i nisu sinkronizirani s backendom.
+- Joined state na map detail sheetu dolazi s backenda kroz `joinedByMe`/`attendanceStatus`; FYP/kalendar i dalje imaju lokalne `joined/liked/favorite` prototip stateove.
 - Messages su samo conversation list, ne realni chat.
 - Friends su staticki/prototip podaci iz `friends` tablice.
-- Backend `/api/events` i `/api/feed` vracaju samo `public/published` evente i jos nemaju per-user friends access logiku.
+- Backend `/api/events` podrzava map filtere i per-user join state, ali `/api/feed` jos nema per-user like/join state ni friends access logiku.
 - Profil nema settings sub-route, edit profil, avatar, activity history ni transactions.
 
 ## Sto paziti kod dokazivanja koda
@@ -685,3 +703,7 @@ Kod promjena koje diraju i frontend i backend:
 2. Pokrenuti backend testove.
 3. Pokrenuti frontend lint.
 4. Manualno provjeriti login, mapu, FYP, event details i relevantni novi flow.
+
+
+## Figma SS
+![img_1.png](img_1.png)

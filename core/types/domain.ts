@@ -6,12 +6,22 @@ export type EventFilter = 'nearby' | 'joined' | 'created';
 export type EventVisibility = 'public' | 'friends';
 export type EventAttendanceMode = 'open' | 'waitlist' | 'paid';
 export type EventStatus = 'draft' | 'published' | 'cancelled' | 'finished';
+export type EventAttendanceStatus = 'joined' | 'left' | 'waitlisted' | 'approved' | 'rejected';
 
 export type EventsView = 'list' | 'map';
 
 export type Coordinates = {
   latitude: number;
   longitude: number;
+};
+
+export type EventQueryParams = {
+  from?: string;
+  to?: string;
+  lat?: number;
+  lng?: number;
+  radiusKm?: number;
+  query?: string;
 };
 
 export type LocationConsent = 'unknown' | 'accepted' | 'rejected';
@@ -40,6 +50,9 @@ export type AppEvent = {
   organizerRatingAverage?: number;
   organizerRatingCount?: number;
   participantCount: number;
+  joinedByMe?: boolean;
+  attendanceStatus?: EventAttendanceStatus;
+  canJoin?: boolean;
 };
 
 export type Friend = {

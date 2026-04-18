@@ -1,3 +1,5 @@
+import { useRouter } from 'expo-router';
+import { useState } from 'react';
 import { RefreshControl, ScrollView, View } from 'react-native';
 
 import { AppText } from '@/components/primitives';
@@ -7,6 +9,7 @@ import { Coordinates, EventsView, Locale } from '@/core/types/domain';
 import { useAppTheme } from '@/core/theme';
 import { AppEvent } from '@/core/types/domain';
 import { EventsMapExperience } from '@/features/events/components/events-map-experience';
+import { MapDateFilter } from '@/features/events/hooks/use-events-map-screen-model';
 
 type EventsWithDistance = {
   event: AppEvent;
@@ -36,8 +39,11 @@ export function EventsContent({
   onRefresh,
   onEventPress,
 }: EventsContentProps) {
+  const router = useRouter();
   const { t } = useI18n();
   const { theme } = useAppTheme();
+  const [dateFilter, setDateFilter] = useState<MapDateFilter>('all');
+  const [searchQuery, setSearchQuery] = useState('');
 
   if (view === 'map') {
     return (
@@ -46,6 +52,11 @@ export function EventsContent({
           events={events.map(({ event }) => event)}
           locale={locale}
           userLocation={userLocation}
+          dateFilter={dateFilter}
+          searchQuery={searchQuery}
+          onDateFilterChange={setDateFilter}
+          onSearchQueryChange={setSearchQuery}
+          onCreateEventPress={() => router.push('/create-event')}
           onEventPress={onEventPress}
         />
       </View>

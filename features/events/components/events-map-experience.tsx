@@ -2,27 +2,47 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { GlassView, isGlassEffectAPIAvailable, isLiquidGlassAvailable } from 'expo-glass-effect';
 
 import { EventDetailSheet, EventMap } from '@/components/map';
+import { AppText } from '@/components/primitives';
 import { MapSearchBar, MapSearchResults } from '@/components/search';
 import { useI18n } from '@/core/i18n/use-i18n';
 import { useAppStore } from '@/core/store/app-store';
 import { useAppTheme } from '@/core/theme';
 import { AppEvent, Coordinates, Locale } from '@/core/types/domain';
 import { useEventMapSearch } from '@/features/events/hooks/use-event-map-search';
+import { MapDateFilter } from '@/features/events/hooks/use-events-map-screen-model';
 import { useMapLocationBootstrap } from '@/features/events/hooks/use-map-location-bootstrap';
 
 type EventsMapExperienceProps = {
   events: AppEvent[];
   locale: Locale;
   userLocation: Coordinates;
+  dateFilter: MapDateFilter;
+  searchQuery: string;
+  onDateFilterChange: (dateFilter: MapDateFilter) => void;
+  onSearchQueryChange: (query: string) => void;
+  onCreateEventPress: () => void;
   onEventPress?: (eventId: string) => void;
 };
 
-export function EventsMapExperience({ events, locale, userLocation }: EventsMapExperienceProps) {
+const DATE_FILTERS: MapDateFilter[] = ['all', 'today', 'tomorrow', 'weekend'];
+
+export function EventsMapExperience({
+  events,
+  locale,
+  userLocation,
+  dateFilter,
+  searchQuery,
+  onDateFilterChange,
+  onSearchQueryChange,
+  onCreateEventPress,
+}: EventsMapExperienceProps) {
   const { t } = useI18n();
   const { theme } = useAppTheme();
   const insets = useSafeAreaInsets();
+  const canUseLiquidGlass = useMemo(() => Platform.OS === 'ios' && isLiquidGlassAvailable() && isGlassEffectAPIAvailable(), []);
   const locationConsent = useAppStore((state) => state.locationConsent);
   const locationSource = useAppStore((state) => state.locationSource);
   const setLocationConsent = useAppStore((state) => state.setLocationConsent);
@@ -30,7 +50,6 @@ export function EventsMapExperience({ events, locale, userLocation }: EventsMapE
 
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [focusCoordinate, setFocusCoordinate] = useState<Coordinates | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
   const [isSearchPanelVisible, setIsSearchPanelVisible] = useState(false);
   const { results: searchResults, isSearching } = useEventMapSearch({ events, query: searchQuery, locale });
 
@@ -143,7 +162,7 @@ export function EventsMapExperience({ events, locale, userLocation }: EventsMapE
           }
 
           setSelectedEventId(eventId);
-          setSearchQuery(event.title[locale]);
+          onSearchQueryChange(event.title[locale]);
           queueOneShotFocus(event.coordinates);
           setIsSearchPanelVisible(false);
         }}
@@ -164,16 +183,50 @@ export function EventsMapExperience({ events, locale, userLocation }: EventsMapE
           placeholder={t('searchEventsMapPlaceholder')}
           loading={isSearching}
           onChangeText={(value) => {
-            setSearchQuery(value);
+            onSearchQueryChange(value);
             setIsSearchPanelVisible(value.trim().length > 0);
           }}
           onClear={() => {
-            setSearchQuery('');
+            onSearchQueryChange('');
             setIsSearchPanelVisible(false);
           }}
           onFocus={() => setIsSearchPanelVisible(true)}
           onBlur={() => undefined}
         />
+
+        <View style={styles.dateFilterRow}>
+          {DATE_FILTERS.map((filter) => {
+            const isActive = dateFilter === filter;
+
+            return (
+              <Pressable
+                key={filter}
+                onPress={() => onDateFilterChange(filter)}
+                style={({ pressed }) => [
+                  styles.dateFilterChip,
+                  {
+                    borderColor: isActive ? theme.colors.mapAccent : theme.colors.border,
+                    backgroundColor: isActive ? theme.colors.mapAccentSoft : theme.colors.surfaceElevated,
+                    opacity: pressed ? 0.78 : 1,
+                  },
+                ]}
+              >
+                {canUseLiquidGlass ? (
+                  <GlassView
+                    style={StyleSheet.absoluteFill}
+                    glassEffectStyle="regular"
+                    colorScheme={theme.isDark ? 'dark' : 'light'}
+                    tintColor={isActive ? theme.colors.mapAccentSoft : theme.colors.glassTint}
+                    isInteractive
+                  />
+                ) : null}
+                <AppText variant="caption" color={isActive ? 'mapAccent' : 'textSecondary'}>
+                  {getDateFilterLabel(filter, t)}
+                </AppText>
+              </Pressable>
+            );
+          })}
+        </View>
 
         <MapSearchResults
           visible={showSearchResults}
@@ -184,7 +237,7 @@ export function EventsMapExperience({ events, locale, userLocation }: EventsMapE
           noResultsLabel={t('noEventsFoundForSearch')}
           hintLabel={t('typeToSearchEvents')}
           onSelectResult={(result) => {
-            setSearchQuery(result.title);
+            onSearchQueryChange(result.title);
             setSelectedEventId(result.eventId);
             const event = eventsById.get(result.eventId);
             if (event) {
@@ -194,6 +247,24 @@ export function EventsMapExperience({ events, locale, userLocation }: EventsMapE
           }}
         />
       </View>
+
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={t('createEvent')}
+        onPress={onCreateEventPress}
+        style={({ pressed }) => [
+          styles.floatingButton,
+          {
+            bottom: detailBottomInset + 58,
+            right: theme.tokens.spacing.md,
+            borderColor: theme.colors.border,
+            backgroundColor: theme.colors.mapAccent,
+            opacity: pressed ? 0.82 : 1,
+          },
+        ]}
+      >
+        <Ionicons name="add" size={22} color="#FFFFFF" />
+      </Pressable>
 
       <Pressable
         onPress={() => {
@@ -220,7 +291,7 @@ export function EventsMapExperience({ events, locale, userLocation }: EventsMapE
           }
         }}
         style={({ pressed }) => [
-          styles.recenterButton,
+          styles.floatingButton,
           {
             bottom: detailBottomInset + 10,
             right: theme.tokens.spacing.md,
@@ -254,15 +325,43 @@ const styles = StyleSheet.create({
   topOverlay: {
     position: 'absolute',
   },
-  recenterButton: {
-    position: 'absolute',
-    minHeight: 38,
-    borderRadius: 999,
+  dateFilterRow: {
+    marginTop: 8,
+    flexDirection: 'row',
+    gap: 8,
+  },
+  dateFilterChip: {
+    minHeight: 32,
+    borderRadius: 16,
     borderWidth: 1,
     paddingHorizontal: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  floatingButton: {
+    position: 'absolute',
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    borderWidth: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
   },
 });
+
+function getDateFilterLabel(filter: MapDateFilter, t: ReturnType<typeof useI18n>['t']) {
+  switch (filter) {
+    case 'all':
+      return t('allDates');
+    case 'today':
+      return t('today');
+    case 'tomorrow':
+      return t('tomorrow');
+    case 'weekend':
+      return t('weekend');
+    default:
+      return t('allDates');
+  }
+}
