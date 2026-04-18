@@ -3,16 +3,6 @@
 Status dokumenta: 2026-04-18  
 Projekt se ne radi ispocetka. Postojeci React Native/Expo frontend i Spring Boot backend ostaju baza, a nove funkcionalnosti se nadograduju na vec postojece klase, rute, storeove, hookove i dizajn sustav.
 
-## Pravilo za dokumentaciju
-
-Nakon svake bitne promjene aplikacije mora se azurirati ovaj `README.md` i `FAZE.md`. Ako se promijeni arhitektura, baza, API, navigacija, glavni flow, stanje neke faze ili lista poznatih ogranicenja, dokumentacija se updatea u istom zadatku kao i kod.
-
-`README.md` je master opis proizvoda i tehnickog stanja. `FAZE.md` je operativni plan rada: u njemu se oznacava koja faza se trenutno radi, sto je gotovo, sto je blokirano i koji su sljedeci konkretni koraci.
-
-Kad se faza zavrsi, u `FAZE.md` mora se jasno oznaciti kao `Rijeseno` i dodati kratka zavrsna biljeska. Rijesene faze se ne rade ponovno kasnije osim ako se dokumentirano otvori nova dopuna ili regresija.
-
-## Copy-paste prompt za novi chat
-
 Radimo mobilnu event aplikaciju "Gdje i Kada" za iOS i Android. Frontend je React Native kroz Expo Router, backend je Spring Boot s PostgreSQL bazom. Nemoj kretati ispocetka. Prvo procitaj postojeci kod i nadogradi ga prema lokalnim patternima.
 
 Repo struktura:
