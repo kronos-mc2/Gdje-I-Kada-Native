@@ -3,7 +3,9 @@ export type Locale = 'hr' | 'en';
 export type LocalizedText = Record<Locale, string>;
 
 export type EventFilter = 'nearby' | 'joined' | 'created';
-export type EventVisibility = 'public' | 'private';
+export type EventVisibility = 'public' | 'friends';
+export type EventAttendanceMode = 'open' | 'waitlist' | 'paid';
+export type EventStatus = 'draft' | 'published' | 'cancelled' | 'finished';
 
 export type EventsView = 'list' | 'map';
 
@@ -17,15 +19,26 @@ export type LocationSource = 'default' | 'device' | 'capital' | 'ip';
 
 export type AppEvent = {
   id: string;
+  creatorUserId?: string;
   title: LocalizedText;
   where: LocalizedText;
+  address: string;
   about: LocalizedText;
   whenISO: string;
+  startAt: string;
+  endAt?: string;
   type: EventFilter;
   coordinates: Coordinates;
   entranceCoordinates?: Coordinates;
   entryInstructions?: LocalizedText;
   visibility?: EventVisibility;
+  attendanceMode?: EventAttendanceMode;
+  priceAmount?: number;
+  priceCurrency?: string;
+  capacity?: number;
+  status?: EventStatus;
+  organizerRatingAverage?: number;
+  organizerRatingCount?: number;
   participantCount: number;
 };
 
@@ -68,12 +81,19 @@ export type CreateEventPayload = {
   titleEn: string;
   whereHr: string;
   whereEn: string;
+  address: string;
   aboutHr: string;
   aboutEn: string;
   whenISO: string;
+  startAt?: string;
+  endAt?: string;
   coordinates: Coordinates;
   entranceCoordinates?: Coordinates;
   entryInstructionsHr?: string;
   entryInstructionsEn?: string;
   visibility?: EventVisibility;
+  attendanceMode?: EventAttendanceMode;
+  priceAmount?: number;
+  priceCurrency?: string;
+  capacity?: number;
 };

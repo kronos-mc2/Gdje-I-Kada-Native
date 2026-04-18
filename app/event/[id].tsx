@@ -36,6 +36,12 @@ export default function EventDetailsScreen() {
   }
 
   const isJoined = joinedEventIds.includes(event.id);
+  const attendanceLabel =
+    event.attendanceMode === 'paid'
+      ? t('paidAttendance')
+      : event.attendanceMode === 'waitlist'
+        ? t('waitlistAttendance')
+        : t('openAttendance');
 
   const openMap = () => {
     const coordinates = `${event.coordinates.latitude},${event.coordinates.longitude}`;
@@ -55,6 +61,9 @@ export default function EventDetailsScreen() {
         </AppText>
         <AppText variant="body" color="textSecondary">
           {event.where[locale]}
+        </AppText>
+        <AppText variant="body" color="textSecondary" style={styles.address}>
+          {event.address ?? event.where[locale]}
         </AppText>
         <AppText variant="body" color="textMuted" style={styles.date}>
           {formatEventDate(event.whenISO, locale)}
@@ -78,7 +87,47 @@ export default function EventDetailsScreen() {
                 {t('eventVisibility')}
               </AppText>
               <AppText variant="body" style={styles.metaValue}>
-                {event.visibility === 'private' ? t('privateEvent') : t('publicEvent')}
+                {event.visibility === 'friends' ? t('privateEvent') : t('publicEvent')}
+              </AppText>
+            </View>
+          ) : null}
+          {event.attendanceMode ? (
+            <View style={styles.metaBlock}>
+              <AppText variant="caption" color="textMuted">
+                {t('attendanceMode')}
+              </AppText>
+              <AppText variant="body" style={styles.metaValue}>
+                {attendanceLabel}
+              </AppText>
+            </View>
+          ) : null}
+          {event.endAt ? (
+            <View style={styles.metaBlock}>
+              <AppText variant="caption" color="textMuted">
+                {t('endDateLabel')}
+              </AppText>
+              <AppText variant="body" style={styles.metaValue}>
+                {formatEventDate(event.endAt, locale)}
+              </AppText>
+            </View>
+          ) : null}
+          {event.attendanceMode === 'paid' && typeof event.priceAmount === 'number' ? (
+            <View style={styles.metaBlock}>
+              <AppText variant="caption" color="textMuted">
+                {t('priceAmountLabel')}
+              </AppText>
+              <AppText variant="body" style={styles.metaValue}>
+                {event.priceAmount} {event.priceCurrency}
+              </AppText>
+            </View>
+          ) : null}
+          {event.capacity ? (
+            <View style={styles.metaBlock}>
+              <AppText variant="caption" color="textMuted">
+                {t('capacityLabel')}
+              </AppText>
+              <AppText variant="body" style={styles.metaValue}>
+                {event.capacity}
               </AppText>
             </View>
           ) : null}
@@ -95,6 +144,11 @@ export default function EventDetailsScreen() {
           <AppText variant="caption" color="textSecondary" style={styles.participants}>
             {event.participantCount} {t('participants')}
           </AppText>
+          {typeof event.organizerRatingAverage === 'number' ? (
+            <AppText variant="caption" color="textSecondary" style={styles.participants}>
+              {event.organizerRatingAverage.toFixed(1)} / 5 ({event.organizerRatingCount ?? 0})
+            </AppText>
+          ) : null}
         </AppCard>
 
         <View style={styles.actions}>
@@ -123,6 +177,9 @@ const styles = StyleSheet.create({
   date: {
     marginTop: 2,
     marginBottom: 16,
+  },
+  address: {
+    marginTop: 4,
   },
   aboutCard: {
     marginBottom: 14,

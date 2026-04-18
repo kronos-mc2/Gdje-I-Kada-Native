@@ -90,17 +90,29 @@ Trenutna baza:
 
 - `events` iz `V1__init_schema.sql`
   - `id`
+  - `creator_user_id` iz `V4__expand_event_domain.sql`
   - `title_hr`, `title_en`
   - `where_hr`, `where_en`
+  - `address`
   - `about_hr`, `about_en`
   - `when_iso`
+  - `start_at`, `end_at`
   - `event_type` (`nearby`, `joined`, `created`)
   - `latitude`, `longitude`
   - `entrance_latitude`, `entrance_longitude`
   - `entry_instructions_hr`, `entry_instructions_en`
-  - `visibility` (`public`, `private`)
+  - `visibility` (`public`, `friends`)
+  - `attendance_mode` (`open`, `waitlist`, `paid`)
+  - `price_amount`, `price_currency`
+  - `capacity`
+  - `status` (`draft`, `published`, `cancelled`, `finished`)
+  - `organizer_rating_average`, `organizer_rating_count`
   - `participant_count`
-  - `created_at`
+  - `created_at`, `updated_at`
+- `event_media` iz `V4__expand_event_domain.sql`
+- `event_participants` iz `V4__expand_event_domain.sql`
+- `event_likes` iz `V4__expand_event_domain.sql`
+- `event_organizer_ratings` iz `V4__expand_event_domain.sql`
 - `friends` iz `V1__init_schema.sql`
 - `conversations` iz `V1__init_schema.sql`
 - `app_users` iz `V3__create_users_table.sql`
@@ -120,7 +132,7 @@ Trenutni event model:
 - Service: `EventService`.
 - Mapper: `EventMapper` i `EventMapper.xml`.
 
-Event trenutno podrzava naslov, lokaciju, opis, datum, coordinates, entrance coordinates, entry instructions, visibility i participant count. Jos ne podrzava creator user id, media, placanje, join modele, waitlist, organizer rating, event chat, real joined state u bazi ni reels-specific metadata.
+Event trenutno podrzava naslov, lokaciju, adresu, opis, start/end datum, coordinates, entrance coordinates, entry instructions, creator user id, visibility `public/friends`, attendance mode `open/waitlist/paid`, cijenu za paid evente, capacity, status, organizer rating agregate i participant count. Baza ima tablice za media, participants, likes i organizer ratings. Jos ne postoje pun UI/API flow za upload media, join/leave endpointi, placanje, rating submit, event chat ni reels-specific metadata.
 
 Kad implementiras nove stvari, nadogradi postojece:
 
@@ -553,8 +565,8 @@ Detaljni operativni plan i status svake faze vodi se u `FAZE.md`. README drzi sa
 
 - Faza 0 - Dokumentacija i smjer: rijeseno 2026-04-18.
 - Faza 1 - Glavni tabovi i navigacija: rijeseno 2026-04-18.
-- Faza 2 - Event domain i baza: sljedeca faza.
-- Faza 3 - Mapa MVP+.
+- Faza 2 - Event domain i baza: rijeseno 2026-04-18.
+- Faza 3 - Mapa MVP+: sljedeca faza.
 - Faza 4 - Join state i event details.
 - Faza 5 - Reels/FYP.
 - Faza 6 - Kalendar.
@@ -584,16 +596,16 @@ Kad se status faze promijeni, prvo azuriraj `FAZE.md`, a zatim ovaj sazetak ako 
 
 ## Dokumentacija trenutnih ogranicenja
 
-- Event create screen (`app/create-event.tsx`) jos ne koristi entrance picker, visibility ni entry instructions i trenutno dodaje random offset oko user lokacije.
-- `app/entrance-map-picker.tsx` postoji, ali nije povezan u create event flow.
-- `CreateEventRequest` vec ima `entranceCoordinates`, `entryInstructionsHr`, `entryInstructionsEn` i `visibility`, ali frontend create form ih trenutno ne salje.
-- `EventDetailScreen` (`app/event/[id].tsx`) zna prikazati `entryInstructions`, `visibility` i `entranceCoordinates` ako postoje.
+- Event create screen (`app/create-event.tsx`) salje address, start/end time, visibility, attendance mode, paid price/currency, capacity, entrance pin i entry instructions.
+- `app/entrance-map-picker.tsx` je povezan u create event flow i puni `entranceCoordinates`.
+- Ako korisnik ne odabere entrance pin, create flow koristi zadnju poznatu korisnicku lokaciju kao event coordinates.
+- `EventDetailScreen` (`app/event/[id].tsx`) zna prikazati `address`, `entryInstructions`, `visibility`, `attendanceMode`, paid price, capacity, `endAt`, organizer rating i `entranceCoordinates` ako postoje.
 - `EventDetailSheet` na mapi jos ne prikazuje entrance data ni join button.
 - `favoriteEventIds` postoji u `app-store.ts`, ali finalni proizvod ne treba saveanje.
 - Joined/liked/favorite su lokalni i nisu sinkronizirani s backendom.
 - Messages su samo conversation list, ne realni chat.
 - Friends su staticki/prototip podaci iz `friends` tablice.
-- Backend `/api/events` i `/api/feed` vracaju samo public evente i nemaju per-user joined/friends logiku.
+- Backend `/api/events` i `/api/feed` vracaju samo `public/published` evente i jos nemaju per-user friends access logiku.
 - Profil nema settings sub-route, edit profil, avatar, activity history ni transactions.
 
 ## Sto paziti kod dokazivanja koda

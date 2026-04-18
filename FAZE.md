@@ -22,7 +22,7 @@ Dokumentacija je dio zadatka, ne naknadni posao. Ako kod i dokumentacija nisu us
 | --- | --- | --- | --- |
 | 0 | Dokumentacija i smjer | Rijeseno | README i FAZE definiraju sto se gradi i kojim redom. |
 | 1 | Glavni tabovi i navigacija | Rijeseno | App ima tocnih 5 tabova: Mapa, FYP, Kalendar, Poruke, Profil. |
-| 2 | Event domain i baza | Nije poceto | Event model pokriva creator, lokaciju, ulaz, visibility, join pravila i media. |
+| 2 | Event domain i baza | Rijeseno | Event model pokriva creator, lokaciju, ulaz, visibility, join pravila i media. |
 | 3 | Mapa MVP+ | Nije poceto | Mapa ima search, date filter, nearby logiku, detalje i join flow. |
 | 4 | Join state i event details | Nije poceto | Join/leave i detalji su server-side i dijele se izmedu mape, FYP-a i kalendara. |
 | 5 | Reels/FYP | Nije poceto | FYP radi kao reels feed s media preloadom, likeovima i shareom. |
@@ -96,7 +96,7 @@ Zavrsna biljeska:
 
 ## Faza 2 - Event domain i baza
 
-Status: Nije poceto
+Status: Rijeseno
 
 Cilj:
 
@@ -104,14 +104,14 @@ Event treba iz prototip modela prerasti u pravi domain model za public/friends e
 
 Postojece stanje:
 
-- Baza ima `events`, `friends`, `conversations`, `app_users`.
+- Baza ima `events`, `event_media`, `event_participants`, `event_likes`, `event_organizer_ratings`, `friends`, `conversations`, `app_users`.
 - `events.event_type` je prototip filter (`nearby`, `joined`, `created`), ne pravi domain tip.
-- `visibility` ima `public` i `private`, ali zahtjev trazi `public` i `friends`.
-- Frontend i backend vec imaju `entranceCoordinates` i `entryInstructions`, ali create flow ih ne salje.
+- `visibility` je normaliziran na `public` i `friends`.
+- Frontend create flow salje `entranceCoordinates` i `entryInstructions`.
 
 Zadaci backend:
 
-- [ ] Dodati Flyway migraciju za nova event polja:
+- [x] Dodati Flyway migraciju za nova event polja:
   - `creator_user_id`
   - `address`
   - `start_at`
@@ -124,27 +124,31 @@ Zadaci backend:
   - `organizer_rating_average`
   - `organizer_rating_count`
   - `updated_at`
-- [ ] Normalizirati `visibility` prema `public` i `friends`.
-- [ ] Dodati `event_media`.
-- [ ] Dodati `event_participants`.
-- [ ] Dodati `event_likes`.
-- [ ] Dodati `event_organizer_ratings`.
-- [ ] Prosiriti `EventRow`, `AppEventDto`, `CreateEventRequest`.
-- [ ] Prosiriti `EventMapper.xml`.
-- [ ] Prosiriti `EventService` validaciju.
+- [x] Normalizirati `visibility` prema `public` i `friends`.
+- [x] Dodati `event_media`.
+- [x] Dodati `event_participants`.
+- [x] Dodati `event_likes`.
+- [x] Dodati `event_organizer_ratings`.
+- [x] Prosiriti `EventRow`, `AppEventDto`, `CreateEventRequest`.
+- [x] Prosiriti `EventMapper.xml`.
+- [x] Prosiriti `EventService` validaciju.
 
 Zadaci frontend:
 
-- [ ] Prosiriti `AppEvent` i `CreateEventPayload`.
-- [ ] U create event flow dodati visibility, attendance mode, cijenu ako je paid, entrance pin i entry instructions.
-- [ ] Povezati `entrance-map-picker.tsx` s `create-event.tsx`.
-- [ ] Ukloniti random offset kao stalno ponasanje create flowa.
+- [x] Prosiriti `AppEvent` i `CreateEventPayload`.
+- [x] U create event flow dodati visibility, attendance mode, cijenu ako je paid, entrance pin i entry instructions.
+- [x] Povezati `entrance-map-picker.tsx` s `create-event.tsx`.
+- [x] Ukloniti random offset kao stalno ponasanje create flowa.
 
 Definition of done:
 
 - Novi event se sprema s creatorom, adresom, vremenima, visibilityjem, attendance modeom i entrance podacima.
 - Frontend i backend dijele isti model.
 - Flyway migracije prolaze na svjezoj bazi.
+
+Zavrsna biljeska:
+
+2026-04-18 - Napravljeno: dodana je Flyway migracija `V4__expand_event_domain.sql`, prosiren je backend event model (`AppEventDto`, `CreateEventRequest`, `EventRow`, `EventService`, `EventMapper.xml`) i `POST /api/events` sada sprema `creator_user_id`, address, start/end time, `public/friends` visibility, attendance mode, paid price/currency, capacity, status, organizer rating defaults i creator participant row. Frontend `AppEvent`/`CreateEventPayload` su prosireni, `create-event.tsx` sada salje nova polja, koristi `entrance-map-picker.tsx`, i vise ne koristi random coordinate offset. Datoteke: backend event DTO/service/mapper/migration, `core/types/domain.ts`, `app/create-event.tsx`, `app/event/[id].tsx`, `core/i18n/translations.ts`, `README.md`, `FAZE.md`. Testirano: backend `export JAVA_HOME=$(/usr/libexec/java_home) && ./mvnw test`, frontend `npx tsc --noEmit`, frontend `npm run lint`.
 
 ## Faza 3 - Mapa MVP+
 

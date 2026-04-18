@@ -49,10 +49,8 @@ export default function FypScreen() {
   const { height, width } = useWindowDimensions();
 
   const { data: fetchedEvents = [] } = useFeedQuery();
-  const joinedEventIds = useAppStore((state) => state.joinedEventIds);
   const likedEventIds = useAppStore((state) => state.likedEventIds);
   const favoriteEventIds = useAppStore((state) => state.favoriteEventIds);
-  const toggleJoined = useAppStore((state) => state.toggleJoined);
   const toggleLiked = useAppStore((state) => state.toggleLiked);
   const toggleFavorite = useAppStore((state) => state.toggleFavorite);
 
@@ -71,7 +69,6 @@ export default function FypScreen() {
   };
 
   const renderFeedItem = ({ item }: ListRenderItemInfo<AppEvent>) => {
-    const isJoined = joinedEventIds.includes(item.id);
     const isLiked = likedEventIds.includes(item.id);
     const isFavorite = favoriteEventIds.includes(item.id);
     const likeCount = item.participantCount + (isLiked ? 1 : 0);
