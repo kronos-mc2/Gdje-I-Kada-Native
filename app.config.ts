@@ -42,6 +42,9 @@ const config: ExpoConfig = {
     [
       'expo-build-properties',
       {
+        ios: {
+          buildReactNativeFromSource: true,
+        },
         android: {
           usesCleartextTraffic: true,
         },
