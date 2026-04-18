@@ -3,7 +3,9 @@ import { Locale } from '@/core/types/domain';
 export const translations = {
   hr: {
     appName: 'Gdje i Kada',
+    map: 'Mapa',
     events: 'Dogadaji',
+    calendar: 'Kalendar',
     fyp: 'FYP',
     social: 'Social',
     messages: 'Poruke',
@@ -131,7 +133,9 @@ export const translations = {
   },
   en: {
     appName: 'Where and When',
+    map: 'Map',
     events: 'Events',
+    calendar: 'Calendar',
     fyp: 'FYP',
     social: 'Social',
     messages: 'Messages',

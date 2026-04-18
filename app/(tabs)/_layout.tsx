@@ -44,10 +44,10 @@ export default function TabLayout() {
     >
       <NativeTabs.Trigger name="index">
         <Icon
-          sf={{ default: 'calendar', selected: 'calendar.circle.fill' }}
-          androidSrc={<VectorIcon family={Ionicons} name="calendar-outline" />}
+          sf={{ default: 'map', selected: 'map.fill' }}
+          androidSrc={<VectorIcon family={Ionicons} name="map-outline" />}
         />
-        <Label>{t('events')}</Label>
+        <Label>{t('map')}</Label>
       </NativeTabs.Trigger>
 
       <NativeTabs.Trigger name="fyp">
@@ -63,15 +63,15 @@ export default function TabLayout() {
           sf={{ default: 'calendar.badge.clock', selected: 'calendar.badge.clock' }}
           androidSrc={<VectorIcon family={Ionicons} name="today-outline" />}
         />
-        <Label>{t('myEvents')}</Label>
+        <Label>{t('calendar')}</Label>
       </NativeTabs.Trigger>
 
-      <NativeTabs.Trigger name="social">
+      <NativeTabs.Trigger name="messages">
         <Icon
           sf={{ default: 'bubble.left.and.bubble.right', selected: 'bubble.left.and.bubble.right.fill' }}
           androidSrc={<VectorIcon family={Ionicons} name="chatbubbles-outline" />}
         />
-        <Label>{t('social')}</Label>
+        <Label>{t('messages')}</Label>
       </NativeTabs.Trigger>
 
       <NativeTabs.Trigger name="profile">

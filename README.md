@@ -3,6 +3,14 @@
 Status dokumenta: 2026-04-18  
 Projekt se ne radi ispocetka. Postojeci React Native/Expo frontend i Spring Boot backend ostaju baza, a nove funkcionalnosti se nadograduju na vec postojece klase, rute, storeove, hookove i dizajn sustav.
 
+## Pravilo za dokumentaciju
+
+Nakon svake bitne promjene aplikacije mora se azurirati ovaj `README.md` i `FAZE.md`. Ako se promijeni arhitektura, baza, API, navigacija, glavni flow, stanje neke faze ili lista poznatih ogranicenja, dokumentacija se updatea u istom zadatku kao i kod.
+
+`README.md` je master opis proizvoda i tehnickog stanja. `FAZE.md` je operativni plan rada: u njemu se oznacava koja faza se trenutno radi, sto je gotovo, sto je blokirano i koji su sljedeci konkretni koraci.
+
+Kad se faza zavrsi, u `FAZE.md` mora se jasno oznaciti kao `Rijeseno` i dodati kratka zavrsna biljeska. Rijesene faze se ne rade ponovno kasnije osim ako se dokumentirano otvori nova dopuna ili regresija.
+
 ## Copy-paste prompt za novi chat
 
 Radimo mobilnu event aplikaciju "Gdje i Kada" za iOS i Android. Frontend je React Native kroz Expo Router, backend je Spring Boot s PostgreSQL bazom. Nemoj kretati ispocetka. Prvo procitaj postojeci kod i nadogradi ga prema lokalnim patternima.
@@ -29,7 +37,8 @@ Trenutno stanje tabova:
 - Mapa je implementirana kao `app/(tabs)/index.tsx` i rendera `EventsMapExperience`.
 - FYP je implementiran kao `app/(tabs)/fyp.tsx`.
 - Kalendar je implementiran kao `app/(tabs)/calendar.tsx`, ali jos nije mjesecni FullCalendar-style pogled.
-- Poruke postoje kroz `app/(tabs)/messages.tsx`, ali trenutno native tab layout koristi `social` tab preko `app/(tabs)/social.tsx`. Treba uskladiti na zeljeni tab `Poruke`.
+- Poruke su glavni tab kroz `app/(tabs)/messages.tsx`.
+- `app/(tabs)/social.tsx` ostaje prototip/sekundarni ekran za conversations + friends, ali vise nije glavni tab.
 - Profil je implementiran kao `app/(tabs)/profile.tsx`, ali trenutno ima osnovni profil, jezik, temu i odjavu. Treba dodati history eventova, lajkova, transakcija, edit profila i settings ekran.
 
 Postojece frontend tehnologije i patterni:
@@ -159,19 +168,24 @@ Trenutno:
 
 Tab navigacija je u `Gdje-I-Kada-Native/app/(tabs)/_layout.tsx`.
 
+Status Faze 1:
+
+- Rijeseno 2026-04-18: glavni tabovi su uskladeni na Mapa, FYP, Kalendar, Poruke i Profil.
+- `social` vise nije trigger u glavnom tab baru; `messages` je glavni tab za poruke.
+
 Trenutni `NativeTabs.Trigger`:
 
-- `index` label `events`
+- `index` label `map`
 - `fyp` label `fyp`
-- `calendar` label `myEvents`
-- `social` label `social`
+- `calendar` label `calendar`
+- `messages` label `messages`
 - `profile` label `profile`
 
-Potrebna promjena:
+Rijeseno:
 
-- `index` treba tretirati kao `Mapa`, ne kao genericki `Dogadaji`.
-- `social` treba zamijeniti ili preimenovati u `messages`, jer zeljeni proizvod ima tab `Poruke`, ne `Social`.
-- Ako prijatelji ostaju u proizvodu, neka budu dio poruka/profila ili sekundarni screen, ne glavni tab.
+- `index` se tretira kao `Mapa`, ne kao genericki `Dogadaji`.
+- `social` je maknut iz glavnog tab bara i zamijenjen s `messages`.
+- Ako prijatelji ostaju u proizvodu, bit ce dio poruka/profila ili sekundarni screen, ne glavni tab.
 
 ### Mapa
 
@@ -545,63 +559,20 @@ Profile/settings:
 
 ## Prioriteti implementacije
 
-### Faza 1 - uskladivanje glavnih tabova i event domaina
+Detaljni operativni plan i status svake faze vodi se u `FAZE.md`. README drzi sazetak:
 
-1. Preimenovati/posloziti tabove na tocnih 5: Mapa, FYP, Kalendar, Poruke, Profil.
-2. Maknuti ili sakriti `social` kao glavni tab.
-3. Event model prosiriti s `creatorUserId`, `address`, `startAt/endAt`, `visibility`, `attendanceMode`, `price`, `capacity`, `status`.
-4. Napraviti Flyway migraciju za nove event kolone i nove join tablice.
-5. `/api/events` dodati query parametre za datum, radius/bounds i search.
-6. Frontend mapa dobiva date filter ispod search bara.
+- Faza 0 - Dokumentacija i smjer: rijeseno 2026-04-18.
+- Faza 1 - Glavni tabovi i navigacija: rijeseno 2026-04-18.
+- Faza 2 - Event domain i baza: sljedeca faza.
+- Faza 3 - Mapa MVP+.
+- Faza 4 - Join state i event details.
+- Faza 5 - Reels/FYP.
+- Faza 6 - Kalendar.
+- Faza 7 - Poruke i event chat.
+- Faza 8 - Profil i postavke.
+- Faza 9 - Placanja, rating i polish.
 
-### Faza 2 - join, details i event chat prompt
-
-1. Dodati backend endpoint:
-   - `POST /api/events/{id}/join`
-   - `DELETE /api/events/{id}/join`
-   - `GET /api/events/{id}`
-   - `GET /api/users/me/events`
-2. Join state vise ne smije biti samo `joinedEventIds` u Zustandu.
-3. Nakon joina, ako event ima chat, frontend pita korisnika zeli li otvoriti/uci u event grupu.
-4. Event details trebaju biti shared komponenta za map sheet, FYP i event detail screen.
-
-### Faza 3 - Reels/FYP
-
-1. Dodati media model za slike/videe.
-2. FYP feed dobiva paginaciju.
-3. Implementirati video playback i preload par itema unaprijed.
-4. Persistirati likeove na backend.
-5. Ukloniti save/bookmark jer finalni zahtjev ne trazi saveanje.
-6. Share flow treba nuditi share u chatove.
-
-### Faza 4 - Kalendar
-
-1. Backend endpoint za joined evente po korisniku.
-2. Mjesecni calendar grid.
-3. Aktualni mjesec je default.
-4. Event title se vidi na danu.
-5. Klik otvara details.
-
-### Faza 5 - Poruke
-
-1. Pravi chat schema.
-2. Chat room list.
-3. Chat room screen.
-4. Slanje tekstualnih poruka.
-5. Event share card.
-6. Pollovi.
-7. Admin-only mode.
-8. Event-specific chat room automatski ili opcionalno povezan s eventom.
-
-### Faza 6 - Profil i postavke
-
-1. Settings screen iz profila.
-2. Edit profile.
-3. Avatar upload.
-4. Joined event history.
-5. Organizer rating nakon zavrsenog eventa.
-6. Liked reels/events history.
-7. Transaction history.
+Kad se status faze promijeni, prvo azuriraj `FAZE.md`, a zatim ovaj sazetak ako je potrebno.
 
 ## UI i dizajn pravila za ovaj projekt
 
