@@ -37,8 +37,10 @@ npm run build:android:test:eas
 Test variant koristi:
 
 - Android package: `com.anonymous.GdjeIKadaNative.test`
+- iOS bundle id: `com.anonymous.GdjeIKadaNative.test`
 - App label: `GIK Test`
 - Deep link scheme: `gdjeikadanative-test`
+- `IOS_USES_APPLE_SIGN_IN=false` by default so a personal Apple team can install it on a local iPhone.
 
 To omogucava da test APK bude instaliran paralelno s normalnim buildom.
 

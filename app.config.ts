@@ -3,6 +3,8 @@ import { ExpoConfig } from 'expo/config';
 
 const appVariant = process.env.APP_VARIANT === 'test' ? 'test' : 'prod';
 const isTestVariant = appVariant === 'test';
+const usesAppleSignIn =
+  process.env.IOS_USES_APPLE_SIGN_IN === 'true' || (!isTestVariant && process.env.IOS_USES_APPLE_SIGN_IN !== 'false');
 
 const config: ExpoConfig = {
   name: isTestVariant ? 'GIK Test' : 'Gdje-I-Kada-Native',
@@ -15,7 +17,7 @@ const config: ExpoConfig = {
   newArchEnabled: true,
   ios: {
     bundleIdentifier: isTestVariant ? 'com.anonymous.GdjeIKadaNative.test' : 'com.anonymous.GdjeIKadaNative',
-    usesAppleSignIn: true,
+    usesAppleSignIn,
     supportsTablet: true,
     infoPlist: {
       NSLocationWhenInUseUsageDescription: 'Precizna lokacija se koristi za centriranje mape i prikaz dogadaja u tvojoj blizini.',
