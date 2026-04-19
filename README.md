@@ -1,4 +1,4 @@
-# Gdje i Kada - projektna dokumentacija i master prompt
+# Gdje i Kada - projektna dokumentacija
 
 Status dokumenta: 2026-04-18  
 Projekt se ne radi ispocetka. Postojeci React Native/Expo frontend i Spring Boot backend ostaju baza, a nove funkcionalnosti se nadograduju na vec postojece klase, rute, storeove, hookove i dizajn sustav.
