@@ -2,7 +2,7 @@
 
 Test APK targeta backend:
 
-- `https://test.api.gik.nerizz.com/api`
+- `https://test-api-gik.nerizz.com/api`
 
 Env file:
 
