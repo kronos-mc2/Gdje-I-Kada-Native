@@ -7,7 +7,10 @@ import { useAppStore } from '@/core/store/app-store';
 import { EventQueryParams } from '@/core/types/domain';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 
-export type MapDateFilter = 'all' | 'today' | 'tomorrow' | 'weekend';
+export type MapDateFilter =
+  | { mode: 'all' }
+  | { mode: 'day'; dateISO: string }
+  | { mode: 'range'; fromISO: string; toISO: string };
 
 type UseEventsMapScreenModelInput = {
   dateFilter: MapDateFilter;
@@ -15,6 +18,10 @@ type UseEventsMapScreenModelInput = {
 };
 
 const NEARBY_RADIUS_KM = 50;
+
+export function createInitialMapDateFilter(): MapDateFilter {
+  return { mode: 'all' };
+}
 
 export function useEventsMapScreenModel({ dateFilter, searchQuery }: UseEventsMapScreenModelInput) {
   const { locale } = useI18n();
@@ -46,33 +53,33 @@ export function useEventsMapScreenModel({ dateFilter, searchQuery }: UseEventsMa
   };
 }
 
-function getDateRange(dateFilter: MapDateFilter): Pick<EventQueryParams, 'from' | 'to'> {
-  if (dateFilter === 'all') {
+export function getDateRange(dateFilter: MapDateFilter): Pick<EventQueryParams, 'from' | 'to'> {
+  if (dateFilter.mode === 'all') {
     return {};
   }
 
-  const todayStart = startOfLocalDay(new Date());
-
-  if (dateFilter === 'today') {
-    const tomorrowStart = addDays(todayStart, 1);
-    return toIsoRange(todayStart, tomorrowStart);
+  if (dateFilter.mode === 'day') {
+    const dayStart = dateKeyToLocalDate(dateFilter.dateISO);
+    return toIsoRange(dayStart, addDays(dayStart, 1));
   }
 
-  if (dateFilter === 'tomorrow') {
-    const tomorrowStart = addDays(todayStart, 1);
-    const dayAfterTomorrowStart = addDays(todayStart, 2);
-    return toIsoRange(tomorrowStart, dayAfterTomorrowStart);
-  }
-
-  const currentDay = todayStart.getDay();
-  const daysUntilSaturday = currentDay === 0 ? -1 : (6 - currentDay + 7) % 7;
-  const saturdayStart = addDays(todayStart, daysUntilSaturday);
-  const mondayStart = addDays(saturdayStart, 2);
-  return toIsoRange(saturdayStart, mondayStart);
+  const fromStart = dateKeyToLocalDate(dateFilter.fromISO);
+  const toStart = dateKeyToLocalDate(dateFilter.toISO);
+  const [from, to] = fromStart.getTime() <= toStart.getTime() ? [fromStart, toStart] : [toStart, fromStart];
+  return toIsoRange(from, addDays(to, 1));
 }
 
-function startOfLocalDay(date: Date) {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+export function toDateKey(date: Date) {
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, '0');
+  const day = `${date.getDate()}`.padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+export function dateKeyToLocalDate(dateKey: string) {
+  const [year, month, day] = dateKey.split('-').map(Number);
+  const parsed = new Date(year, month - 1, day);
+  return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
 }
 
 function addDays(date: Date, days: number) {

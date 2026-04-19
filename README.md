@@ -219,11 +219,12 @@ Postoji:
 Trenutno ponasanje:
 
 - App dohvat eventova radi preko `useEventsQuery(params)` i `/api/events?from=&to=&lat=&lng=&radiusKm=&query=`.
-- `use-events-map-screen-model.ts` salje user lokaciju, radius 50 km, debounced search query i date filter range.
+- `use-events-map-screen-model.ts` salje user lokaciju, radius 50 km, debounced search query i date filter koji moze biti jedan dan, range ili svi datumi.
 - Eventi se na backendu filtriraju po datumu, radiusu i search queryju, a ako su `lat/lng` poslani sortiraju se po blizini pa po `start_at`.
 - Mapa se inicijalno centrira na `userLocation`.
 - Ako korisnik dopusti lokaciju, pokusava se dohvatiti precizna lokacija.
 - Ako nema precizne lokacije, koristi se IP/capital fallback.
+- Ispod search bara je date kontrola sa strelicama za dan po dan, date picker modalom, range modeom i opcijom `Svi datumi`.
 - Event pinovi su clickable.
 - Klik na pin otvara `EventDetailSheet`.
 - Sheet ima collapsed i expanded state.

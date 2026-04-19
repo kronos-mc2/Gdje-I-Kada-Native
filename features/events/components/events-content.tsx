@@ -9,7 +9,7 @@ import { Coordinates, EventsView, Locale } from '@/core/types/domain';
 import { useAppTheme } from '@/core/theme';
 import { AppEvent } from '@/core/types/domain';
 import { EventsMapExperience } from '@/features/events/components/events-map-experience';
-import { MapDateFilter } from '@/features/events/hooks/use-events-map-screen-model';
+import { createInitialMapDateFilter, MapDateFilter } from '@/features/events/hooks/use-events-map-screen-model';
 
 type EventsWithDistance = {
   event: AppEvent;
@@ -42,7 +42,7 @@ export function EventsContent({
   const router = useRouter();
   const { t } = useI18n();
   const { theme } = useAppTheme();
-  const [dateFilter, setDateFilter] = useState<MapDateFilter>('all');
+  const [dateFilter, setDateFilter] = useState<MapDateFilter>(() => createInitialMapDateFilter());
   const [searchQuery, setSearchQuery] = useState('');
 
   if (view === 'map') {

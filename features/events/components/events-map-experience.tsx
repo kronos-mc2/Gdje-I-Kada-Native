@@ -12,6 +12,7 @@ import { useAppStore } from '@/core/store/app-store';
 import { useAppTheme } from '@/core/theme';
 import { AppEvent, Coordinates, Locale } from '@/core/types/domain';
 import { useEventMapSearch } from '@/features/events/hooks/use-event-map-search';
+import { MapDateFilterControl } from '@/features/events/components/map-date-filter-control';
 import { MapDateFilter } from '@/features/events/hooks/use-events-map-screen-model';
 import { useMapLocationBootstrap } from '@/features/events/hooks/use-map-location-bootstrap';
 
@@ -26,8 +27,6 @@ type EventsMapExperienceProps = {
   onCreateEventPress: () => void;
   onEventPress?: (eventId: string) => void;
 };
-
-const DATE_FILTERS: MapDateFilter[] = ['all', 'today', 'tomorrow', 'weekend'];
 
 export function EventsMapExperience({
   events,
@@ -194,39 +193,12 @@ export function EventsMapExperience({
           onBlur={() => undefined}
         />
 
-        <View style={styles.dateFilterRow}>
-          {DATE_FILTERS.map((filter) => {
-            const isActive = dateFilter === filter;
-
-            return (
-              <Pressable
-                key={filter}
-                onPress={() => onDateFilterChange(filter)}
-                style={({ pressed }) => [
-                  styles.dateFilterChip,
-                  {
-                    borderColor: isActive ? theme.colors.mapAccent : theme.colors.border,
-                    backgroundColor: isActive ? theme.colors.mapAccentSoft : theme.colors.surfaceElevated,
-                    opacity: pressed ? 0.78 : 1,
-                  },
-                ]}
-              >
-                {canUseLiquidGlass ? (
-                  <GlassView
-                    style={StyleSheet.absoluteFill}
-                    glassEffectStyle="regular"
-                    colorScheme={theme.isDark ? 'dark' : 'light'}
-                    tintColor={isActive ? theme.colors.mapAccentSoft : theme.colors.glassTint}
-                    isInteractive
-                  />
-                ) : null}
-                <AppText variant="caption" color={isActive ? 'mapAccent' : 'textSecondary'}>
-                  {getDateFilterLabel(filter, t)}
-                </AppText>
-              </Pressable>
-            );
-          })}
-        </View>
+        <MapDateFilterControl
+          dateFilter={dateFilter}
+          locale={locale}
+          canUseLiquidGlass={canUseLiquidGlass}
+          onDateFilterChange={onDateFilterChange}
+        />
 
         <MapSearchResults
           visible={showSearchResults}
@@ -325,20 +297,6 @@ const styles = StyleSheet.create({
   topOverlay: {
     position: 'absolute',
   },
-  dateFilterRow: {
-    marginTop: 8,
-    flexDirection: 'row',
-    gap: 8,
-  },
-  dateFilterChip: {
-    minHeight: 32,
-    borderRadius: 16,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
   floatingButton: {
     position: 'absolute',
     width: 38,
@@ -350,18 +308,3 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 });
-
-function getDateFilterLabel(filter: MapDateFilter, t: ReturnType<typeof useI18n>['t']) {
-  switch (filter) {
-    case 'all':
-      return t('allDates');
-    case 'today':
-      return t('today');
-    case 'tomorrow':
-      return t('tomorrow');
-    case 'weekend':
-      return t('weekend');
-    default:
-      return t('allDates');
-  }
-}

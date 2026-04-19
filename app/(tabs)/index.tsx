@@ -3,13 +3,13 @@ import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { EventsMapExperience } from '@/features/events/components/events-map-experience';
-import { MapDateFilter, useEventsMapScreenModel } from '@/features/events/hooks/use-events-map-screen-model';
+import { createInitialMapDateFilter, MapDateFilter, useEventsMapScreenModel } from '@/features/events/hooks/use-events-map-screen-model';
 import { useAppTheme } from '@/core/theme';
 
 export default function EventsScreen() {
   const router = useRouter();
   const { theme } = useAppTheme();
-  const [dateFilter, setDateFilter] = useState<MapDateFilter>('all');
+  const [dateFilter, setDateFilter] = useState<MapDateFilter>(() => createInitialMapDateFilter());
   const [searchQuery, setSearchQuery] = useState('');
   const { events, userLocation, locale } = useEventsMapScreenModel({ dateFilter, searchQuery });
 

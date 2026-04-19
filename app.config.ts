@@ -1,17 +1,20 @@
 import 'dotenv/config';
 import { ExpoConfig } from 'expo/config';
 
+const appVariant = process.env.APP_VARIANT === 'test' ? 'test' : 'prod';
+const isTestVariant = appVariant === 'test';
+
 const config: ExpoConfig = {
-  name: 'Gdje-I-Kada-Native',
-  slug: 'Gdje-I-Kada-Native',
+  name: isTestVariant ? 'GIK Test' : 'Gdje-I-Kada-Native',
+  slug: isTestVariant ? 'Gdje-I-Kada-Native-Test' : 'Gdje-I-Kada-Native',
   version: '1.0.0',
   orientation: 'portrait',
   icon: './assets/images/icon.png',
-  scheme: 'gdjeikadanative',
+  scheme: isTestVariant ? 'gdjeikadanative-test' : 'gdjeikadanative',
   userInterfaceStyle: 'automatic',
   newArchEnabled: true,
   ios: {
-    bundleIdentifier: 'com.anonymous.GdjeIKadaNative',
+    bundleIdentifier: isTestVariant ? 'com.anonymous.GdjeIKadaNative.test' : 'com.anonymous.GdjeIKadaNative',
     usesAppleSignIn: true,
     supportsTablet: true,
     infoPlist: {
@@ -21,7 +24,7 @@ const config: ExpoConfig = {
     },
   },
   android: {
-    package: 'com.anonymous.GdjeIKadaNative',
+    package: isTestVariant ? 'com.anonymous.GdjeIKadaNative.test' : 'com.anonymous.GdjeIKadaNative',
     permissions: ['ACCESS_COARSE_LOCATION', 'ACCESS_FINE_LOCATION'],
     adaptiveIcon: {
       backgroundColor: '#E6F4FE',
