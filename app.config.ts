@@ -1,10 +1,17 @@
 import 'dotenv/config';
 import { ExpoConfig } from 'expo/config';
+import { ConfigPlugin, withEntitlementsPlist } from 'expo/config-plugins';
 
 const appVariant = process.env.APP_VARIANT === 'test' ? 'test' : 'prod';
 const isTestVariant = appVariant === 'test';
 const usesAppleSignIn =
   process.env.IOS_USES_APPLE_SIGN_IN === 'true' || (!isTestVariant && process.env.IOS_USES_APPLE_SIGN_IN !== 'false');
+
+const withoutAppleSignInEntitlement: ConfigPlugin = (config) =>
+  withEntitlementsPlist(config, (configWithEntitlements) => {
+    delete configWithEntitlements.modResults['com.apple.developer.applesignin'];
+    return configWithEntitlements;
+  });
 
 const config: ExpoConfig = {
   name: isTestVariant ? 'GIK Test' : 'Gdje-I-Kada-Native',
@@ -57,6 +64,7 @@ const config: ExpoConfig = {
     ],
     '@maplibre/maplibre-react-native',
     '@react-native-community/datetimepicker',
+    ...(usesAppleSignIn ? [] : [withoutAppleSignInEntitlement]),
     [
       'expo-splash-screen',
       {
@@ -69,7 +77,7 @@ const config: ExpoConfig = {
         },
       },
     ],
-  ],
+  ] as unknown as ExpoConfig['plugins'],
   experiments: {
     typedRoutes: true,
     reactCompiler: true,
