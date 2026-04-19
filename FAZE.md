@@ -217,6 +217,10 @@ Definition of done:
 - Join/leave je per-user i prezivi restart aplikacije.
 - Svi ekrani prikazuju isti status eventa.
 
+Dopuna:
+
+2026-04-19 - Rijesena auth persistence regresija prije nastavka Faze 4: `core/store/auth-store.ts` sada koristi stabilni SecureStore keychain service, iOS `AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY`, cita legacy SecureStore zapis i AsyncStorage migraciju te migrira validnu sesiju u novi zapis. Lokalni Android native projekt dobio je SecureStore backup exclusion pravila u manifestu i XML resursima, pa test APK ne backupira encrypted SecureStore prefs koje Android Keystore ne moze procitati nakon install/re-run ciklusa. Testirano: `npx tsc --noEmit`, `npm run lint`, `env JAVA_HOME=$(/usr/libexec/java_home) ./android/gradlew -p android :app:processQaReleaseMainManifest`, `env JAVA_HOME=$(/usr/libexec/java_home) npm run build:android:test`.
+
 ## Faza 5 - Reels/FYP
 
 Status: Nije poceto
