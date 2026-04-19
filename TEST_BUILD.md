@@ -16,6 +16,14 @@ Lokalni debug install na uredaj/emulator:
 npm run android:test
 ```
 
+Ako je test development build vec instaliran i pokreces samo Metro:
+
+```bash
+npm run start:test
+```
+
+Nemoj koristiti `npm start` za test app jer on ucitava obicni `.env` i moze poslati auth request na lokalni backend.
+
 Lokalni APK build:
 
 ```bash
@@ -33,6 +41,33 @@ EAS internal APK build:
 ```bash
 npm run build:android:test:eas
 ```
+
+Local iPhone development build:
+
+```bash
+npm run ios:test
+```
+
+This requires Metro to stay running and iOS Local Network access to be allowed for `GIK Test`.
+
+Local iPhone release build:
+
+```bash
+npm run ios:test:release
+```
+
+This embeds the JS bundle in the app and does not require Metro to be running after install.
+
+When building the generated iOS workspace directly from Xcode, make sure `ios/.xcode.env.local` contains:
+
+```bash
+export APP_VARIANT=test
+export EXPO_PUBLIC_API_BASE_URL=https://test-api-gik.nerizz.com/api
+export EXPO_PUBLIC_ANDROID_API_BASE_URL=https://test-api-gik.nerizz.com/api
+export IOS_USES_APPLE_SIGN_IN=false
+```
+
+Xcode script phases read this file while bundling JavaScript.
 
 Test variant koristi:
 

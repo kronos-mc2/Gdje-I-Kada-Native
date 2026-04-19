@@ -8,6 +8,7 @@ import { Alert, Platform, StyleSheet, View } from 'react-native';
 
 import { AppButton, AppCard, AppHeader, AppInput, AppScreen, AppText } from '@/components/primitives';
 import { loginWithApple, loginWithEmail, loginWithGoogle } from '@/core/api/auth-services';
+import { getApiBaseUrl, getApiErrorMessage, isApiNetworkError } from '@/core/api/http-client';
 import { useI18n } from '@/core/i18n/use-i18n';
 import { useAuthStore } from '@/core/store/auth-store';
 
@@ -156,15 +157,11 @@ export default function LoginScreen() {
       await setAuth(response);
       router.replace('/(tabs)');
     } catch (error: unknown) {
-      const apiMessage =
-        typeof error === 'object' &&
-        error !== null &&
-        'response' in error &&
-        typeof (error as { response?: { data?: { message?: string } } }).response?.data?.message === 'string'
-          ? (error as { response?: { data?: { message?: string } } }).response?.data?.message
-          : null;
-
-      Alert.alert(t('authError'), apiMessage ?? t('loginFailed'));
+      if (isApiNetworkError(error)) {
+        Alert.alert(t('authError'), `${t('apiConnectionFailed')}\n${getApiBaseUrl()}`);
+      } else {
+        Alert.alert(t('authError'), getApiErrorMessage(error) ?? t('loginFailed'));
+      }
     } finally {
       setIsSubmitting(false);
     }

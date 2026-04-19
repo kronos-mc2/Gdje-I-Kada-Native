@@ -4,6 +4,7 @@ import { Alert, StyleSheet, View } from 'react-native';
 
 import { AppButton, AppHeader, AppInput, AppScreen, AppText } from '@/components/primitives';
 import { registerWithEmail } from '@/core/api/auth-services';
+import { getApiBaseUrl, getApiErrorMessage, isApiNetworkError } from '@/core/api/http-client';
 import { useI18n } from '@/core/i18n/use-i18n';
 import { useAuthStore } from '@/core/store/auth-store';
 
@@ -53,7 +54,13 @@ export default function RegisterScreen() {
         password,
       });
 
-      await setAuth(response);
+      try {
+        await setAuth(response);
+      } catch {
+        Alert.alert(t('authError'), t('sessionPersistFailed'));
+        return;
+      }
+
       router.replace('/(tabs)');
     } catch (error: unknown) {
       const status =
@@ -66,8 +73,10 @@ export default function RegisterScreen() {
 
       if (status === 409) {
         Alert.alert(t('authError'), t('emailAlreadyExists'));
+      } else if (isApiNetworkError(error)) {
+        Alert.alert(t('authError'), `${t('apiConnectionFailed')}\n${getApiBaseUrl()}`);
       } else {
-        Alert.alert(t('authError'), t('registerFailed'));
+        Alert.alert(t('authError'), getApiErrorMessage(error) ?? t('registerFailed'));
       }
     } finally {
       setIsSubmitting(false);
