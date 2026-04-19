@@ -41,3 +41,11 @@ Test variant koristi:
 - Deep link scheme: `gdjeikadanative-test`
 
 To omogucava da test APK bude instaliran paralelno s normalnim buildom.
+
+
+
+## IOS
+
+```bash
+node ./scripts/with-env.js test npx expo run:ios --device
+```
