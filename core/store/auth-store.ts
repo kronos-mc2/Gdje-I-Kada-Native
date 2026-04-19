@@ -13,12 +13,15 @@ type AuthStore = {
   accessToken: string | null;
   user: UserProfile | null;
   hydrated: boolean;
+  authRestoreMessage: string | null;
   hydrateAuth: () => Promise<void>;
   setAuth: (payload: AuthSnapshot) => Promise<void>;
   clearAuth: () => Promise<void>;
+  consumeAuthRestoreMessage: () => string | null;
 };
 
 const AUTH_STORAGE_KEY = 'gdje-i-kada-auth-store';
+const AUTH_SESSION_MARKER_KEY = 'gdje-i-kada-auth-session-marker';
 const AUTH_KEYCHAIN_SERVICE = 'gdje-i-kada-auth';
 const AUTH_SECURE_STORE_OPTIONS: SecureStore.SecureStoreOptions = {
   keychainService: AUTH_KEYCHAIN_SERVICE,
@@ -61,50 +64,116 @@ const normalizeSnapshot = (rawValue: string | null): AuthSnapshot | null => {
   }
 };
 
-const readSecureSnapshot = async (options?: SecureStore.SecureStoreOptions): Promise<AuthSnapshot | null> => {
+const getErrorMessage = (error: unknown) => {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  if (typeof error === 'string' && error.trim()) {
+    return error.trim();
+  }
+
+  return 'Unknown storage error';
+};
+
+type AuthStorageRead = {
+  label: string;
+  snapshot: AuthSnapshot | null;
+  rawFound: boolean;
+  errorMessage: string | null;
+};
+
+const formatFailedReads = (reads: AuthStorageRead[]) =>
+  reads
+    .map((read) => {
+      if (read.errorMessage) {
+        return `${read.label}: ${read.errorMessage}`;
+      }
+
+      return `${read.label}: ${read.rawFound ? 'saved value is invalid' : 'empty'}`;
+    })
+    .join('\n');
+
+const readSecureSnapshot = async (label: string, options?: SecureStore.SecureStoreOptions): Promise<AuthStorageRead> => {
   try {
-    return normalizeSnapshot(await SecureStore.getItemAsync(AUTH_STORAGE_KEY, options));
-  } catch {
-    return null;
+    const rawValue = await SecureStore.getItemAsync(AUTH_STORAGE_KEY, options);
+    return {
+      label,
+      snapshot: normalizeSnapshot(rawValue),
+      rawFound: Boolean(rawValue),
+      errorMessage: null,
+    };
+  } catch (error: unknown) {
+    return {
+      label,
+      snapshot: null,
+      rawFound: false,
+      errorMessage: getErrorMessage(error),
+    };
   }
 };
 
-const readAsyncStorageSnapshot = async (): Promise<AuthSnapshot | null> => {
+const readAsyncStorageSnapshot = async (): Promise<AuthStorageRead> => {
   try {
-    return normalizeSnapshot(await AsyncStorage.getItem(AUTH_STORAGE_KEY));
-  } catch {
-    return null;
+    const rawValue = await AsyncStorage.getItem(AUTH_STORAGE_KEY);
+    return {
+      label: 'AsyncStorage mirror',
+      snapshot: normalizeSnapshot(rawValue),
+      rawFound: Boolean(rawValue),
+      errorMessage: null,
+    };
+  } catch (error: unknown) {
+    return {
+      label: 'AsyncStorage mirror',
+      snapshot: null,
+      rawFound: false,
+      errorMessage: getErrorMessage(error),
+    };
   }
 };
 
 const persistMigratedSnapshot = async (snapshot: AuthSnapshot) => {
   try {
     const serializedPayload = JSON.stringify(snapshot);
-    await SecureStore.setItemAsync(AUTH_STORAGE_KEY, serializedPayload, AUTH_SECURE_STORE_OPTIONS);
-    await Promise.allSettled([SecureStore.deleteItemAsync(AUTH_STORAGE_KEY), AsyncStorage.removeItem(AUTH_STORAGE_KEY)]);
+    await Promise.allSettled([
+      SecureStore.setItemAsync(AUTH_STORAGE_KEY, serializedPayload, AUTH_SECURE_STORE_OPTIONS),
+      SecureStore.setItemAsync(AUTH_STORAGE_KEY, serializedPayload),
+      AsyncStorage.setItem(AUTH_STORAGE_KEY, serializedPayload),
+      AsyncStorage.setItem(AUTH_SESSION_MARKER_KEY, '1'),
+    ]);
   } catch {
     // Migration failures should not block an otherwise valid existing session.
   }
 };
 
-const readAuthSnapshot = async (): Promise<AuthSnapshot | null> => {
-  const preferredSecureSnapshot = await readSecureSnapshot(AUTH_SECURE_STORE_OPTIONS);
-  if (preferredSecureSnapshot) {
-    return preferredSecureSnapshot;
+const readAuthSnapshot = async (): Promise<{ snapshot: AuthSnapshot | null; restoreMessage: string | null }> => {
+  const preferredSecureRead = await readSecureSnapshot('SecureStore primary', AUTH_SECURE_STORE_OPTIONS);
+  if (preferredSecureRead.snapshot) {
+    return { snapshot: preferredSecureRead.snapshot, restoreMessage: null };
   }
 
-  const legacySecureSnapshot = await readSecureSnapshot();
-  if (legacySecureSnapshot) {
-    await persistMigratedSnapshot(legacySecureSnapshot);
-    return legacySecureSnapshot;
+  const legacySecureRead = await readSecureSnapshot('SecureStore legacy');
+  if (legacySecureRead.snapshot) {
+    await persistMigratedSnapshot(legacySecureRead.snapshot);
+    return { snapshot: legacySecureRead.snapshot, restoreMessage: null };
   }
 
-  const asyncStorageSnapshot = await readAsyncStorageSnapshot();
-  if (asyncStorageSnapshot) {
-    await persistMigratedSnapshot(asyncStorageSnapshot);
+  const asyncStorageRead = await readAsyncStorageSnapshot();
+  if (asyncStorageRead.snapshot) {
+    await persistMigratedSnapshot(asyncStorageRead.snapshot);
+    return { snapshot: asyncStorageRead.snapshot, restoreMessage: null };
   }
 
-  return asyncStorageSnapshot;
+  const failedReads = formatFailedReads([preferredSecureRead, legacySecureRead, asyncStorageRead]);
+  const hadPreviousSession = await AsyncStorage.getItem(AUTH_SESSION_MARKER_KEY).catch(() => null);
+  if (!hadPreviousSession) {
+    return { snapshot: null, restoreMessage: null };
+  }
+
+  return {
+    snapshot: null,
+    restoreMessage: `Pronaden je trag ranije prijave, ali spremljena sesija se nije mogla ucitati.\n\n${failedReads}`,
+  };
 };
 
 const writeAuthSnapshot = async (payload: AuthSnapshot | null) => {
@@ -113,19 +182,33 @@ const writeAuthSnapshot = async (payload: AuthSnapshot | null) => {
       SecureStore.deleteItemAsync(AUTH_STORAGE_KEY, AUTH_SECURE_STORE_OPTIONS),
       SecureStore.deleteItemAsync(AUTH_STORAGE_KEY),
       AsyncStorage.removeItem(AUTH_STORAGE_KEY),
+      AsyncStorage.removeItem(AUTH_SESSION_MARKER_KEY),
     ]);
     return;
   }
 
   const serializedPayload = JSON.stringify(payload);
-  await SecureStore.setItemAsync(AUTH_STORAGE_KEY, serializedPayload, AUTH_SECURE_STORE_OPTIONS);
-  await Promise.allSettled([SecureStore.deleteItemAsync(AUTH_STORAGE_KEY), AsyncStorage.removeItem(AUTH_STORAGE_KEY)]);
+  const [primarySecureResult, legacySecureResult, asyncStorageResult] = await Promise.allSettled([
+    SecureStore.setItemAsync(AUTH_STORAGE_KEY, serializedPayload, AUTH_SECURE_STORE_OPTIONS),
+    SecureStore.setItemAsync(AUTH_STORAGE_KEY, serializedPayload),
+    AsyncStorage.setItem(AUTH_STORAGE_KEY, serializedPayload),
+    AsyncStorage.setItem(AUTH_SESSION_MARKER_KEY, '1'),
+  ]);
+
+  if (
+    primarySecureResult.status === 'rejected' &&
+    legacySecureResult.status === 'rejected' &&
+    asyncStorageResult.status === 'rejected'
+  ) {
+    throw asyncStorageResult.reason;
+  }
 };
 
 export const useAuthStore = create<AuthStore>()((set, get) => ({
   accessToken: null,
   user: null,
   hydrated: false,
+  authRestoreMessage: null,
   hydrateAuth: async () => {
     if (get().hydrated) {
       return;
@@ -133,12 +216,13 @@ export const useAuthStore = create<AuthStore>()((set, get) => ({
 
     if (!hydrationPromise) {
       hydrationPromise = (async () => {
-        const snapshot = await readAuthSnapshot();
+        const { snapshot, restoreMessage } = await readAuthSnapshot();
 
         set({
           accessToken: snapshot?.accessToken ?? null,
           user: snapshot?.user ?? null,
           hydrated: true,
+          authRestoreMessage: restoreMessage,
         });
       })().finally(() => {
         hydrationPromise = null;
@@ -153,6 +237,14 @@ export const useAuthStore = create<AuthStore>()((set, get) => ({
   },
   clearAuth: async () => {
     await writeAuthSnapshot(null);
-    set({ accessToken: null, user: null, hydrated: true });
+    set({ accessToken: null, user: null, hydrated: true, authRestoreMessage: null });
+  },
+  consumeAuthRestoreMessage: () => {
+    const message = get().authRestoreMessage;
+    if (message) {
+      set({ authRestoreMessage: null });
+    }
+
+    return message;
   },
 }));

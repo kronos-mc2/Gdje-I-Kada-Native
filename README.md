@@ -44,7 +44,7 @@ Postojece frontend tehnologije i patterni:
 - Data fetching/cache: TanStack React Query u `core/api/query-hooks.ts` i `core/query/query-client.ts`.
 - HTTP: Axios u `core/api/http-client.ts`, s Bearer token interceptorom iz `useAuthStore`.
 - Global state: Zustand u `core/store/app-store.ts` i `core/store/auth-store.ts`.
-- Auth token storage: `expo-secure-store` u `core/store/auth-store.ts`, sa stabilnim `keychainService`, iOS `AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY`, migracijom iz starog SecureStore keychaina i fallback migracijom iz AsyncStorage.
+- Auth token storage: `expo-secure-store` u `core/store/auth-store.ts`, sa stabilnim `keychainService`, iOS `AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY`, migracijom iz starog SecureStore keychaina i AsyncStorage mirror fallbackom za cold start pouzdanost na lokalnim, test i produkcijskim buildovima.
 - Android test/native build mora imati SecureStore backup exclusion pravila (`secure_store_backup_rules.xml` i `secure_store_data_extraction_rules.xml`) da se encrypted SecureStore prefs ne vrate bez Android Keystore kljuca nakon install/re-run ciklusa.
 - i18n: rucni HR/EN prijevodi u `core/i18n/translations.ts` i `useI18n`.
 - Theme: `AppThemeProvider`, `createAppTheme`, `palette`, `tokens`, `ThemeToggle`.
@@ -175,7 +175,8 @@ Trenutno:
 - Ako korisnik nije autentificiran, prikazuje se `(auth)`.
 - Ako je autentificiran, prikazuje se `(tabs)`, `create-event`, `entrance-map-picker` i `event/[id]`.
 - Auth hidratacija se radi kroz `useAuthStore.hydrateAuth()`.
-- Auth hidratacija prvo cita novi stabilni SecureStore zapis, zatim legacy SecureStore zapis i na kraju AsyncStorage migraciju. Validna legacy sesija se migrira u novi SecureStore zapis.
+- Auth hidratacija prvo cita novi stabilni SecureStore zapis, zatim legacy SecureStore zapis i na kraju AsyncStorage mirror. Validna legacy/fallback sesija se migrira natrag u primarni SecureStore zapis.
+- Ako app nakon ranije prijave zavrsi na loginu jer spremljena sesija nije ucitana, login ekran prikazuje modal s dijagnostikom storage izvora. Ako login API prodje, ali spremanje sesije padne, korisnik dobiva poseban modal za persistence problem.
 - `QueryClientProvider`, `SafeAreaProvider`, `AppThemeProvider` i `GestureHandlerRootView` su globalni wrapperi.
 
 Tab navigacija je u `Gdje-I-Kada-Native/app/(tabs)/_layout.tsx`.

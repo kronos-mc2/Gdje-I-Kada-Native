@@ -219,7 +219,9 @@ Definition of done:
 
 Dopuna:
 
-2026-04-19 - Rijesena auth persistence regresija prije nastavka Faze 4: `core/store/auth-store.ts` sada koristi stabilni SecureStore keychain service, iOS `AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY`, cita legacy SecureStore zapis i AsyncStorage migraciju te migrira validnu sesiju u novi zapis. Lokalni Android native projekt dobio je SecureStore backup exclusion pravila u manifestu i XML resursima, pa test APK ne backupira encrypted SecureStore prefs koje Android Keystore ne moze procitati nakon install/re-run ciklusa. Testirano: `npx tsc --noEmit`, `npm run lint`, `env JAVA_HOME=$(/usr/libexec/java_home) ./android/gradlew -p android :app:processQaReleaseMainManifest`, `env JAVA_HOME=$(/usr/libexec/java_home) npm run build:android:test`.
+2026-04-19 - Rijesena auth persistence regresija prije nastavka Faze 4: `core/store/auth-store.ts` sada koristi stabilni SecureStore keychain service, iOS `AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY`, cita legacy SecureStore zapis i AsyncStorage mirror te migrira validnu fallback sesiju natrag u primarni SecureStore zapis. Auth snapshot se zapisuje u SecureStore i AsyncStorage na svim buildovima da login prezivi cold start lokalno, na test buildu i produkciji. Lokalni Android native projekt dobio je SecureStore backup exclusion pravila u manifestu i XML resursima. Testirano prije zadnje univerzalne dorade: `npx tsc --noEmit`, `npm run lint`, `env JAVA_HOME=$(/usr/libexec/java_home) ./android/gradlew -p android :app:processQaReleaseMainManifest`, `env JAVA_HOME=$(/usr/libexec/java_home) npm run build:android:test`. Nakon zadnje dorade build/test nije pokretan po dogovoru.
+
+2026-04-20 - Dopuna dijagnostike: `auth-store.ts` sada pamti marker ranije uspjesne prijave i vraca poruku s razlogom ako se nijedan storage izvor ne moze ucitati nakon cold starta. Login ekran prikazuje taj modal jednom, a login flow odvojeno javlja kada API prijava prodje, ali spremanje sesije padne. Test/build nije pokretan po dogovoru.
 
 ## Faza 5 - Reels/FYP
 

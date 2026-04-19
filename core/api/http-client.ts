@@ -87,14 +87,6 @@ apiClient.interceptors.request.use((config) => {
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    const status = error?.response?.status;
-    const isAuthPath = typeof error?.config?.url === 'string' && error.config.url.includes('/auth/');
-
-    const shouldAutoLogout = Platform.OS === 'web';
-    if (status === 401 && !isAuthPath && shouldAutoLogout) {
-      void useAuthStore.getState().clearAuth();
-    }
-
     return Promise.reject(error);
   },
 );

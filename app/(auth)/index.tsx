@@ -20,6 +20,7 @@ export default function LoginScreen() {
   const router = useRouter();
   const { t } = useI18n();
   const setAuth = useAuthStore((state) => state.setAuth);
+  const consumeAuthRestoreMessage = useAuthStore((state) => state.consumeAuthRestoreMessage);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -35,6 +36,27 @@ export default function LoginScreen() {
     redirectUri,
     scopes: ['openid', 'profile', 'email'],
   });
+
+  useEffect(() => {
+    const restoreMessage = consumeAuthRestoreMessage();
+    if (restoreMessage) {
+      Alert.alert(t('authError'), restoreMessage);
+    }
+  }, [consumeAuthRestoreMessage, t]);
+
+  const persistSession = useCallback(
+    async (response: Awaited<ReturnType<typeof loginWithEmail>>) => {
+      try {
+        await setAuth(response);
+        return true;
+      } catch (error: unknown) {
+        const details = error instanceof Error && error.message ? `\n${error.message}` : '';
+        Alert.alert(t('authError'), `${t('sessionPersistFailed')}${details}`);
+        return false;
+      }
+    },
+    [setAuth, t],
+  );
 
   useEffect(() => {
     if (Platform.OS !== 'android') {
@@ -53,7 +75,10 @@ export default function LoginScreen() {
       setIsSubmitting(true);
       try {
         const response = await loginWithGoogle(idToken);
-        await setAuth(response);
+        const didPersistSession = await persistSession(response);
+        if (!didPersistSession) {
+          return;
+        }
         router.replace('/(tabs)');
       } catch {
         Alert.alert(t('authError'), t('googleLoginFailed'));
@@ -61,7 +86,7 @@ export default function LoginScreen() {
         setIsSubmitting(false);
       }
     },
-    [router, setAuth, t],
+    [persistSession, router, t],
   );
 
   const onAppleLogin = useCallback(
@@ -69,7 +94,10 @@ export default function LoginScreen() {
       setIsSubmitting(true);
       try {
         const response = await loginWithApple(idToken, name);
-        await setAuth(response);
+        const didPersistSession = await persistSession(response);
+        if (!didPersistSession) {
+          return;
+        }
         router.replace('/(tabs)');
       } catch {
         Alert.alert(t('authError'), t('appleLoginFailed'));
@@ -77,7 +105,7 @@ export default function LoginScreen() {
         setIsSubmitting(false);
       }
     },
-    [router, setAuth, t],
+    [persistSession, router, t],
   );
 
   useEffect(() => {
@@ -154,7 +182,10 @@ export default function LoginScreen() {
         password,
       });
 
-      await setAuth(response);
+      const didPersistSession = await persistSession(response);
+      if (!didPersistSession) {
+        return;
+      }
       router.replace('/(tabs)');
     } catch (error: unknown) {
       if (isApiNetworkError(error)) {
