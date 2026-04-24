@@ -15,6 +15,14 @@ export type Coordinates = {
   longitude: number;
 };
 
+export type EventMedia = {
+  id: string;
+  mediaType: 'image' | 'video';
+  url: string;
+  thumbnailUrl?: string;
+  sortOrder: number;
+};
+
 export type EventQueryParams = {
   from?: string;
   to?: string;
@@ -23,6 +31,8 @@ export type EventQueryParams = {
   radiusKm?: number;
   query?: string;
 };
+
+export type MyEventsFilter = 'all' | 'joined' | 'created';
 
 export type LocationConsent = 'unknown' | 'accepted' | 'rejected';
 export type LocationSource = 'default' | 'device' | 'capital' | 'ip';
@@ -53,6 +63,7 @@ export type AppEvent = {
   joinedByMe?: boolean;
   attendanceStatus?: EventAttendanceStatus;
   canJoin?: boolean;
+  media?: EventMedia[];
 };
 
 export type Friend = {

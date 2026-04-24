@@ -1,6 +1,6 @@
 # Gdje i Kada - projektna dokumentacija
 
-Status dokumenta: 2026-04-18  
+Status dokumenta: 2026-04-24  
 Projekt se ne radi ispocetka. Postojeci React Native/Expo frontend i Spring Boot backend ostaju baza, a nove funkcionalnosti se nadograduju na vec postojece klase, rute, storeove, hookove i dizajn sustav.
 
 Radimo mobilnu event aplikaciju "Gdje i Kada" za iOS i Android. Frontend je React Native kroz Expo Router, backend je Spring Boot s PostgreSQL bazom. Nemoj kretati ispocetka. Prvo procitaj postojeci kod i nadogradi ga prema lokalnim patternima.
@@ -86,9 +86,11 @@ Backend trenutno ima:
 - `POST /api/auth/apple`
 - `GET /api/auth/me`
 - `GET /api/events?from=&to=&lat=&lng=&radiusKm=&query=`
+- `GET /api/events/{id}`
 - `POST /api/events`
 - `POST /api/events/{id}/join`
 - `DELETE /api/events/{id}/join`
+- `GET /api/users/me/events?filter=all|joined|created`
 - `GET /api/feed`
 - `GET /api/social/friends`
 - `GET /api/messages/conversations`
@@ -231,13 +233,14 @@ Trenutno ponasanje:
 - Event pinovi su clickable.
 - Klik na pin otvara `EventDetailSheet`.
 - Sheet ima collapsed i expanded state.
+- Event detail sheet za odabrani marker dohvat detaila finalizira preko `GET /api/events/{id}` i koristi isti shared details content kao dedicated `app/event/[id].tsx`.
 - Event detalji u sheetu prikazuju cover sliku/media preview, naslov, mjesto, datum, broj sudionika, attendance mode, opis, join/leave CTA, entrance coordinates/instructions, cijenu/kapacitet i organizer rating.
 - Share koristi native `Share.share`.
 - Nakon uspjesnog joina sheet pita korisnika zeli li otvoriti `Poruke`; stvarni event chat room jos nije implementiran.
 - Na mapi postoji `+` floating gumb iznad recenter gumba koji vodi na `app/create-event.tsx`.
 - Android mapa ima MapLibre i clustering preko `supercluster`.
 - iOS mapa koristi MapKit.
-- iOS map surface (`components/map/event-map-surface.ios.tsx`) koristi native `react-native-maps` `Marker` s lokalnim `image` assetom `assets/images/map-marker.png`.
+- iOS i Android markeri sada koriste isti custom `MapMarkerBadge` izgled: kruzni badge, lagani border, shadow i donja tocka; iOS vise nema diamond/tail marker.
 - `scripts/patch-react-native-maps-airmap.js` se vrti kroz `postinstall` i dodaje guard u `react-native-maps` `AIRMap.m` za `nil` subview koji je rusio iOS nakon login-a u RN new architecture interopu.
 - iOS search bar i event detail sheet vec koriste Liquid Glass/Blur fallback.
 
@@ -245,7 +248,7 @@ Sto fali za finalni zahtjev:
 
 - Jasna lokalna pretraga adresa ili remote geocoding search za lokacije. Postoji `services/locationSearch`, ali trenutno map search koristi event search.
 - Prikaz posebnog entrance pina direktno na mapi, ne samo u detaljima.
-- Event-specific remote cover slike kao native iOS marker nisu podrzane kroz `Marker.image`, jer `react-native-maps` za `image` prima lokalni asset; za to bi trebalo custom marker view rjesenje nakon sto se potvrdi stabilan native setup.
+- Marker badge i dalje koriste helper cover URL, ne stvarni `event_media` render u markeru.
 - Pravi media upload/video playback umjesto cover preview helpera.
 - Stvarni event chat room iza prompta nakon joina.
 - Razlikovanje `public`, `friends`, `waitlist`, `open/free`, `paid` i drugih attendance pravila.
@@ -264,7 +267,7 @@ Trenutno ponasanje:
 - Vertikalni `FlatList` s `pagingEnabled`, `snapToInterval` i fullscreen slideovima.
 - Svaki event prikazuje cover image preko Picsum seed URL-a.
 - Akcije: like, favorite/bookmark, share.
-- Details button vodi na `app/event/[id].tsx`.
+- Details button vodi na `app/event/[id].tsx`, koji koristi isti shared details content i join CTA logiku kao mapa.
 - Like stanje je lokalno u Zustand storeu.
 - `favoriteEventIds` postoji, ali finalni zahtjev kaze da nema saveanja.
 
@@ -284,7 +287,7 @@ Sto fali:
 Postoji:
 
 - Screen: `app/(tabs)/calendar.tsx`.
-- Koristi `useEventsQuery()` i lokalni `joinedEventIds`.
+- Koristi `useMyEventsQuery(filter)` i `GET /api/users/me/events?filter=...`.
 - Ima filtere `all`, `joined`, `created`.
 - Prikazuje horizontalne day chipove i listu eventova za odabrani dan.
 
@@ -295,7 +298,7 @@ Sto treba promijeniti:
 - Svaki dan mjeseca treba prikazati event title ako dan ima joined event.
 - Treba navigacija mjesec naprijed/nazad.
 - Treba klik na event/dan otvoriti detalje.
-- Joined events moraju doci s backenda po korisniku, ne iz lokalnog Zustand storea.
+- Joined events sada dolaze s backenda po korisniku; i dalje fali mjesecni grid i pravi calendar UX.
 
 Preporuka za React Native:
 
@@ -385,7 +388,7 @@ Backend:
 
 Sto fali:
 
-- Refresh token model ili svjesna odluka da access token traje dugo.
+- Refresh token model i rotacija sesije; access token sada defaultno traje 7 dana i backend odbija konfiguraciju dulju od 30 dana.
 - Logout invalidacija tokena ako bude potrebna.
 - Profile update endpoint.
 - Avatar storage.
@@ -621,13 +624,14 @@ Kad se status faze promijeni, prvo azuriraj `FAZE.md`, a zatim ovaj sazetak ako 
 - Event create screen (`app/create-event.tsx`) salje address, start/end time, visibility, attendance mode, paid price/currency, capacity, entrance pin i entry instructions.
 - `app/entrance-map-picker.tsx` je povezan u create event flow i puni `entranceCoordinates`.
 - Ako korisnik ne odabere entrance pin, create flow koristi zadnju poznatu korisnicku lokaciju kao event coordinates.
-- `EventDetailScreen` (`app/event/[id].tsx`) zna prikazati `address`, `entryInstructions`, `visibility`, `attendanceMode`, paid price, capacity, `endAt`, organizer rating i `entranceCoordinates` ako postoje.
-- `EventDetailSheet` na mapi prikazuje entrance data, organizer rating, attendance/cijenu/kapacitet i join/leave button.
+- `EventDetailScreen` (`app/event/[id].tsx`) i `EventDetailSheet` na mapi dijele `EventDetailsContent` i `useEventJoinActions`, a detail screen koristi canonical `GET /api/events/{id}`.
+- `GET /api/users/me/events?filter=all|joined|created` je canonical izvor za korisnicke evente u kalendaru.
 - `favoriteEventIds` postoji u `app-store.ts`, ali finalni proizvod ne treba saveanje.
-- Joined state na map detail sheetu dolazi s backenda kroz `joinedByMe`/`attendanceStatus`; FYP/kalendar i dalje imaju lokalne `joined/liked/favorite` prototip stateove.
+- Lokalni `joinedEventIds` je maknut iz storea; join state se cita s backenda kroz `joinedByMe`/`attendanceStatus`, a FYP za details ide preko shared details screena.
 - Messages su samo conversation list, ne realni chat.
 - Friends su staticki/prototip podaci iz `friends` tablice.
-- Backend `/api/events` podrzava map filtere i per-user join state, ali `/api/feed` jos nema per-user like/join state ni friends access logiku.
+- Backend `/api/events`, `/api/events/{id}`, `/api/users/me/events` i `/api/feed` vracaju per-user join state; `likedByMe` i friends access logika ostaju za kasnije faze.
+- Security hardening u Fazi 4: private/friends event details i join vise nisu dostupni samo po pogodenom ID-u; trenutno su dostupni samo creatoru ili vec aktivnom sudioniku dok ne dodemo do pravog friends access layera.
 - Profil nema settings sub-route, edit profil, avatar, activity history ni transactions.
 
 ## Sto paziti kod dokazivanja koda
@@ -656,7 +660,7 @@ Eventi:
 - `POST /api/events/{id}/join`
 - `DELETE /api/events/{id}/join`
 - `POST /api/events/{id}/ratings`
-- `GET /api/users/me/events`
+- `GET /api/users/me/events?filter=all|joined|created`
 - `GET /api/users/me/liked-events`
 
 Feed:

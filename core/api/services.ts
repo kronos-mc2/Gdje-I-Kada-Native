@@ -1,8 +1,18 @@
 import { apiClient } from '@/core/api/http-client';
-import { AppEvent, Conversation, CreateEventPayload, EventQueryParams, Friend } from '@/core/types/domain';
+import { AppEvent, Conversation, CreateEventPayload, EventQueryParams, Friend, MyEventsFilter } from '@/core/types/domain';
 
 export const fetchEvents = async (params?: EventQueryParams): Promise<AppEvent[]> => {
   const response = await apiClient.get<AppEvent[]>('/events', { params });
+  return response.data;
+};
+
+export const fetchEventById = async (eventId: string): Promise<AppEvent> => {
+  const response = await apiClient.get<AppEvent>(`/events/${eventId}`);
+  return response.data;
+};
+
+export const fetchMyEvents = async (filter: MyEventsFilter = 'all'): Promise<AppEvent[]> => {
+  const response = await apiClient.get<AppEvent[]>('/users/me/events', { params: { filter } });
   return response.data;
 };
 

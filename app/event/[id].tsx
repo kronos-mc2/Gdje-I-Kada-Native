@@ -1,27 +1,23 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useMemo } from 'react';
-import { Linking, ScrollView, StyleSheet, View } from 'react-native';
+import * as Linking from 'expo-linking';
+import { Share, StyleSheet, View } from 'react-native';
 
+import { EventDetailsContent } from '@/features/events/components/event-details-content';
+import { useEventJoinActions } from '@/features/events/hooks/use-event-join-actions';
 import { AppButton, AppCard, AppHeader, AppScreen, AppText } from '@/components/primitives';
-import { useEventsQuery } from '@/core/api/query-hooks';
+import { useEventQuery } from '@/core/api/query-hooks';
 import { useI18n } from '@/core/i18n/use-i18n';
-import { useAppStore } from '@/core/store/app-store';
 import { formatEventDate } from '@/core/utils/date';
 
 export default function EventDetailsScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ id: string }>();
   const eventId = params.id;
-
   const { t, locale } = useI18n();
-  const { data: fetchedEvents = [] } = useEventsQuery();
+  const { data: event, isLoading } = useEventQuery(eventId);
+  const { isJoined, isJoinDisabled, onToggleJoin } = useEventJoinActions(event);
 
-  const joinedEventIds = useAppStore((state) => state.joinedEventIds);
-  const toggleJoined = useAppStore((state) => state.toggleJoined);
-
-  const event = useMemo(() => fetchedEvents.find((item) => item.id === eventId), [fetchedEvents, eventId]);
-
-  if (!event) {
+  if (!event && !isLoading) {
     return (
       <AppScreen>
         <AppHeader title={t('details')} subtitle={t('eventNotFound')} />
@@ -35,128 +31,69 @@ export default function EventDetailsScreen() {
     );
   }
 
-  const isJoined = joinedEventIds.includes(event.id);
-  const attendanceLabel =
-    event.attendanceMode === 'paid'
-      ? t('paidAttendance')
-      : event.attendanceMode === 'waitlist'
-        ? t('waitlistAttendance')
-        : t('openAttendance');
+  const openMap = async () => {
+    if (!event) {
+      return;
+    }
 
-  const openMap = () => {
     const coordinates = `${event.coordinates.latitude},${event.coordinates.longitude}`;
     const query = encodeURIComponent(`${event.where[locale]} ${coordinates}`);
     const url = `https://www.google.com/maps/search/?api=1&query=${query}`;
 
-    Linking.openURL(url);
+    if (await Linking.canOpenURL(url)) {
+      await Linking.openURL(url);
+    }
   };
 
   return (
-    <AppScreen>
-      <AppHeader title={t('details')} subtitle={event.where[locale]} />
+    <AppScreen scroll>
+      <AppHeader title={t('details')} subtitle={event ? event.where[locale] : t('details')} />
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 28 }}>
-        <AppText variant="headline" style={styles.title}>
-          {event.title[locale]}
-        </AppText>
-        <AppText variant="body" color="textSecondary">
-          {event.where[locale]}
-        </AppText>
-        <AppText variant="body" color="textSecondary" style={styles.address}>
-          {event.address ?? event.where[locale]}
-        </AppText>
-        <AppText variant="body" color="textMuted" style={styles.date}>
-          {formatEventDate(event.whenISO, locale)}
-        </AppText>
-
-        <AppCard variant="glass" style={styles.aboutCard}>
-          <AppText variant="body">{event.about[locale]}</AppText>
-          {event.entryInstructions ? (
-            <View style={styles.metaBlock}>
-              <AppText variant="caption" color="textMuted">
-                {t('entryInstructions')}
-              </AppText>
-              <AppText variant="body" style={styles.metaValue}>
-                {event.entryInstructions[locale]}
-              </AppText>
-            </View>
-          ) : null}
-          {event.visibility ? (
-            <View style={styles.metaBlock}>
-              <AppText variant="caption" color="textMuted">
-                {t('eventVisibility')}
-              </AppText>
-              <AppText variant="body" style={styles.metaValue}>
-                {event.visibility === 'friends' ? t('privateEvent') : t('publicEvent')}
-              </AppText>
-            </View>
-          ) : null}
-          {event.attendanceMode ? (
-            <View style={styles.metaBlock}>
-              <AppText variant="caption" color="textMuted">
-                {t('attendanceMode')}
-              </AppText>
-              <AppText variant="body" style={styles.metaValue}>
-                {attendanceLabel}
-              </AppText>
-            </View>
-          ) : null}
-          {event.endAt ? (
-            <View style={styles.metaBlock}>
-              <AppText variant="caption" color="textMuted">
-                {t('endDateLabel')}
-              </AppText>
-              <AppText variant="body" style={styles.metaValue}>
-                {formatEventDate(event.endAt, locale)}
-              </AppText>
-            </View>
-          ) : null}
-          {event.attendanceMode === 'paid' && typeof event.priceAmount === 'number' ? (
-            <View style={styles.metaBlock}>
-              <AppText variant="caption" color="textMuted">
-                {t('priceAmountLabel')}
-              </AppText>
-              <AppText variant="body" style={styles.metaValue}>
-                {event.priceAmount} {event.priceCurrency}
-              </AppText>
-            </View>
-          ) : null}
-          {event.capacity ? (
-            <View style={styles.metaBlock}>
-              <AppText variant="caption" color="textMuted">
-                {t('capacityLabel')}
-              </AppText>
-              <AppText variant="body" style={styles.metaValue}>
-                {event.capacity}
-              </AppText>
-            </View>
-          ) : null}
-          {event.entranceCoordinates ? (
-            <View style={styles.metaBlock}>
-              <AppText variant="caption" color="textMuted">
-                {t('entrancePin')}
-              </AppText>
-              <AppText variant="body" style={styles.metaValue}>
-                {event.entranceCoordinates.latitude.toFixed(5)}, {event.entranceCoordinates.longitude.toFixed(5)}
-              </AppText>
-            </View>
-          ) : null}
-          <AppText variant="caption" color="textSecondary" style={styles.participants}>
-            {event.participantCount} {t('participants')}
+      {event ? (
+        <>
+          <AppText variant="headline" style={styles.title}>
+            {event.title[locale]}
           </AppText>
-          {typeof event.organizerRatingAverage === 'number' ? (
-            <AppText variant="caption" color="textSecondary" style={styles.participants}>
-              {event.organizerRatingAverage.toFixed(1)} / 5 ({event.organizerRatingCount ?? 0})
-            </AppText>
-          ) : null}
-        </AppCard>
+          <AppText variant="body" color="textSecondary">
+            {event.where[locale]}
+          </AppText>
+          <AppText variant="body" color="textSecondary" style={styles.address}>
+            {event.address ?? event.where[locale]}
+          </AppText>
+          <AppText variant="body" color="textMuted" style={styles.date}>
+            {formatEventDate(event.whenISO, locale)}
+          </AppText>
 
-        <View style={styles.actions}>
-          <AppButton title={isJoined ? t('leaveEvent') : t('joinEvent')} variant="glass" onPress={() => toggleJoined(event.id)} />
-          <AppButton title={t('openInMaps')} variant="glass" onPress={openMap} />
-          <AppButton title={t('back')} variant="secondary" onPress={() => router.back()} />
-        </View>
-      </ScrollView>
+          <AppCard variant="glass" style={styles.detailsCard}>
+            <EventDetailsContent
+              event={event}
+              locale={locale}
+              isJoined={isJoined}
+              isJoinDisabled={isJoinDisabled}
+              onToggleJoin={onToggleJoin}
+            />
+          </AppCard>
+
+          <View style={styles.actions}>
+            <AppButton title={t('openInMaps')} variant="glass" onPress={() => void openMap()} />
+            <AppButton
+              title={t('shares')}
+              variant="glass"
+              onPress={() =>
+                void Share.share({
+                  title: event.title[locale],
+                  message: `${event.title[locale]}\n${event.where[locale]}\n${event.about[locale]}`,
+                })
+              }
+            />
+            <AppButton title={t('back')} variant="secondary" onPress={() => router.back()} />
+          </View>
+        </>
+      ) : (
+        <AppCard variant="glass">
+          <AppText color="textMuted">...</AppText>
+        </AppCard>
+      )}
     </AppScreen>
   );
 }
@@ -181,17 +118,8 @@ const styles = StyleSheet.create({
   address: {
     marginTop: 4,
   },
-  aboutCard: {
+  detailsCard: {
     marginBottom: 14,
-  },
-  participants: {
-    marginTop: 12,
-  },
-  metaBlock: {
-    marginTop: 12,
-  },
-  metaValue: {
-    marginTop: 2,
   },
   actions: {
     gap: 10,

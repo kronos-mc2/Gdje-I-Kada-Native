@@ -19,7 +19,6 @@ type AppStore = {
   eventFilter: EventFilter;
   eventsView: EventsView;
   searchQuery: string;
-  joinedEventIds: string[];
   likedEventIds: string[];
   favoriteEventIds: string[];
   userLocation: Coordinates;
@@ -31,7 +30,6 @@ type AppStore = {
   setEventFilter: (filter: EventFilter) => void;
   setEventsView: (view: EventsView) => void;
   setSearchQuery: (value: string) => void;
-  toggleJoined: (eventId: string) => void;
   toggleLiked: (eventId: string) => void;
   toggleFavorite: (eventId: string) => void;
   setFypEntranceCoordinates: (coordinates: Coordinates) => void;
@@ -49,7 +47,6 @@ export const useAppStore = create<AppStore>()(
       eventFilter: 'nearby',
       eventsView: 'list',
       searchQuery: '',
-      joinedEventIds: ['2'],
       likedEventIds: [],
       favoriteEventIds: [],
       userLocation: USER_LOCATION,
@@ -61,15 +58,6 @@ export const useAppStore = create<AppStore>()(
       setEventFilter: (eventFilter) => set({ eventFilter }),
       setEventsView: (eventsView) => set({ eventsView }),
       setSearchQuery: (searchQuery) => set({ searchQuery }),
-      toggleJoined: (eventId) => {
-        const isAlreadyJoined = get().joinedEventIds.includes(eventId);
-
-        set((state) => ({
-          joinedEventIds: isAlreadyJoined
-            ? state.joinedEventIds.filter((id) => id !== eventId)
-            : [eventId, ...state.joinedEventIds],
-        }));
-      },
       toggleLiked: (eventId) => {
         const isLiked = get().likedEventIds.includes(eventId);
 
@@ -106,7 +94,6 @@ export const useAppStore = create<AppStore>()(
       partialize: (state) => ({
         locale: state.locale,
         themePreference: state.themePreference,
-        joinedEventIds: state.joinedEventIds,
         likedEventIds: state.likedEventIds,
         favoriteEventIds: state.favoriteEventIds,
         locationConsent: state.locationConsent,

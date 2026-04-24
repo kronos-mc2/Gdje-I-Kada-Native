@@ -1,12 +1,12 @@
+import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { AppCard, AppScreen, AppText } from '@/components/primitives';
-import { useEventsQuery } from '@/core/api/query-hooks';
+import { useMyEventsQuery } from '@/core/api/query-hooks';
 import { useI18n } from '@/core/i18n/use-i18n';
-import { useAppStore } from '@/core/store/app-store';
 import { useAppTheme } from '@/core/theme';
-import { AppEvent } from '@/core/types/domain';
+import { AppEvent, MyEventsFilter } from '@/core/types/domain';
 import { formatEventDate } from '@/core/utils/date';
 
 type CalendarFilter = 'all' | 'joined' | 'created';
@@ -22,31 +22,19 @@ const dateKey = (input: string) => {
 const todayKey = () => dateKey(new Date().toISOString());
 
 export default function CalendarScreen() {
+  const router = useRouter();
   const { t, locale } = useI18n();
   const { theme } = useAppTheme();
-  const { data: fetchedEvents = [] } = useEventsQuery();
-
-  const joinedEventIds = useAppStore((state) => state.joinedEventIds);
 
   const [activeFilter, setActiveFilter] = useState<CalendarFilter>('all');
   const [selectedDay, setSelectedDay] = useState<string>(todayKey());
+  const { data: fetchedEvents = [] } = useMyEventsQuery(activeFilter as MyEventsFilter);
 
   const allEvents = useMemo(
     () => [...fetchedEvents].sort((a, b) => new Date(a.whenISO).getTime() - new Date(b.whenISO).getTime()),
     [fetchedEvents],
   );
-
-  const filteredEvents = useMemo(() => {
-    if (activeFilter === 'created') {
-      return allEvents.filter((event) => event.type === 'created');
-    }
-
-    if (activeFilter === 'joined') {
-      return allEvents.filter((event) => joinedEventIds.includes(event.id));
-    }
-
-    return allEvents;
-  }, [activeFilter, allEvents, joinedEventIds]);
+  const filteredEvents = allEvents;
 
   const availableDays = useMemo(() => {
     const days = new Set<string>([todayKey()]);
@@ -85,7 +73,14 @@ export default function CalendarScreen() {
       );
     }
 
-    return eventsForSelectedDay.map((event) => <DayEventCard key={event.id} event={event} locale={locale} />);
+    return eventsForSelectedDay.map((event) => (
+      <DayEventCard
+        key={event.id}
+        event={event}
+        locale={locale}
+        onPress={() => router.push({ pathname: '/event/[id]', params: { id: event.id } })}
+      />
+    ));
   };
 
   return (
@@ -157,26 +152,29 @@ function SegmentButton({ label, active, onPress }: SegmentButtonProps) {
 type DayEventCardProps = {
   event: AppEvent;
   locale: 'hr' | 'en';
+  onPress: () => void;
 };
 
-function DayEventCard({ event, locale }: DayEventCardProps) {
+function DayEventCard({ event, locale, onPress }: DayEventCardProps) {
   const { t } = useI18n();
 
   return (
-    <AppCard variant="glass" style={styles.eventCard}>
-      <AppText variant="bodyStrong">{event.title[locale]}</AppText>
-      <AppText variant="caption" color="textSecondary" style={styles.eventMeta}>
-        {event.where[locale]}
-      </AppText>
-      <AppText variant="caption" color="textMuted" style={styles.eventMeta}>
-        {formatEventDate(event.whenISO, locale)}
-      </AppText>
-      <View style={styles.badgesRow}>
-        <AppText variant="caption" color="textSecondary">
-          {event.type === 'created' ? t('created') : t('joined')}
+    <Pressable onPress={onPress}>
+      <AppCard variant="glass" style={styles.eventCard}>
+        <AppText variant="bodyStrong">{event.title[locale]}</AppText>
+        <AppText variant="caption" color="textSecondary" style={styles.eventMeta}>
+          {event.where[locale]}
         </AppText>
-      </View>
-    </AppCard>
+        <AppText variant="caption" color="textMuted" style={styles.eventMeta}>
+          {formatEventDate(event.whenISO, locale)}
+        </AppText>
+        <View style={styles.badgesRow}>
+          <AppText variant="caption" color="textSecondary">
+            {event.type === 'created' ? t('created') : t('joined')}
+          </AppText>
+        </View>
+      </AppCard>
+    </Pressable>
   );
 }
 

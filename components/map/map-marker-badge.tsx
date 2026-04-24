@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useEffect, useState } from 'react';
-import { Image, Platform, StyleSheet, View } from 'react-native';
+import { Image, StyleSheet, View } from 'react-native';
 
 import { useAppTheme } from '@/core/theme';
 
@@ -14,7 +14,6 @@ type MapMarkerBadgeProps = {
 export function MapMarkerBadge({ selected = false, kind = 'event', coverImageUri, onImageLoad }: MapMarkerBadgeProps) {
   const { theme } = useAppTheme();
   const size = kind === 'search' ? 20 : 44;
-  const isAndroid = Platform.OS === 'android';
   const [imageFailed, setImageFailed] = useState(false);
 
   useEffect(() => {
@@ -37,127 +36,71 @@ export function MapMarkerBadge({ selected = false, kind = 'event', coverImageUri
     );
   }
 
-  if (isAndroid) {
-    return (
-      <View style={styles.androidMarkerWrap} collapsable={false}>
-        <View
-          style={[
-            styles.androidBadge,
-            {
-              width: size,
-              height: size,
-              borderColor: selected ? theme.colors.mapAccent : 'rgba(255,255,255,0.92)',
-              shadowColor: '#000000',
-            },
-          ]}
-        >
-          {coverImageUri && !imageFailed ? (
-            <Image
-              source={{ uri: coverImageUri }}
-              style={styles.image}
-              onLoad={() => onImageLoad?.()}
-              onError={() => {
-                setImageFailed(true);
-                onImageLoad?.();
-              }}
-            />
-          ) : (
-            <View style={[styles.fallback, { backgroundColor: theme.colors.surfaceElevated }]}>
-              <Ionicons name="calendar" size={16} color={theme.colors.textSecondary} />
-            </View>
-          )}
-        </View>
-        <View style={[styles.androidDot, { backgroundColor: selected ? theme.colors.mapAccent : '#FFFFFF' }]} />
-      </View>
-    );
-  }
-
   return (
     <View style={styles.markerWrap} collapsable={false}>
-      <View style={styles.pinRoot}>
-        <View
-          style={[
-            styles.badge,
-            {
-              width: size,
-              height: size,
-              borderColor: selected ? theme.colors.mapAccent : 'rgba(255,255,255,0.9)',
-              shadowColor: '#000000',
-            },
-          ]}
-        >
-          {coverImageUri && !imageFailed ? (
-            <Image
-              source={{ uri: coverImageUri }}
-              style={styles.image}
-              onLoad={() => onImageLoad?.()}
-              onError={() => {
-                setImageFailed(true);
-                onImageLoad?.();
-              }}
-            />
-          ) : (
-            <View style={[styles.fallback, { backgroundColor: theme.colors.surfaceElevated }]}>
-              <Ionicons name="calendar" size={selected ? 18 : 14} color={theme.colors.textSecondary} />
-            </View>
-          )}
-        </View>
-
-        <View
-          style={[
-            styles.pinTail,
-            {
-              backgroundColor: theme.colors.surfaceElevated,
-            },
-          ]}
-        />
+      <View
+        style={[
+          styles.badge,
+          {
+            width: size,
+            height: size,
+            borderColor: selected ? theme.colors.mapAccent : 'rgba(255,255,255,0.92)',
+            shadowColor: '#000000',
+          },
+        ]}
+      >
+        {coverImageUri && !imageFailed ? (
+          <Image
+            source={{ uri: coverImageUri }}
+            style={styles.image}
+            onLoad={() => onImageLoad?.()}
+            onError={() => {
+              setImageFailed(true);
+              onImageLoad?.();
+            }}
+          />
+        ) : (
+          <View style={[styles.fallback, { backgroundColor: theme.colors.surfaceElevated }]}>
+            <Ionicons name="calendar" size={16} color={theme.colors.textSecondary} />
+          </View>
+        )}
       </View>
+      <View
+        style={[
+          styles.dot,
+          {
+            backgroundColor: selected ? theme.colors.mapAccent : '#FFFFFF',
+            borderColor: 'rgba(15, 18, 28, 0.08)',
+          },
+        ]}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  androidMarkerWrap: {
+  markerWrap: {
     alignItems: 'center',
     justifyContent: 'flex-start',
     width: 52,
     height: 54,
     overflow: 'visible',
   },
-  androidBadge: {
-    borderRadius: 999,
-    borderWidth: 3,
-    overflow: 'hidden',
-    shadowOpacity: 0.32,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 8,
-  },
-  androidDot: {
-    width: 8,
-    height: 8,
-    marginTop: 1,
-    borderRadius: 999,
-  },
-  markerWrap: {
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    width: 52,
-    height: 58,
-    overflow: 'visible',
-  },
-  pinRoot: {
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-  },
   badge: {
     borderRadius: 999,
     borderWidth: 3,
     overflow: 'hidden',
-    shadowOpacity: 0.24,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.28,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 5 },
     elevation: 8,
+  },
+  dot: {
+    width: 10,
+    height: 10,
+    marginTop: 2,
+    borderRadius: 999,
+    borderWidth: 1,
   },
   image: {
     width: '100%',
@@ -167,13 +110,6 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  pinTail: {
-    width: 12,
-    height: 12,
-    marginTop: -1,
-    transform: [{ rotate: '45deg' }],
-    borderRadius: 1,
   },
   searchBadge: {
     borderRadius: 999,

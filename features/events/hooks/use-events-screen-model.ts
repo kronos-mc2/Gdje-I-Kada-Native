@@ -13,12 +13,11 @@ export function useEventsScreenModel() {
   const { locale } = useI18n();
   const { data: fetchedEvents = [], refetch, isRefetching, isLoading } = useEventsQuery();
 
-  const { eventFilter, eventsView, searchQuery, joinedEventIds, userLocation } = useAppStore(
+  const { eventFilter, eventsView, searchQuery, userLocation } = useAppStore(
     useShallow((state) => ({
       eventFilter: state.eventFilter,
       eventsView: state.eventsView,
       searchQuery: state.searchQuery,
-      joinedEventIds: state.joinedEventIds,
       userLocation: state.userLocation,
     })),
   );
@@ -34,9 +33,8 @@ export function useEventsScreenModel() {
         filter: eventFilter,
         searchQuery,
         locale,
-        joinedEventIds,
       }),
-    [fetchedEvents, eventFilter, searchQuery, locale, joinedEventIds],
+    [fetchedEvents, eventFilter, searchQuery, locale],
   );
 
   const eventsForRender = useMemo(() => {

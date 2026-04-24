@@ -1,6 +1,6 @@
 # Gdje i Kada - fazni plan rada
 
-Status dokumenta: 2026-04-18  
+Status dokumenta: 2026-04-24  
 Lokacija master dokumentacije: `README.md`
 
 ## Pravilo rada po fazama
@@ -24,7 +24,7 @@ Dokumentacija je dio zadatka, ne naknadni posao. Ako kod i dokumentacija nisu us
 | 1 | Glavni tabovi i navigacija | Rijeseno | App ima tocnih 5 tabova: Mapa, FYP, Kalendar, Poruke, Profil. |
 | 2 | Event domain i baza | Rijeseno | Event model pokriva creator, lokaciju, ulaz, visibility, join pravila i media. |
 | 3 | Mapa MVP+ | Rijeseno | Mapa ima search, date filter, nearby logiku, detalje i join flow. |
-| 4 | Join state i event details | U tijeku | Join/leave i detalji su server-side i dijele se izmedu mape, FYP-a i kalendara. |
+| 4 | Join state i event details | Rijeseno | Join/leave i detalji su server-side i dijele se izmedu mape, FYP-a i kalendara. |
 | 5 | Reels/FYP | Nije poceto | FYP radi kao reels feed s media preloadom, likeovima i shareom. |
 | 6 | Kalendar | Nije poceto | Kalendar prikazuje joined evente u mjesecnom gridu. |
 | 7 | Poruke i event chat | Nije poceto | Poruke imaju chat roomove, event grupe, event share card i pollove. |
@@ -190,7 +190,7 @@ Zavrsna biljeska:
 
 ## Faza 4 - Join state i shared event details
 
-Status: U tijeku
+Status: Rijeseno
 
 Cilj:
 
@@ -198,24 +198,28 @@ Event details i join state trebaju biti isti kroz mapu, FYP, kalendar i direct d
 
 Zadaci backend:
 
-- [ ] `GET /api/events/{id}`.
+- [x] `GET /api/events/{id}`.
 - [x] `POST /api/events/{id}/join`.
 - [x] `DELETE /api/events/{id}/join`.
-- [ ] `GET /api/users/me/events`.
+- [x] `GET /api/users/me/events`.
 - [x] Vracati `joinedByMe`, `attendanceStatus` i `canJoin` kroz `/api/events`.
-- [ ] Vracati `likedByMe` kad se doda server-side like model.
+- `likedByMe` ostaje za Fazu 5 kad se uvede server-side like model.
 
 Zadaci frontend:
 
-- [ ] Napraviti shared event details komponentu koja se koristi na mapi, FYP-u i `event/[id]`.
-- [ ] Zamijeniti lokalni `joinedEventIds` server stateom gdje god je bitno.
-- [ ] Ostaviti lokalni optimistic update samo ako se odmah sinkronizira s backendom.
-- [ ] Nakon join responsea otvoriti prompt za event chat ako postoji.
+- [x] Napraviti shared event details komponentu koja se koristi na mapi, FYP-u i `event/[id]`.
+- [x] Zamijeniti lokalni `joinedEventIds` server stateom gdje god je bitno.
+- [x] Ostaviti lokalni optimistic update samo ako se odmah sinkronizira s backendom.
+- [x] Nakon join responsea otvoriti prompt za event chat ako postoji.
 
 Definition of done:
 
 - Join/leave je per-user i prezivi restart aplikacije.
 - Svi ekrani prikazuju isti status eventa.
+
+Zavrsna biljeska:
+
+2026-04-24 - Napravljeno: dodani su canonical endpointi `GET /api/events/{id}` i `GET /api/users/me/events?filter=all|joined|created`, mapa i `app/event/[id].tsx` sada dijele `EventDetailsContent` i `useEventJoinActions`, kalendar vise ne koristi lokalni `joinedEventIds`, a iOS marker je uskladen s Android custom badge izgledom. `GET /api/events/{id}` vraca entrance podatke, per-user join state i `event_media` listu kad postoji. Security hardening: detail/join vise ne otkrivaju ili dopustaju pristup private/friends eventu samo preko pogodjenog ID-a; pristup je sada ogranicen na creatora ili postojece aktivne sudionike dok se ne uvede pravi friends access layer. `JwtService` defaultni access token skracen je na 7 dana uz hard cap od 30 dana. Datoteke: backend `EventController`, `EventService`, `EventMapper`, `EventMapper.xml`, `AppEventDto`, novi `EventMediaDto`/`EventMediaRow`, frontend `core/api/*`, `app/event/[id].tsx`, `app/(tabs)/calendar.tsx`, `components/map/event-detail-sheet.tsx`, `features/events/components/event-details-content.tsx`, `features/events/hooks/use-event-join-actions.ts`, `components/map/map-marker-badge.tsx`, `README.md`, `FAZE.md`, `KANBAN-INDEX.md`. Testirano: backend `export JAVA_HOME=$(/usr/libexec/java_home) && ./mvnw test`, frontend `npx tsc --noEmit`, frontend `npm run lint`. Faza 4 je zatvorena i ne radi se ponovno bez nove dopune ili regresije.
 
 Dopuna:
 
@@ -263,12 +267,12 @@ Kalendar prikazuje samo evente na koje se korisnik pridruzio, u mjesecnom gridu.
 Postojece stanje:
 
 - `calendar.tsx` ima day chipove i filtere.
-- Koristi sve evente i lokalni `joinedEventIds`.
+- Vec koristi backend `GET /api/users/me/events?filter=...`, ali jos nema mjesecni grid.
 
 Zadaci:
 
 - [ ] Maknuti `all` i `created` filtere iz glavnog kalendara ako ne trebaju finalnom zahtjevu.
-- [ ] Koristiti backend `GET /api/users/me/events`.
+- [x] Koristiti backend `GET /api/users/me/events`.
 - [ ] Napraviti monthly calendar grid.
 - [ ] Default je aktualni mjesec.
 - [ ] Dodati next/previous month.

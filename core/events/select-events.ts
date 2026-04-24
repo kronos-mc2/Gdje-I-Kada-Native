@@ -5,15 +5,14 @@ type SelectionInput = {
   filter: EventFilter;
   searchQuery: string;
   locale: Locale;
-  joinedEventIds: string[];
 };
 
-export const selectEvents = ({ allEvents, filter, searchQuery, locale, joinedEventIds }: SelectionInput) => {
+export const selectEvents = ({ allEvents, filter, searchQuery, locale }: SelectionInput) => {
   const loweredQuery = searchQuery.trim().toLowerCase();
 
   const filteredByType = allEvents.filter((event) => {
     if (filter === 'joined') {
-      return joinedEventIds.includes(event.id);
+      return event.joinedByMe === true;
     }
 
     return event.type === filter;
