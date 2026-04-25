@@ -1,6 +1,6 @@
 # Gdje i Kada - fazni plan rada
 
-Status dokumenta: 2026-04-24  
+Status dokumenta: 2026-04-25  
 Lokacija master dokumentacije: `README.md`
 
 ## Pravilo rada po fazama
@@ -25,7 +25,7 @@ Dokumentacija je dio zadatka, ne naknadni posao. Ako kod i dokumentacija nisu us
 | 2 | Event domain i baza | Rijeseno | Event model pokriva creator, lokaciju, ulaz, visibility, join pravila i media. |
 | 3 | Mapa MVP+ | Rijeseno | Mapa ima search, date filter, nearby logiku, detalje i join flow. |
 | 4 | Join state i event details | Rijeseno | Join/leave i detalji su server-side i dijele se izmedu mape, FYP-a i kalendara. |
-| 5 | Reels/FYP | Nije poceto | FYP radi kao reels feed s media preloadom, likeovima i shareom. |
+| 5 | Reels/FYP | Rijeseno | FYP radi kao reels feed s media preloadom, likeovima i shareom. |
 | 6 | Kalendar | Nije poceto | Kalendar prikazuje joined evente u mjesecnom gridu. |
 | 7 | Poruke i event chat | Nije poceto | Poruke imaju chat roomove, event grupe, event share card i pollove. |
 | 8 | Profil i postavke | Nije poceto | Profil ima edit, history, liked history, transactions i settings screen. |
@@ -227,9 +227,13 @@ Dopuna:
 
 2026-04-20 - Dopuna dijagnostike: `auth-store.ts` sada pamti marker ranije uspjesne prijave i vraca poruku s razlogom ako se nijedan storage izvor ne moze ucitati nakon cold starta. Login ekran prikazuje taj modal jednom, a login flow odvojeno javlja kada API prijava prodje, ali spremanje sesije padne. Test/build nije pokretan po dogovoru.
 
+2026-04-25 - Dopuna native stabilnosti: lokalni iOS crash report za `GdjeIKadaNative` pokazuje abort u `AIRMap.m` (`insertReactSubview:atIndex:`) pri launchu mape pod React Native New Architecture. `react-native-maps` postinstall patch je prosiren tako da uz `nil` child guard normalizira i `atIndex` prije rekurzivnih child insertova i `_reactSubviews` insert-a. Android `MainActivity` deep-link filter je ociscen od literalnog `${appAuthRedirectScheme}` placeholdera koji je zbunjivao Expo CLI pri `run:android`, a login screen sada koristi varijantno-ispravan redirect scheme (`gdjeikadanative` / `gdjeikadanative-test`). Android ostaje na `newArchEnabled=true` jer `react-native-reanimated` i `react-native-worklets` to zahtijevaju; iOS native projekt je privremeno zadrzan na `old architecture` kroz `ios/Podfile.properties.json` dok se patch ne potvrdi na uredaju/simulatoru. Testirano: `npm run lint`, `npx expo config --type introspect`, `env JAVA_HOME=/Users/dgulic/.jdks/amazon-corretto-21.jdk/Contents/Home ./gradlew app:assembleProdDebug -x lint -x test --configure-on-demand --build-cache -PreactNativeDevServerPort=8081 -PreactNativeArchitectures=arm64-v8a`.
+
+2026-04-25 - Dopuna iOS env switchinga: dodan je `scripts/run-ios.js` koji prije `expo run:ios` automatski prepisuje `ios/.xcode.env.local` prema aktivnom variantu. `npm run ios` / `npm run ios:dev` sada uvijek pripreme lokalni `prod` env (`localhost` backend), a `npm run ios:test` / `npm run ios:test:release` test env. Time vise ne ostaje slucajno zalijepljen `APP_VARIANT=test` nakon zadnjeg test builda. Datoteke: `scripts/run-ios.js`, `package.json`, `README.md`, `TEST_BUILD.md`, `FAZE.md`. Testirano: `node ./scripts/run-ios.js --help` nije primjenjivo; validacija kroz citanje generiranog `ios/.xcode.env.local` i `npm run lint`.
+
 ## Faza 5 - Reels/FYP
 
-Status: Nije poceto
+Status: Rijeseno
 
 Cilj:
 
@@ -243,18 +247,26 @@ Postojece stanje:
 
 Zadaci:
 
-- [ ] Ukloniti bookmark/favorite UI jer finalni zahtjev nema saveanje.
-- [ ] Dodati backend like/unlike.
-- [ ] Dodati feed pagination (`cursor`, `limit`).
-- [ ] Dodati media model za video/image.
-- [ ] Implementirati video player i preload nekoliko itema unaprijed.
-- [ ] Otvarati isti event details kao mapa.
-- [ ] Share ponuditi prema chatovima i native share kao fallback.
-- [ ] Liked history povezati s profilom.
+- [x] Ukloniti bookmark/favorite UI jer finalni zahtjev nema saveanje.
+- [x] Dodati backend like/unlike.
+- [x] Dodati feed pagination (`cursor`, `limit`).
+- [x] Dodati media model za video/image.
+- [x] Implementirati video player i preload nekoliko itema unaprijed.
+- [x] Otvarati isti event details kao mapa.
+- [x] Share ponuditi prema chatovima i native share kao fallback.
+- [x] Liked history povezati s profilom.
 
 Definition of done:
 
 - Feed je paginiran, like je server-side, details su konzistentni, nema save/bookmark akcije.
+
+Zavrsna biljeska:
+
+2026-04-25 - Napravljeno: `FYP` je prebacen na paginirani reels feed preko `GET /api/feed?cursor=&limit=` i `useInfiniteQuery`, uklonjen je bookmark/save UI, like/unlike je server-side preko `POST/DELETE /api/events/{id}/like`, a `AppEvent` sada nosi `likeCount`, `likedByMe` i `media`. Frontend koristi `expo-video` za autoplay/preload video itema, FYP otvara isti `EventDetailSheet` kao mapa, share ide kroz picker koji nudi postojece razgovore i native share fallback, a profil prikazuje `liked events` history preko `GET /api/users/me/liked-events`. Backend feed je prosiren cursor paginacijom, batch media lookupom i like agregatima; dodan je i prijelazni `POST /api/messages/conversations/{id}/share-event` koji azurira conversation preview bez ulaska u puni chat domain iz Faze 7. Datoteke: frontend `app/(tabs)/fyp.tsx`, `app/(tabs)/profile.tsx`, `app/event/[id].tsx`, `components/map/event-detail-sheet.tsx`, `features/events/components/*`, `core/api/*`, `core/events/event-cover.ts`, `core/types/domain.ts`, `core/i18n/translations.ts`, `app.config.ts`, backend `EventController`, `EventService`, `EventMapper`, `EventMapper.xml`, `EventRow`, `AppEventDto`, `FeedPageDto`, `MessageController`, `MessageService`, `MessageMapper`, `DevEventSeedConfig`, `README.md`, `FAZE.md`, `backend/README.md`. Testirano: nije pokretano po dogovoru.
+
+Dopuna:
+
+2026-04-25 - Sanirana regresija za razvojne buildove bez `ExpoVideo` native modula: `features/events/components/fyp-reel-slide.tsx` vise ne radi staticki import `expo-video`, nego koristi sigurni runtime fallback na poster image kad native modul nije dostupan. Time `app/(tabs)/fyp.tsx` ponovno uredno registrira route i nestaju sekundarni router warningi o nedostajucem `fyp` tabu i `default exportu`. Dokumentacija azurirana u `README.md` i `FAZE.md`. Testirano: `npm run lint`.
 
 ## Faza 6 - Kalendar
 

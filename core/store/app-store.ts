@@ -1,9 +1,9 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
 import { USER_LOCATION } from '@/core/data/mock-data';
 import { ThemePreference } from '@/core/theme/types';
+import { getAsyncStorage } from '@/core/utils/async-storage';
 import {
   Coordinates,
   EventFilter,
@@ -19,8 +19,6 @@ type AppStore = {
   eventFilter: EventFilter;
   eventsView: EventsView;
   searchQuery: string;
-  likedEventIds: string[];
-  favoriteEventIds: string[];
   userLocation: Coordinates;
   locationConsent: LocationConsent;
   locationSource: LocationSource;
@@ -30,8 +28,6 @@ type AppStore = {
   setEventFilter: (filter: EventFilter) => void;
   setEventsView: (view: EventsView) => void;
   setSearchQuery: (value: string) => void;
-  toggleLiked: (eventId: string) => void;
-  toggleFavorite: (eventId: string) => void;
   setFypEntranceCoordinates: (coordinates: Coordinates) => void;
   clearFypEntranceCoordinates: () => void;
   setUserLocation: (coordinates: Coordinates) => void;
@@ -41,14 +37,12 @@ type AppStore = {
 
 export const useAppStore = create<AppStore>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       locale: 'hr',
       themePreference: 'dark',
       eventFilter: 'nearby',
       eventsView: 'list',
       searchQuery: '',
-      likedEventIds: [],
-      favoriteEventIds: [],
       userLocation: USER_LOCATION,
       locationConsent: 'unknown',
       locationSource: 'default',
@@ -58,20 +52,6 @@ export const useAppStore = create<AppStore>()(
       setEventFilter: (eventFilter) => set({ eventFilter }),
       setEventsView: (eventsView) => set({ eventsView }),
       setSearchQuery: (searchQuery) => set({ searchQuery }),
-      toggleLiked: (eventId) => {
-        const isLiked = get().likedEventIds.includes(eventId);
-
-        set((state) => ({
-          likedEventIds: isLiked ? state.likedEventIds.filter((id) => id !== eventId) : [eventId, ...state.likedEventIds],
-        }));
-      },
-      toggleFavorite: (eventId) => {
-        const isFavorite = get().favoriteEventIds.includes(eventId);
-
-        set((state) => ({
-          favoriteEventIds: isFavorite ? state.favoriteEventIds.filter((id) => id !== eventId) : [eventId, ...state.favoriteEventIds],
-        }));
-      },
       setFypEntranceCoordinates: (coordinates) => {
         set({ fypEntranceCoordinates: coordinates });
       },
@@ -90,12 +70,10 @@ export const useAppStore = create<AppStore>()(
     }),
     {
       name: 'gdje-i-kada-app-store',
-      storage: createJSONStorage(() => AsyncStorage),
+      storage: createJSONStorage(() => getAsyncStorage()),
       partialize: (state) => ({
         locale: state.locale,
         themePreference: state.themePreference,
-        likedEventIds: state.likedEventIds,
-        favoriteEventIds: state.favoriteEventIds,
         locationConsent: state.locationConsent,
         locationSource: state.locationSource,
       }),

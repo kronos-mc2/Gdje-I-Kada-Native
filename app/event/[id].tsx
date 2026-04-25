@@ -1,13 +1,15 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Linking from 'expo-linking';
-import { Share, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { EventDetailsContent } from '@/features/events/components/event-details-content';
+import { EventShareModal } from '@/features/events/components/event-share-modal';
 import { useEventJoinActions } from '@/features/events/hooks/use-event-join-actions';
 import { AppButton, AppCard, AppHeader, AppScreen, AppText } from '@/components/primitives';
 import { useEventQuery } from '@/core/api/query-hooks';
 import { useI18n } from '@/core/i18n/use-i18n';
 import { formatEventDate } from '@/core/utils/date';
+import { useState } from 'react';
 
 export default function EventDetailsScreen() {
   const router = useRouter();
@@ -16,6 +18,7 @@ export default function EventDetailsScreen() {
   const { t, locale } = useI18n();
   const { data: event, isLoading } = useEventQuery(eventId);
   const { isJoined, isJoinDisabled, onToggleJoin } = useEventJoinActions(event);
+  const [isShareOpen, setIsShareOpen] = useState(false);
 
   if (!event && !isLoading) {
     return (
@@ -76,18 +79,11 @@ export default function EventDetailsScreen() {
 
           <View style={styles.actions}>
             <AppButton title={t('openInMaps')} variant="glass" onPress={() => void openMap()} />
-            <AppButton
-              title={t('shares')}
-              variant="glass"
-              onPress={() =>
-                void Share.share({
-                  title: event.title[locale],
-                  message: `${event.title[locale]}\n${event.where[locale]}\n${event.about[locale]}`,
-                })
-              }
-            />
+            <AppButton title={t('shares')} variant="glass" onPress={() => setIsShareOpen(true)} />
             <AppButton title={t('back')} variant="secondary" onPress={() => router.back()} />
           </View>
+
+          <EventShareModal event={event} visible={isShareOpen} locale={locale} onClose={() => setIsShareOpen(false)} />
         </>
       ) : (
         <AppCard variant="glass">

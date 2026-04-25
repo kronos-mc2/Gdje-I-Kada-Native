@@ -1,5 +1,14 @@
 import { apiClient } from '@/core/api/http-client';
-import { AppEvent, Conversation, CreateEventPayload, EventQueryParams, Friend, MyEventsFilter } from '@/core/types/domain';
+import {
+  AppEvent,
+  Conversation,
+  CreateEventPayload,
+  EventQueryParams,
+  FeedPage,
+  FeedQueryParams,
+  Friend,
+  MyEventsFilter,
+} from '@/core/types/domain';
 
 export const fetchEvents = async (params?: EventQueryParams): Promise<AppEvent[]> => {
   const response = await apiClient.get<AppEvent[]>('/events', { params });
@@ -16,8 +25,13 @@ export const fetchMyEvents = async (filter: MyEventsFilter = 'all'): Promise<App
   return response.data;
 };
 
-export const fetchFeed = async (): Promise<AppEvent[]> => {
-  const response = await apiClient.get<AppEvent[]>('/feed');
+export const fetchLikedEvents = async (): Promise<AppEvent[]> => {
+  const response = await apiClient.get<AppEvent[]>('/users/me/liked-events');
+  return response.data;
+};
+
+export const fetchFeed = async (params?: FeedQueryParams): Promise<FeedPage> => {
+  const response = await apiClient.get<FeedPage>('/feed', { params });
   return response.data;
 };
 
@@ -43,5 +57,20 @@ export const joinEvent = async (eventId: string): Promise<AppEvent> => {
 
 export const leaveEvent = async (eventId: string): Promise<AppEvent> => {
   const response = await apiClient.delete<AppEvent>(`/events/${eventId}/join`);
+  return response.data;
+};
+
+export const likeEvent = async (eventId: string): Promise<AppEvent> => {
+  const response = await apiClient.post<AppEvent>(`/events/${eventId}/like`);
+  return response.data;
+};
+
+export const unlikeEvent = async (eventId: string): Promise<AppEvent> => {
+  const response = await apiClient.delete<AppEvent>(`/events/${eventId}/like`);
+  return response.data;
+};
+
+export const shareEventToConversation = async (conversationId: string, eventId: string): Promise<Conversation> => {
+  const response = await apiClient.post<Conversation>(`/messages/conversations/${conversationId}/share-event`, { eventId });
   return response.data;
 };

@@ -1,6 +1,6 @@
 # Gdje i Kada - projektna dokumentacija
 
-Status dokumenta: 2026-04-24  
+Status dokumenta: 2026-04-25  
 Projekt se ne radi ispocetka. Postojeci React Native/Expo frontend i Spring Boot backend ostaju baza, a nove funkcionalnosti se nadograduju na vec postojece klase, rute, storeove, hookove i dizajn sustav.
 
 Radimo mobilnu event aplikaciju "Gdje i Kada" za iOS i Android. Frontend je React Native kroz Expo Router, backend je Spring Boot s PostgreSQL bazom. Nemoj kretati ispocetka. Prvo procitaj postojeci kod i nadogradi ga prema lokalnim patternima.
@@ -35,11 +35,13 @@ Trenutno stanje tabova:
 - Kalendar je implementiran kao `app/(tabs)/calendar.tsx`, ali jos nije mjesecni FullCalendar-style pogled.
 - Poruke su glavni tab kroz `app/(tabs)/messages.tsx`.
 - `app/(tabs)/social.tsx` ostaje prototip/sekundarni ekran za conversations + friends, ali vise nije glavni tab.
-- Profil je implementiran kao `app/(tabs)/profile.tsx`, ali trenutno ima osnovni profil, jezik, temu i odjavu. Treba dodati history eventova, lajkova, transakcija, edit profila i settings ekran.
+- Profil je implementiran kao `app/(tabs)/profile.tsx`; trenutno prikazuje osnovni profil, liked events history, jezik, temu i odjavu. Jos trebaju transaction history, edit profila i poseban settings ekran.
 
 Postojece frontend tehnologije i patterni:
 
 - Expo SDK 54, React 19, React Native 0.81, TypeScript.
+- Android i iOS trenutno koriste `newArchEnabled=true` jer `react-native-reanimated` i `react-native-worklets` to zahtijevaju pri buildu. Za iOS je ostao i pojacani `react-native-maps` (`AIRMap`) patch u `scripts/patch-react-native-maps-airmap.js`.
+- iOS workspace sada ima dva native targeta/schemea: `GIKDev` i `GIKTest`. `npm run ios` / `npm run ios:dev` prije builda automatski pripremaju `ios/.xcode.env.local` za lokalni `prod`/dev variant (`localhost` backend) i pokrecu `GIKDev`, a `npm run ios:test` / `npm run ios:test:release` pripremaju test env i pokrecu `GIKTest`.
 - Navigacija: `expo-router` i `expo-router/unstable-native-tabs` u `app/(tabs)/_layout.tsx`.
 - Data fetching/cache: TanStack React Query u `core/api/query-hooks.ts` i `core/query/query-client.ts`.
 - HTTP: Axios u `core/api/http-client.ts`, s Bearer token interceptorom iz `useAuthStore`.
@@ -90,10 +92,14 @@ Backend trenutno ima:
 - `POST /api/events`
 - `POST /api/events/{id}/join`
 - `DELETE /api/events/{id}/join`
+- `POST /api/events/{id}/like`
+- `DELETE /api/events/{id}/like`
 - `GET /api/users/me/events?filter=all|joined|created`
-- `GET /api/feed`
+- `GET /api/users/me/liked-events`
+- `GET /api/feed?cursor=&limit=`
 - `GET /api/social/friends`
 - `GET /api/messages/conversations`
+- `POST /api/messages/conversations/{id}/share-event`
 
 Svi `/api/**` endpointi osim public auth ruta traze `Authorization: Bearer <token>`.
 
@@ -143,7 +149,7 @@ Trenutni event model:
 - Service: `EventService`.
 - Mapper: `EventMapper` i `EventMapper.xml`.
 
-Event trenutno podrzava naslov, lokaciju, adresu, opis, start/end datum, coordinates, entrance coordinates, entry instructions, creator user id, visibility `public/friends`, attendance mode `open/waitlist/paid`, cijenu za paid evente, capacity, status, organizer rating agregate, participant count, `joinedByMe`, `attendanceStatus` i `canJoin`. Baza ima tablice za media, participants, likes i organizer ratings. Join/leave radi kroz backend za map detail sheet. Jos ne postoje pun UI/API flow za upload media, placanje, rating submit, event chat ni reels-specific metadata.
+Event trenutno podrzava naslov, lokaciju, adresu, opis, start/end datum, coordinates, entrance coordinates, entry instructions, creator user id, visibility `public/friends`, attendance mode `open/waitlist/paid`, cijenu za paid evente, capacity, status, organizer rating agregate, `likeCount`, `likedByMe`, participant count, `joinedByMe`, `attendanceStatus` i `canJoin`. Baza ima tablice za media, participants, likes i organizer ratings. Join/leave i like/unlike rade kroz backend, a feed i detail endpointi vracaju `event_media` za reels/detail prikaz. Jos ne postoje pun UI/API flow za upload media, placanje, rating submit ni puni event chat.
 
 Kad implementiras nove stvari, nadogradi postojece:
 
@@ -258,29 +264,28 @@ Sto fali za finalni zahtjev:
 Postoji:
 
 - Screen: `app/(tabs)/fyp.tsx`.
-- Query: `useFeedQuery()` prema `/api/feed`.
-- Cover image helper: `core/events/event-cover.ts`.
-- Liked/joined/favorite lokalno stanje: `useAppStore`.
+- Query: `useFeedInfiniteQuery()` prema `GET /api/feed?cursor=&limit=`.
+- Media helpers: `core/events/event-cover.ts`.
+- Reels slide UI: `features/events/components/fyp-reel-slide.tsx`.
+- Share modal: `features/events/components/event-share-modal.tsx`.
+- Video playback: `expo-video` (`VideoView`, `useVideoPlayer`) s preload prozorom oko aktivnog itema; ako trenutni native build nema `ExpoVideo` modul, FYP ostaje na poster fallbacku bez crasha dok se ne rebuilda app.
 
 Trenutno ponasanje:
 
-- Vertikalni `FlatList` s `pagingEnabled`, `snapToInterval` i fullscreen slideovima.
-- Svaki event prikazuje cover image preko Picsum seed URL-a.
-- Akcije: like, favorite/bookmark, share.
-- Details button vodi na `app/event/[id].tsx`, koji koristi isti shared details content i join CTA logiku kao mapa.
-- Like stanje je lokalno u Zustand storeu.
-- `favoriteEventIds` postoji, ali finalni zahtjev kaze da nema saveanja.
+- Vertikalni `FlatList` s `pagingEnabled`, `snapToInterval`, `onViewableItemsChanged` i `fetchNextPage()`.
+- Feed je server-side paginiran cursorom i vraca `items`, `nextCursor`, `hasMore`.
+- Svaki event koristi `event_media` kao primarni poster/video izvor, uz fallback na helper cover image ako media nedostaje.
+- Like je server-side preko `POST/DELETE /api/events/{id}/like`; React Query optimisticno patcha feed/detail/profile cache.
+- Bookmark/save UI je uklonjen.
+- Details iz FYP-a otvaraju isti `EventDetailSheet` kao mapa.
+- Share otvara modal koji nudi postojece razgovore kroz `POST /api/messages/conversations/{id}/share-event`, a native share ostaje fallback.
+- Profil prikazuje liked history preko `GET /api/users/me/liked-events`.
 
-Sto fali:
+Sto jos fali:
 
-- Pravi video/reels model i media playback.
-- Preload nekoliko itema unaprijed i unload udaljenih videa.
-- Backend feed ranking i pagination/cursor.
-- Event link i detail sheet isti kao na mapi, ne odvojeno iskustvo ako se zeli konzistentnost.
-- Ukloniti bookmark/save UI ako ostajemo na zahtjevu "nema saveanje".
-- Backend persistencija likeova.
-- Share u chatove, ne samo native share.
-- Liked history na profilu.
+- Feed ranking je i dalje jednostavan (`start_at DESC, id DESC`), bez personalizacije ili impressions modela.
+- Share u razgovor trenutno azurira conversation preview, ali jos nema stvarnu message history/event share card jer je puni chat domain u Fazi 7.
+- Media upload/create flow i dalje nije povezan s `event_media` CRUD-om.
 
 ### Kalendar
 
@@ -324,6 +329,7 @@ Postoji:
 Trenutno ponasanje:
 
 - Dohvat liste conversations preko `/api/messages/conversations`.
+- FYP/details share mogu poslati event u postojeci conversation preview preko `/api/messages/conversations/{id}/share-event`.
 - Nema stvarnih poruka, nema chat room screena, nema slanja poruka.
 
 Sto fali:
@@ -347,6 +353,7 @@ Postoji:
 
 - Screen: `app/(tabs)/profile.tsx`.
 - Prikazuje korisnikovo ime/email iz `useAuthStore`.
+- Prikazuje liked events history preko `useLikedEventsQuery()`.
 - Jezik HR/EN se mijenja preko `setLocale`.
 - Tema se mijenja preko `ThemeToggle`.
 - Odjava zove `clearAuth()` i vraca na auth flow.
@@ -358,11 +365,9 @@ Sto fali:
   - ime
   - profilna slika/avatar
   - eventualno username/bio
-- History eventova na koje se korisnik pridruzio.
+- Joined/created history blokovi i transaction history.
 - Mjesto za rating organizatora nakon zavrsenog eventa.
-- History lajkanih reelova/eventova.
-- Transaction history za kupljene ulaznice.
-- Backend endpointi za profile update, avatar upload, history i transactions.
+- Backend endpointi za profile update, avatar upload i transactions.
 
 ### Auth
 
@@ -434,10 +439,13 @@ Frontend API URL:
 `EventController`:
 
 - `GET /api/events?from=&to=&lat=&lng=&radiusKm=&query=` -> `EventService.getEvents(...)`
-- `GET /api/feed` -> `EventService.getFeed()`
+- `GET /api/feed?cursor=&limit=` -> `EventService.getFeed(...)`
+- `GET /api/users/me/liked-events` -> `EventService.getLikedEvents(...)`
 - `POST /api/events` -> `EventService.createEvent()`
 - `POST /api/events/{id}/join` -> `EventService.joinEvent()`
 - `DELETE /api/events/{id}/join` -> `EventService.leaveEvent()`
+- `POST /api/events/{id}/like` -> `EventService.likeEvent()`
+- `DELETE /api/events/{id}/like` -> `EventService.unlikeEvent()`
 
 `EventService`:
 
@@ -446,17 +454,21 @@ Frontend API URL:
 - Validira map query parametre `lat`, `lng` i `radiusKm`.
 - Normalizira `visibility` na `public` ili `friends`.
 - Normalizira `attendanceMode` na `open`, `waitlist` ili `paid`.
+- Parsira/validira feed `cursor` i `limit`.
 - Kreira `id` prefiksa `created-`.
 - `participantCount` inicijalno postavlja na `1`.
 - Join upisuje `event_participants.status` kao `joined` ili `waitlisted`, leave ga mijenja u `left`.
+- Like/unlike odrzava `event_likes` za korisnika.
 - Mapira `EventRow` u `AppEventDto`.
 
 `EventMapper.xml`:
 
 - `findAll` vraca samo `visibility = 'public'` i `status = 'published'`, podrzava date/search/radius filtere i per-user participant status.
-- `findFeed` vraca samo `visibility = 'public'`, sort DESC.
+- `findFeedPage` vraca samo `visibility = 'public'`, podrzava cursor pagination i batch media lookup.
 - `findById` vraca event i participant status za korisnika.
+- `findLikedByUser` vraca korisnikove lajkanje po vremenu lajka.
 - `insert` sprema prosirena event polja.
+- `insertLike` i `deleteLike` odrzavaju `event_likes`.
 - `upsertParticipant`, `incrementParticipantCount` i `decrementParticipantCount` odrzavaju join/leave state.
 
 Ogranicenje:
@@ -592,8 +604,8 @@ Detaljni operativni plan i status svake faze vodi se u `FAZE.md`. README drzi sa
 - Faza 1 - Glavni tabovi i navigacija: rijeseno 2026-04-18.
 - Faza 2 - Event domain i baza: rijeseno 2026-04-18.
 - Faza 3 - Mapa MVP+: rijeseno 2026-04-18.
-- Faza 4 - Join state i event details: djelomicno zapoceto kroz join/leave endpoint i map sheet state.
-- Faza 5 - Reels/FYP.
+- Faza 4 - Join state i event details: rijeseno 2026-04-24.
+- Faza 5 - Reels/FYP: rijeseno 2026-04-25.
 - Faza 6 - Kalendar.
 - Faza 7 - Poruke i event chat.
 - Faza 8 - Profil i postavke.
@@ -626,11 +638,11 @@ Kad se status faze promijeni, prvo azuriraj `FAZE.md`, a zatim ovaj sazetak ako 
 - Ako korisnik ne odabere entrance pin, create flow koristi zadnju poznatu korisnicku lokaciju kao event coordinates.
 - `EventDetailScreen` (`app/event/[id].tsx`) i `EventDetailSheet` na mapi dijele `EventDetailsContent` i `useEventJoinActions`, a detail screen koristi canonical `GET /api/events/{id}`.
 - `GET /api/users/me/events?filter=all|joined|created` je canonical izvor za korisnicke evente u kalendaru.
-- `favoriteEventIds` postoji u `app-store.ts`, ali finalni proizvod ne treba saveanje.
 - Lokalni `joinedEventIds` je maknut iz storea; join state se cita s backenda kroz `joinedByMe`/`attendanceStatus`, a FYP za details ide preko shared details screena.
 - Messages su samo conversation list, ne realni chat.
 - Friends su staticki/prototip podaci iz `friends` tablice.
-- Backend `/api/events`, `/api/events/{id}`, `/api/users/me/events` i `/api/feed` vracaju per-user join state; `likedByMe` i friends access logika ostaju za kasnije faze.
+- Backend `/api/events`, `/api/events/{id}`, `/api/users/me/events`, `/api/users/me/liked-events` i `/api/feed` vracaju per-user join/like state; friends access logika ostaje za kasnije faze.
+- Event share u razgovor trenutno samo azurira conversation preview; puni chat room i message history ostaju za Fazu 7.
 - Security hardening u Fazi 4: private/friends event details i join vise nisu dostupni samo po pogodenom ID-u; trenutno su dostupni samo creatoru ili vec aktivnom sudioniku dok ne dodemo do pravog friends access layera.
 - Profil nema settings sub-route, edit profil, avatar, activity history ni transactions.
 
@@ -677,7 +689,7 @@ Messages:
 - `POST /api/chats/{id}/messages`
 - `POST /api/chats/{id}/polls`
 - `POST /api/polls/{id}/votes`
-- `POST /api/chats/{id}/share-event`
+- `POST /api/messages/conversations/{id}/share-event`
 
 Profile:
 

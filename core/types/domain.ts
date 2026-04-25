@@ -32,6 +32,11 @@ export type EventQueryParams = {
   query?: string;
 };
 
+export type FeedQueryParams = {
+  cursor?: string;
+  limit?: number;
+};
+
 export type MyEventsFilter = 'all' | 'joined' | 'created';
 
 export type LocationConsent = 'unknown' | 'accepted' | 'rejected';
@@ -59,11 +64,19 @@ export type AppEvent = {
   status?: EventStatus;
   organizerRatingAverage?: number;
   organizerRatingCount?: number;
+  likeCount: number;
+  likedByMe?: boolean;
   participantCount: number;
   joinedByMe?: boolean;
   attendanceStatus?: EventAttendanceStatus;
   canJoin?: boolean;
   media?: EventMedia[];
+};
+
+export type FeedPage = {
+  items: AppEvent[];
+  nextCursor?: string;
+  hasMore: boolean;
 };
 
 export type Friend = {

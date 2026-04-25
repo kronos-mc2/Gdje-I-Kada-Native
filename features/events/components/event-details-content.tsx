@@ -2,7 +2,7 @@ import { Image } from 'expo-image';
 import { StyleSheet, View } from 'react-native';
 
 import { AppButton, AppText } from '@/components/primitives';
-import { getEventCoverUri } from '@/core/events/event-cover';
+import { getEventPosterUri } from '@/core/events/event-cover';
 import { useI18n } from '@/core/i18n/use-i18n';
 import { AppEvent, Locale } from '@/core/types/domain';
 import { formatEventDate } from '@/core/utils/date';
@@ -25,7 +25,7 @@ export function EventDetailsContent({
   expanded = true,
 }: EventDetailsContentProps) {
   const { t } = useI18n();
-  const coverUri = getEventCoverUri(event.id);
+  const coverUri = getEventPosterUri(event);
   const hasOrganizerRating = (event.organizerRatingCount ?? 0) > 0;
   const priceLabel = formatPrice(event);
 

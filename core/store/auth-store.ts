@@ -1,8 +1,8 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 import { create } from 'zustand';
 
 import { UserProfile } from '@/core/types/domain';
+import { asyncStorage } from '@/core/utils/async-storage';
 
 type AuthSnapshot = {
   accessToken: string;
@@ -115,7 +115,7 @@ const readSecureSnapshot = async (label: string, options?: SecureStore.SecureSto
 
 const readAsyncStorageSnapshot = async (): Promise<AuthStorageRead> => {
   try {
-    const rawValue = await AsyncStorage.getItem(AUTH_STORAGE_KEY);
+    const rawValue = await asyncStorage.getItem(AUTH_STORAGE_KEY);
     return {
       label: 'AsyncStorage mirror',
       snapshot: normalizeSnapshot(rawValue),
@@ -138,8 +138,8 @@ const persistMigratedSnapshot = async (snapshot: AuthSnapshot) => {
     await Promise.allSettled([
       SecureStore.setItemAsync(AUTH_STORAGE_KEY, serializedPayload, AUTH_SECURE_STORE_OPTIONS),
       SecureStore.setItemAsync(AUTH_STORAGE_KEY, serializedPayload),
-      AsyncStorage.setItem(AUTH_STORAGE_KEY, serializedPayload),
-      AsyncStorage.setItem(AUTH_SESSION_MARKER_KEY, '1'),
+      asyncStorage.setItem(AUTH_STORAGE_KEY, serializedPayload),
+      asyncStorage.setItem(AUTH_SESSION_MARKER_KEY, '1'),
     ]);
   } catch {
     // Migration failures should not block an otherwise valid existing session.
@@ -165,7 +165,7 @@ const readAuthSnapshot = async (): Promise<{ snapshot: AuthSnapshot | null; rest
   }
 
   const failedReads = formatFailedReads([preferredSecureRead, legacySecureRead, asyncStorageRead]);
-  const hadPreviousSession = await AsyncStorage.getItem(AUTH_SESSION_MARKER_KEY).catch(() => null);
+  const hadPreviousSession = await asyncStorage.getItem(AUTH_SESSION_MARKER_KEY).catch(() => null);
   if (!hadPreviousSession) {
     return { snapshot: null, restoreMessage: null };
   }
@@ -181,8 +181,8 @@ const writeAuthSnapshot = async (payload: AuthSnapshot | null) => {
     await Promise.allSettled([
       SecureStore.deleteItemAsync(AUTH_STORAGE_KEY, AUTH_SECURE_STORE_OPTIONS),
       SecureStore.deleteItemAsync(AUTH_STORAGE_KEY),
-      AsyncStorage.removeItem(AUTH_STORAGE_KEY),
-      AsyncStorage.removeItem(AUTH_SESSION_MARKER_KEY),
+      asyncStorage.removeItem(AUTH_STORAGE_KEY),
+      asyncStorage.removeItem(AUTH_SESSION_MARKER_KEY),
     ]);
     return;
   }
@@ -191,8 +191,8 @@ const writeAuthSnapshot = async (payload: AuthSnapshot | null) => {
   const [primarySecureResult, legacySecureResult, asyncStorageResult] = await Promise.allSettled([
     SecureStore.setItemAsync(AUTH_STORAGE_KEY, serializedPayload, AUTH_SECURE_STORE_OPTIONS),
     SecureStore.setItemAsync(AUTH_STORAGE_KEY, serializedPayload),
-    AsyncStorage.setItem(AUTH_STORAGE_KEY, serializedPayload),
-    AsyncStorage.setItem(AUTH_SESSION_MARKER_KEY, '1'),
+    asyncStorage.setItem(AUTH_STORAGE_KEY, serializedPayload),
+    asyncStorage.setItem(AUTH_SESSION_MARKER_KEY, '1'),
   ]);
 
   if (

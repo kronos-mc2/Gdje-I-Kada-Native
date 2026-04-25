@@ -58,9 +58,12 @@ npm run ios:test:release
 
 This embeds the JS bundle in the app and does not require Metro to be running after install.
 
-When building the generated iOS workspace directly from Xcode, make sure `ios/.xcode.env.local` contains:
+`npm run ios`, `npm run ios:dev`, `npm run ios:test` i `npm run ios:test:release` automatski prepisuju `ios/.xcode.env.local` na odgovarajuci variant prije builda. iOS workspace sada ima dva schemea/targeta: `GIKDev` za lokalni backend i `GIKTest` za test backend.
+
+When building the generated iOS workspace directly from Xcode without ovih npm skripti, make sure `ios/.xcode.env.local` contains:
 
 ```bash
+export NODE_BINARY=/putanja/do/node
 export APP_VARIANT=test
 export EXPO_PUBLIC_API_BASE_URL=https://test-api-gik.nerizz.com/api
 export EXPO_PUBLIC_ANDROID_API_BASE_URL=https://test-api-gik.nerizz.com/api
@@ -84,5 +87,5 @@ To omogucava da test APK bude instaliran paralelno s normalnim buildom.
 ## IOS
 
 ```bash
-node ./scripts/with-env.js test npx expo run:ios --device
+npm run ios:test
 ```

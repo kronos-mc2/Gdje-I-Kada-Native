@@ -1,17 +1,17 @@
-import BottomSheet, { BottomSheetBackgroundProps, BottomSheetHandleProps, BottomSheetView } from '@gorhom/bottom-sheet';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { BlurView } from 'expo-blur';
 import { GlassView, isGlassEffectAPIAvailable, isLiquidGlassAvailable } from 'expo-glass-effect';
+import type { ComponentType, ReactNode, Ref } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Platform, Pressable, Share, StyleSheet, View } from 'react-native';
+import { Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { EventDetailsContent } from '@/features/events/components/event-details-content';
+import { EventShareModal } from '@/features/events/components/event-share-modal';
 import { useEventJoinActions } from '@/features/events/hooks/use-event-join-actions';
 import { AppText } from '@/components/primitives';
 import { useEventQuery } from '@/core/api/query-hooks';
 import { useAppTheme } from '@/core/theme';
 import { AppEvent, Locale } from '@/core/types/domain';
-import { formatEventDate } from '@/core/utils/date';
 
 type EventDetailSheetProps = {
   event: AppEvent;
@@ -21,10 +21,49 @@ type EventDetailSheetProps = {
   bottomInset?: number;
 };
 
+type SheetController = {
+  snapToIndex: (index: number) => void;
+  close: () => void;
+};
+
+type OptionalBottomSheetModule = {
+  BottomSheet: ComponentType<Record<string, unknown> & { ref?: Ref<SheetController> }>;
+  BottomSheetView: ComponentType<{ style?: object; children?: ReactNode }>;
+};
+
+let cachedBottomSheetModule: OptionalBottomSheetModule | null | undefined;
+let didWarnMissingBottomSheet = false;
+
+const getBottomSheetModule = (): OptionalBottomSheetModule | null => {
+  if (cachedBottomSheetModule !== undefined) {
+    return cachedBottomSheetModule;
+  }
+
+  try {
+    const bottomSheetModule = require('@gorhom/bottom-sheet');
+    cachedBottomSheetModule = {
+      BottomSheet: bottomSheetModule.default,
+      BottomSheetView: bottomSheetModule.BottomSheetView,
+    };
+  } catch (error) {
+    if (!didWarnMissingBottomSheet) {
+      didWarnMissingBottomSheet = true;
+      const errorMessage = error instanceof Error && error.message ? error.message : 'Unknown bottom sheet error';
+      console.warn(`BottomSheet native module is unavailable, using modal fallback. ${errorMessage}`);
+    }
+
+    cachedBottomSheetModule = null;
+  }
+
+  return cachedBottomSheetModule;
+};
+
 export function EventDetailSheet({ event, locale, onClose, topInset = 0, bottomInset = 0 }: EventDetailSheetProps) {
   const { theme } = useAppTheme();
-  const sheetRef = useRef<BottomSheet>(null);
+  const bottomSheetModule = useMemo(() => getBottomSheetModule(), []);
+  const sheetRef = useRef<SheetController | null>(null);
   const [sheetIndex, setSheetIndex] = useState(0);
+  const [isShareOpen, setIsShareOpen] = useState(false);
   const canUseLiquidGlass = useMemo(() => Platform.OS === 'ios' && isLiquidGlassAvailable() && isGlassEffectAPIAvailable(), []);
   const snapPoints = useMemo(() => ['34%', '72%'], []);
   const { data: resolvedEvent } = useEventQuery(event.id, event);
@@ -33,21 +72,9 @@ export function EventDetailSheet({ event, locale, onClose, topInset = 0, bottomI
 
   useEffect(() => {
     setSheetIndex(0);
+    setIsShareOpen(false);
     sheetRef.current?.snapToIndex(0);
   }, [event.id]);
-
-  const onShare = async () => {
-    const message = `${detailEvent.title[locale]}\n${detailEvent.where[locale]}\n${formatEventDate(detailEvent.whenISO, locale)}\n\n${detailEvent.about[locale]}`;
-
-    try {
-      await Share.share({
-        title: detailEvent.title[locale],
-        message,
-      });
-    } catch {
-      // ignore share cancel/errors from native UI
-    }
-  };
 
   const toggleExpanded = useCallback(() => {
     if (sheetIndex <= 0) {
@@ -59,7 +86,7 @@ export function EventDetailSheet({ event, locale, onClose, topInset = 0, bottomI
   }, [sheetIndex]);
 
   const renderHandle = useCallback(
-    (_: BottomSheetHandleProps) => (
+    () => (
       <View style={styles.handleContainer}>
         <Pressable
           onPress={toggleExpanded}
@@ -73,7 +100,7 @@ export function EventDetailSheet({ event, locale, onClose, topInset = 0, bottomI
   );
 
   const renderBackground = useCallback(
-    ({ style }: BottomSheetBackgroundProps) => (
+    ({ style }: { style?: object }) => (
       <View
         style={[
           style,
@@ -121,6 +148,81 @@ export function EventDetailSheet({ event, locale, onClose, topInset = 0, bottomI
     [canUseLiquidGlass, theme.colors.border, theme.isDark],
   );
 
+  if (!bottomSheetModule) {
+    return (
+      <>
+        <Modal animationType="slide" transparent visible onRequestClose={onClose}>
+          <View style={styles.modalRoot}>
+            <Pressable style={styles.backdrop} onPress={onClose} />
+            <View
+              style={[
+                styles.modalSheet,
+                styles.background,
+                {
+                  marginTop: topInset + 12,
+                  paddingBottom: bottomInset + 12,
+                  borderColor: theme.colors.border,
+                  backgroundColor: theme.isDark ? 'rgba(12, 16, 24, 0.96)' : 'rgba(255, 255, 255, 0.98)',
+                },
+              ]}
+            >
+              {renderHandle()}
+              <ScrollView contentContainerStyle={styles.contentWrap} showsVerticalScrollIndicator={false}>
+                <View style={styles.headerRow}>
+                  <Pressable
+                    onPress={() => setIsShareOpen(true)}
+                    style={({ pressed }) => [
+                      styles.iconButton,
+                      {
+                        backgroundColor: theme.isDark ? 'rgba(17, 22, 30, 0.48)' : 'rgba(255, 255, 255, 0.62)',
+                        borderColor: theme.colors.border,
+                        opacity: pressed ? 0.8 : 1,
+                      },
+                    ]}
+                  >
+                    <Ionicons name="share-social-outline" size={18} color={theme.colors.textSecondary} />
+                  </Pressable>
+
+                  <AppText variant="headline" numberOfLines={1} style={styles.headerTitle}>
+                    {detailEvent.title[locale]}
+                  </AppText>
+
+                  <Pressable
+                    onPress={onClose}
+                    style={({ pressed }) => [
+                      styles.iconButton,
+                      {
+                        backgroundColor: theme.isDark ? 'rgba(17, 22, 30, 0.48)' : 'rgba(255, 255, 255, 0.62)',
+                        borderColor: theme.colors.border,
+                        opacity: pressed ? 0.8 : 1,
+                      },
+                    ]}
+                  >
+                    <Ionicons name="close" size={18} color={theme.colors.textSecondary} />
+                  </Pressable>
+                </View>
+
+                <View style={styles.contentTopSpacing}>
+                  <EventDetailsContent
+                    event={detailEvent}
+                    locale={locale}
+                    isJoined={isJoined}
+                    isJoinDisabled={isJoinDisabled}
+                    onToggleJoin={onToggleJoin}
+                    expanded
+                  />
+                </View>
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+        <EventShareModal event={detailEvent} visible={isShareOpen} locale={locale} onClose={() => setIsShareOpen(false)} />
+      </>
+    );
+  }
+
+  const { BottomSheet, BottomSheetView } = bottomSheetModule;
+
   return (
     <BottomSheet
       ref={sheetRef}
@@ -140,7 +242,7 @@ export function EventDetailSheet({ event, locale, onClose, topInset = 0, bottomI
       <BottomSheetView style={styles.contentWrap}>
         <View style={styles.headerRow}>
           <Pressable
-            onPress={onShare}
+            onPress={() => setIsShareOpen(true)}
             style={({ pressed }) => [
               styles.iconButton,
               {
@@ -183,11 +285,24 @@ export function EventDetailSheet({ event, locale, onClose, topInset = 0, bottomI
           />
         </View>
       </BottomSheetView>
+      <EventShareModal event={detailEvent} visible={isShareOpen} locale={locale} onClose={() => setIsShareOpen(false)} />
     </BottomSheet>
   );
 }
 
 const styles = StyleSheet.create({
+  modalRoot: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.35)',
+  },
+  modalSheet: {
+    marginHorizontal: 12,
+    maxHeight: '86%',
+  },
   hidden: {
     opacity: 0,
   },

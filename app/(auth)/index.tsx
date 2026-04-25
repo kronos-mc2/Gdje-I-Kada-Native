@@ -1,6 +1,7 @@
 import * as AppleAuthentication from 'expo-apple-authentication';
 import * as AuthSession from 'expo-auth-session';
 import * as Google from 'expo-auth-session/providers/google';
+import Constants from 'expo-constants';
 import * as WebBrowser from 'expo-web-browser';
 import { Link, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
@@ -16,6 +17,15 @@ WebBrowser.maybeCompleteAuthSession();
 
 const EMAIL_PATTERN = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
 
+const isTestVariant =
+  Constants.expoConfig?.extra?.appVariant === 'test' ||
+  Constants.expoConfig?.slug === 'Gdje-I-Kada-Native-Test' ||
+  Constants.expoConfig?.name === 'GIK Test' ||
+  Constants.expoConfig?.android?.package?.endsWith('.test') ||
+  Constants.expoConfig?.ios?.bundleIdentifier?.endsWith('.test');
+
+const authRedirectScheme = isTestVariant ? 'gdjeikadanative-test' : 'gdjeikadanative';
+
 export default function LoginScreen() {
   const router = useRouter();
   const { t } = useI18n();
@@ -26,7 +36,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const redirectUri = AuthSession.makeRedirectUri({
-    scheme: 'gdjeikadanative',
+    scheme: authRedirectScheme,
   });
 
   const [googleRequest, googleResponse, promptGoogleAsync] = Google.useIdTokenAuthRequest({

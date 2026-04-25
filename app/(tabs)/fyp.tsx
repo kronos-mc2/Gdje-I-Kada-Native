@@ -1,139 +1,100 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
-import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
-import { useMemo } from 'react';
-import { FlatList, ListRenderItemInfo, Pressable, Share, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, FlatList, StyleSheet, View, ViewToken, useWindowDimensions } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { EventDetailSheet } from '@/components/map/event-detail-sheet';
 import { AppText } from '@/components/primitives';
-import { useFeedQuery } from '@/core/api/query-hooks';
-import { getEventCoverUri } from '@/core/events/event-cover';
+import {
+  useFeedInfiniteQuery,
+  useLikeEventMutation,
+  useUnlikeEventMutation,
+} from '@/core/api/query-hooks';
 import { useI18n } from '@/core/i18n/use-i18n';
-import { useAppStore } from '@/core/store/app-store';
 import { useAppTheme } from '@/core/theme';
 import { AppEvent } from '@/core/types/domain';
-import { formatEventDate } from '@/core/utils/date';
+import { EventShareModal } from '@/features/events/components/event-share-modal';
+import { FypReelSlide } from '@/features/events/components/fyp-reel-slide';
 
-function sortByDate(events: AppEvent[]) {
-  return [...events].sort((a, b) => new Date(a.whenISO).getTime() - new Date(b.whenISO).getTime());
-}
-
-type ActionButtonProps = {
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-  value?: number;
-  active?: boolean;
-  onPress: () => void;
-};
-
-function ActionButton({ icon, label, value, active = false, onPress }: ActionButtonProps) {
-  const { theme } = useAppTheme();
-
-  return (
-    <Pressable style={({ pressed }) => [styles.actionWrap, { opacity: pressed ? 0.78 : 1 }]} onPress={onPress}>
-      <View style={[styles.actionIconWrap, { borderColor: theme.colors.border, backgroundColor: theme.colors.overlay }]}>
-        <Ionicons name={icon} size={22} color={active ? theme.colors.accent : theme.colors.textPrimary} />
-      </View>
-      <AppText variant="caption" style={styles.actionLabel}>
-        {value ?? label}
-      </AppText>
-    </Pressable>
-  );
-}
+const isValidFeedEvent = (event: AppEvent | null | undefined): event is AppEvent => Boolean(event?.id);
 
 export default function FypScreen() {
-  const router = useRouter();
   const { t, locale } = useI18n();
   const { theme } = useAppTheme();
   const insets = useSafeAreaInsets();
   const { height, width } = useWindowDimensions();
-
-  const { data: fetchedEvents = [] } = useFeedQuery();
-  const likedEventIds = useAppStore((state) => state.likedEventIds);
-  const favoriteEventIds = useAppStore((state) => state.favoriteEventIds);
-  const toggleLiked = useAppStore((state) => state.toggleLiked);
-  const toggleFavorite = useAppStore((state) => state.toggleFavorite);
-
-  const feedEvents = useMemo(() => sortByDate(fetchedEvents), [fetchedEvents]);
-  const itemHeight = Math.max(420, height - insets.top - insets.bottom);
-
-  const onShare = async (event: AppEvent) => {
-    try {
-      await Share.share({
-        title: event.title[locale],
-        message: `${event.title[locale]}\n${event.where[locale]}\n${event.about[locale]}`,
-      });
-    } catch {
-      // ignore native share dismiss/errors
+  const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage, refetch, isRefetching } = useFeedInfiniteQuery();
+  const likeEventMutation = useLikeEventMutation();
+  const unlikeEventMutation = useUnlikeEventMutation();
+  const [selectedEvent, setSelectedEvent] = useState<AppEvent | null>(null);
+  const [shareEvent, setShareEvent] = useState<AppEvent | null>(null);
+  const [activeEventId, setActiveEventId] = useState<string | null>(null);
+  const itemHeight = Math.max(420, height);
+  const feedEvents = useMemo(
+    () =>
+      data?.pages.flatMap((page) => {
+        const pageItems = Array.isArray(page?.items) ? page.items : [];
+        return pageItems.filter(isValidFeedEvent);
+      }) ?? [],
+    [data],
+  );
+  const activeIndex = Math.max(0, feedEvents.findIndex((event) => event.id === activeEventId));
+  const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
+    const firstVisible = viewableItems.find((item) => item.isViewable)?.item as AppEvent | undefined;
+    if (firstVisible?.id) {
+      setActiveEventId((current) => (current === firstVisible.id ? current : firstVisible.id));
     }
+  });
+  const viewabilityConfig = useRef({
+    itemVisiblePercentThreshold: 75,
+  });
+
+  const onToggleLike = (event: AppEvent) => {
+    if (event.likedByMe) {
+      void unlikeEventMutation.mutateAsync(event.id);
+      return;
+    }
+
+    void likeEventMutation.mutateAsync(event.id);
   };
 
-  const renderFeedItem = ({ item }: ListRenderItemInfo<AppEvent>) => {
-    const isLiked = likedEventIds.includes(item.id);
-    const isFavorite = favoriteEventIds.includes(item.id);
-    const likeCount = item.participantCount + (isLiked ? 1 : 0);
+  useEffect(() => {
+    if (!activeEventId && feedEvents[0]?.id) {
+      setActiveEventId(feedEvents[0].id);
+    }
+  }, [activeEventId, feedEvents]);
 
-    return (
-      <View style={[styles.slide, { height: itemHeight, width }]}>
-        <Image source={{ uri: getEventCoverUri(item.id, 1080, 1920) }} style={StyleSheet.absoluteFill} contentFit="cover" />
-        <View style={styles.backdrop} />
-
-        <View>
+  const renderFooter = () => {
+    if (isFetchingNextPage) {
+      return (
+        <View style={styles.footer}>
+          <ActivityIndicator color={theme.colors.textSecondary} />
         </View>
+      );
+    }
 
-        <View style={styles.rightActions}>
-          <ActionButton
-            icon={isLiked ? 'heart' : 'heart-outline'}
-            label={t('like')}
-            value={likeCount}
-            active={isLiked}
-            onPress={() => toggleLiked(item.id)}
-          />
-          <ActionButton
-            icon={isFavorite ? 'bookmark' : 'bookmark-outline'}
-            label={t('favorite')}
-            active={isFavorite}
-            onPress={() => toggleFavorite(item.id)}
-          />
-          <ActionButton icon="share-social-outline" label={t('shares')} onPress={() => onShare(item)} />
+    if (!hasNextPage && feedEvents.length > 0) {
+      return (
+        <View style={styles.footer}>
+          <AppText variant="caption" color="textMuted">
+            {t('feedYouAreCaughtUp')}
+          </AppText>
         </View>
+      );
+    }
 
-        <View style={styles.bottomContent}>
-          <AppText variant="title">{item.title[locale]}</AppText>
-          <AppText variant="body" color="textSecondary" style={styles.metaLine}>
-            {item.where[locale]}
-          </AppText>
-          <AppText variant="caption" color="textMuted" style={styles.metaLine}>
-            {formatEventDate(item.whenISO, locale)}
-          </AppText>
-          <AppText variant="body" numberOfLines={3} style={styles.about}>
-            {item.about[locale]}
-          </AppText>
-
-          <View style={styles.bottomActionsRow}>
-
-            <Pressable
-              onPress={() => router.push({ pathname: '/event/[id]', params: { id: item.id } })}
-              style={({ pressed }) => [
-                styles.cta,
-                {
-                  borderColor: theme.colors.border,
-                  backgroundColor: theme.colors.overlay,
-                  opacity: pressed ? 0.82 : 1,
-                },
-              ]}
-            >
-              <AppText variant="bodyStrong">{t('details')}</AppText>
-            </Pressable>
-          </View>
-        </View>
-      </View>
-    );
+    return <View style={styles.footerSpacer} />;
   };
 
   return (
     <SafeAreaView edges={['left', 'right']} style={[styles.screen, { backgroundColor: theme.colors.background }]}>
-      {feedEvents.length === 0 ? (
+      {isLoading ? (
+        <View style={styles.emptyWrap}>
+          <ActivityIndicator color={theme.colors.textSecondary} />
+          <AppText variant="body" color="textMuted" style={styles.loadingText}>
+            {t('loading')}
+          </AppText>
+        </View>
+      ) : feedEvents.length === 0 ? (
         <View style={styles.emptyWrap}>
           <AppText variant="headline">{t('noFeedEvents')}</AppText>
         </View>
@@ -141,14 +102,55 @@ export default function FypScreen() {
         <FlatList
           data={feedEvents}
           keyExtractor={(item) => item.id}
-          renderItem={renderFeedItem}
+          renderItem={({ item, index }) => (
+            <FypReelSlide
+              event={item}
+              locale={locale}
+              width={width}
+              height={itemHeight}
+              topInset={insets.top}
+              bottomInset={insets.bottom}
+              isActive={item.id === activeEventId}
+              shouldPreload={Math.abs(index - activeIndex) <= 2}
+              onToggleLike={onToggleLike}
+              onOpenDetails={setSelectedEvent}
+              onOpenShare={setShareEvent}
+            />
+          )}
           pagingEnabled
           showsVerticalScrollIndicator={false}
           decelerationRate="fast"
           snapToAlignment="start"
           snapToInterval={itemHeight}
+          onEndReachedThreshold={0.55}
+          onEndReached={() => {
+            if (hasNextPage && !isFetchingNextPage) {
+              void fetchNextPage();
+            }
+          }}
+          onRefresh={() => void refetch()}
+          refreshing={isRefetching}
+          viewabilityConfig={viewabilityConfig.current}
+          onViewableItemsChanged={onViewableItemsChanged.current}
+          initialNumToRender={2}
+          maxToRenderPerBatch={3}
+          windowSize={5}
+          removeClippedSubviews
+          ListFooterComponent={renderFooter}
         />
       )}
+
+      {selectedEvent ? (
+        <EventDetailSheet
+          event={selectedEvent}
+          locale={locale}
+          topInset={insets.top}
+          bottomInset={insets.bottom}
+          onClose={() => setSelectedEvent(null)}
+        />
+      ) : null}
+
+      <EventShareModal event={shareEvent} visible={shareEvent != null} locale={locale} onClose={() => setShareEvent(null)} />
     </SafeAreaView>
   );
 }
@@ -157,71 +159,22 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
   },
-  slide: {
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingBottom: 18,
-  },
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(10, 13, 20, 0.44)',
-  },
-  topMeta: {
-    zIndex: 1,
-  },
-  rightActions: {
-    position: 'absolute',
-    right: 12,
-    bottom: 100,
-    zIndex: 2,
-    gap: 12,
-  },
-  actionWrap: {
-    alignItems: 'center',
-    gap: 4,
-  },
-  actionIconWrap: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  actionLabel: {
-    textAlign: 'center',
-  },
-  bottomContent: {
-    zIndex: 1,
-    paddingRight: 70,
-  },
-  metaLine: {
-    marginTop: 4,
-  },
-  about: {
-    marginTop: 10,
-  },
-  bottomActionsRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 14,
-  },
-  cta: {
-    borderWidth: 1,
-    borderRadius: 12,
-    minHeight: 42,
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 10,
-  },
-  swipeHint: {
-    marginTop: 12,
-  },
   emptyWrap: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 24,
+  },
+  loadingText: {
+    marginTop: 10,
+  },
+  footer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 18,
+    paddingHorizontal: 24,
+  },
+  footerSpacer: {
+    height: 18,
   },
 });

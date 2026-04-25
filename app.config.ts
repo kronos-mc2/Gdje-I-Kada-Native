@@ -27,6 +27,9 @@ const config: ExpoConfig = {
   icon: './assets/images/icon.png',
   scheme: isTestVariant ? 'gdjeikadanative-test' : 'gdjeikadanative',
   userInterfaceStyle: 'automatic',
+  // Android dependencies (`react-native-reanimated` / `react-native-worklets`) require the new architecture.
+  // iOS native folder is temporarily held on the old architecture through `ios/Podfile.properties.json`
+  // until the strengthened `react-native-maps` patch is validated on-device.
   newArchEnabled: true,
   ios: {
     bundleIdentifier: isTestVariant ? 'com.anonymous.GdjeIKadaNative.test' : 'com.anonymous.GdjeIKadaNative',
@@ -57,6 +60,7 @@ const config: ExpoConfig = {
   plugins: [
     'expo-router',
     'expo-secure-store',
+    'expo-video',
     [
       'expo-build-properties',
       {
