@@ -16,7 +16,9 @@
     "ios:test": "node ./scripts/with-env.js test node ./scripts/run-ios.js --device",
     "ios:test:release": "node ./scripts/with-env.js test node ./scripts/run-ios.js --device --configuration Release",
     "web": "expo start --web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "typecheck": "tsc --noEmit",
+    "test": "TZ=UTC jest --runInBand"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
@@ -64,11 +66,13 @@
     "zustand": "^5.0.12"
   },
   "devDependencies": {
+    "@types/jest": "29.5.14",
     "@types/react": "~19.1.0",
     "@types/supercluster": "^7.1.3",
     "dotenv": "^16.4.5",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~10.0.0",
+    "jest-expo": "~54.0.17",
     "typescript": "~5.9.2"
   },
   "private": true

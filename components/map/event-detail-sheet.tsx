@@ -233,7 +233,7 @@ export function EventDetailSheet({ event, locale, onClose, topInset = 0, bottomI
       bottomInset={bottomInset}
       enablePanDownToClose
       onClose={onClose}
-      onChange={(index) => setSheetIndex(index)}
+      onChange={(index: number) => setSheetIndex(index)}
       handleComponent={renderHandle}
       backgroundComponent={renderBackground}
       style={styles.sheetContainer}

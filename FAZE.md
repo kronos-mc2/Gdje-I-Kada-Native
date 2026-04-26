@@ -1,6 +1,6 @@
 # Gdje i Kada - fazni plan rada
 
-Status dokumenta: 2026-04-25  
+Status dokumenta: 2026-04-26  
 Lokacija master dokumentacije: `README.md`
 
 ## Pravilo rada po fazama
@@ -52,6 +52,10 @@ Gotovo:
 Zavrsna biljeska:
 
 2026-04-18 - Napravljeno: README i FAZE su uspostavljeni kao obavezna projektna dokumentacija, s pravilom da se azuriraju nakon svake bitne promjene. Datoteke: `README.md`, `FAZE.md`. Testirano: dokumentacijska provjera.
+
+Dopuna:
+
+2026-04-26 - Napravljeno: uveden je osnovni automatizirani quality gate za oba odvojena repozitorija. Frontend repo `Gdje-I-Kada-Native` dobio je Jest (`jest-expo`) unit test setup za `selectEvents`, `formatEventDate`, `LocationSearchService` i `NominatimLocationSearchProvider`, plus GitHub Actions workflow koji na svaki `push` i `pull_request` vrti `npm ci`, `npm run lint`, `npm run typecheck` i `npm test`. Backend repo `backend` dobio je dodatne unit testove za `PasswordPolicy` i `JwtService`, plus zaseban GitHub Actions workflow koji na svaki `push` i `pull_request` vrti `./mvnw test`. Datoteke: frontend `package.json`, `jest.config.cjs`, `*.test.ts`, `.github/workflows/frontend-ci.yml`, `README.md`, `FAZE.md`; backend `src/test/java/hr/kronos/backend/auth/*.java`, `.github/workflows/backend-ci.yml`, `README.md`. Testirano: lokalno pokretanje frontend i backend CI komandi.
 
 ## Faza 1 - Glavni tabovi i navigacija
 

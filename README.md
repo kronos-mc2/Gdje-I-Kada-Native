@@ -1,6 +1,6 @@
 # Gdje i Kada - projektna dokumentacija
 
-Status dokumenta: 2026-04-25  
+Status dokumenta: 2026-04-26  
 Projekt se ne radi ispocetka. Postojeci React Native/Expo frontend i Spring Boot backend ostaju baza, a nove funkcionalnosti se nadograduju na vec postojece klase, rute, storeove, hookove i dizajn sustav.
 
 Radimo mobilnu event aplikaciju "Gdje i Kada" za iOS i Android. Frontend je React Native kroz Expo Router, backend je Spring Boot s PostgreSQL bazom. Nemoj kretati ispocetka. Prvo procitaj postojeci kod i nadogradi ga prema lokalnim patternima.
@@ -57,6 +57,7 @@ Postojece frontend tehnologije i patterni:
   - Shared API: `components/map/event-map.tsx`, `components/map/types.ts`, `MapMarkerBadge`, `EventDetailSheet`.
 - Lokacija: `features/events/hooks/use-map-location-bootstrap.ts` trazi consent, koristi `expo-location`, Android MapLibre fallback i IP/capital fallback.
 - Search po eventima na mapi: `features/events/hooks/use-event-map-search.ts`, `MapSearchBar`, `MapSearchResults`.
+- Frontend unit testovi: Jest kroz `jest-expo`, trenutno pokrivaju `selectEvents`, date formatting i location search servise/providere.
 
 Postojece backend tehnologije i patterni:
 
@@ -79,6 +80,7 @@ Postojece backend tehnologije i patterni:
   - `EventController`
   - `SocialController`
   - `MessageController`
+- Backend unit testovi: JUnit 5 + Mockito, trenutno pokrivaju `EventService`, `PasswordPolicy` i `JwtService`.
 
 Backend trenutno ima:
 
@@ -704,7 +706,10 @@ Frontend:
 
 ```bash
 cd Gdje-I-Kada-Native
+cp .env.example .env
 npm run lint
+npm run typecheck
+npm test
 npm run ios
 npm run android
 ```
@@ -716,6 +721,11 @@ cd backend
 ./mvnw test
 SPRING_PROFILES_ACTIVE=dev ./mvnw spring-boot:run
 ```
+
+GitHub Actions:
+
+- `Gdje-I-Kada-Native` repo ima workflow koji se vrti na svaki `push` i `pull_request`, priprema `.env` iz `.env.example` i pokrece `npm ci`, `npm run lint`, `npm run typecheck` i `npm test`.
+- `backend` repo ima workflow koji se vrti na svaki `push` i `pull_request` i pokrece `./mvnw test` na Java 25.
 
 Kod promjena koje diraju i frontend i backend:
 
