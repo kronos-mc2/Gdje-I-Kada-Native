@@ -5,7 +5,6 @@ import { Platform } from 'react-native';
 import { useAuthStore } from '@/core/store/auth-store';
 
 const fallbackBaseUrl = 'http://localhost:8080/api';
-const testBaseUrl = 'https://test-api-gik.nerizz.com/api';
 const androidLoopbackHost = '10.0.2.2';
 
 const normalizeBaseUrl = (value: string) => value.replace(/\/+$/, '');
@@ -35,8 +34,7 @@ const resolveApiBaseUrl = () => {
     return normalizeBaseUrl(androidOverride);
   }
 
-  const variantFallbackUrl = isTestVariant(extra) ? testBaseUrl : fallbackBaseUrl;
-  const configuredBaseUrl = (extra.apiBaseUrl ?? process.env.EXPO_PUBLIC_API_BASE_URL ?? variantFallbackUrl).trim() || variantFallbackUrl;
+  const configuredBaseUrl = (extra.apiBaseUrl ?? process.env.EXPO_PUBLIC_API_BASE_URL ?? fallbackBaseUrl).trim() || fallbackBaseUrl;
   if (Platform.OS === 'android' && /:\/\/(localhost|127\.0\.0\.1)([:/]|$)/i.test(configuredBaseUrl)) {
     return normalizeBaseUrl(configuredBaseUrl.replace(/localhost|127\.0\.0\.1/i, androidLoopbackHost));
   }

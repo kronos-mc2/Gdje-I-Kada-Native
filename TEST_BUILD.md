@@ -1,14 +1,14 @@
 # Test Android APK
 
-Test APK targeta backend:
-
-- `https://test-api-gik.nerizz.com/api`
+Test APK targeta backend URL iz `.env.test` ili EAS environment variables.
 
 Env file:
 
 ```bash
 cp .env.test.example .env.test
 ```
+
+U `.env.test` postavi stvarni test API URL i Google OAuth client ID-jeve. Ta datoteka je ignorirana i ne ide u git.
 
 Lokalni debug install na uredaj/emulator:
 
@@ -42,6 +42,8 @@ EAS internal APK build:
 npm run build:android:test:eas
 ```
 
+Za EAS build postavi `EXPO_PUBLIC_API_BASE_URL`, `EXPO_PUBLIC_ANDROID_API_BASE_URL` i Google OAuth client ID-jeve kao EAS environment variables/secrets. `eas.json` namjerno ne sadrzi te vrijednosti.
+
 Local iPhone development build:
 
 ```bash
@@ -65,8 +67,8 @@ When building the generated iOS workspace directly from Xcode without ovih npm s
 ```bash
 export NODE_BINARY=/putanja/do/node
 export APP_VARIANT=test
-export EXPO_PUBLIC_API_BASE_URL=https://test-api-gik.nerizz.com/api
-export EXPO_PUBLIC_ANDROID_API_BASE_URL=https://test-api-gik.nerizz.com/api
+export EXPO_PUBLIC_API_BASE_URL=https://your-test-api.example.com/api
+export EXPO_PUBLIC_ANDROID_API_BASE_URL=https://your-test-api.example.com/api
 export IOS_USES_APPLE_SIGN_IN=false
 ```
 

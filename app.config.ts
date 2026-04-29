@@ -5,10 +5,17 @@ import { ConfigPlugin, withEntitlementsPlist } from 'expo/config-plugins';
 const appVariant = process.env.APP_VARIANT === 'test' ? 'test' : 'prod';
 const isTestVariant = appVariant === 'test';
 const localApiBaseUrl = 'http://localhost:8080/api';
-const testApiBaseUrl = 'https://test-api-gik.nerizz.com/api';
-const apiBaseUrl = (process.env.EXPO_PUBLIC_API_BASE_URL ?? (isTestVariant ? testApiBaseUrl : localApiBaseUrl)).trim();
+const requireEnvForTest = (name: string) => {
+  const value = process.env[name]?.trim();
+  if (isTestVariant && !value) {
+    throw new Error(`${name} must be configured for test builds. Use .env.test locally or EAS environment variables.`);
+  }
+
+  return value;
+};
+const apiBaseUrl = (requireEnvForTest('EXPO_PUBLIC_API_BASE_URL') ?? localApiBaseUrl).trim();
 const androidApiBaseUrl = (
-  process.env.EXPO_PUBLIC_ANDROID_API_BASE_URL ?? (isTestVariant ? apiBaseUrl : 'http://10.0.2.2:8080/api')
+  requireEnvForTest('EXPO_PUBLIC_ANDROID_API_BASE_URL') ?? (isTestVariant ? apiBaseUrl : 'http://10.0.2.2:8080/api')
 ).trim();
 const usesAppleSignIn =
   process.env.IOS_USES_APPLE_SIGN_IN === 'true' || (!isTestVariant && process.env.IOS_USES_APPLE_SIGN_IN !== 'false');

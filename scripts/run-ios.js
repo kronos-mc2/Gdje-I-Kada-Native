@@ -10,14 +10,12 @@ const args = process.argv.slice(2);
 
 const appVariant = process.env.APP_VARIANT === 'test' ? 'test' : 'prod';
 const scheme = appVariant === 'test' ? 'GIKTest' : 'GIKDev';
-const defaultApiBaseUrl =
-  appVariant === 'test' ? 'https://test-api-gik.nerizz.com/api' : 'http://localhost:8080/api';
-const defaultAndroidApiBaseUrl =
-  appVariant === 'test' ? defaultApiBaseUrl : 'http://10.0.2.2:8080/api';
+const defaultApiBaseUrl = 'http://localhost:8080/api';
+const defaultAndroidApiBaseUrl = 'http://10.0.2.2:8080/api';
 
 const nodeBinary = process.env.NODE_BINARY || process.execPath;
-const apiBaseUrl = (process.env.EXPO_PUBLIC_API_BASE_URL || defaultApiBaseUrl).trim();
-const androidApiBaseUrl = (process.env.EXPO_PUBLIC_ANDROID_API_BASE_URL || defaultAndroidApiBaseUrl).trim();
+const apiBaseUrl = readEnvForVariant('EXPO_PUBLIC_API_BASE_URL', defaultApiBaseUrl);
+const androidApiBaseUrl = readEnvForVariant('EXPO_PUBLIC_ANDROID_API_BASE_URL', appVariant === 'test' ? apiBaseUrl : defaultAndroidApiBaseUrl);
 const iosUsesAppleSignIn =
   process.env.IOS_USES_APPLE_SIGN_IN || (appVariant === 'test' ? 'false' : 'true');
 
@@ -56,4 +54,18 @@ process.exit(child.status ?? 1);
 
 function shellEscape(value) {
   return JSON.stringify(String(value));
+}
+
+function readEnvForVariant(name, fallback) {
+  const value = (process.env[name] || '').trim();
+  if (value) {
+    return value;
+  }
+
+  if (appVariant === 'test') {
+    console.error(`${name} must be configured for test iOS runs. Create .env.test from .env.test.example.`);
+    process.exit(1);
+  }
+
+  return fallback;
 }

@@ -428,13 +428,15 @@ Default:
 
 - `DB_URL=jdbc:postgresql://localhost:5432/gik`
 - `DB_USERNAME=gik`
-- `DB_PASSWORD=gik`
+- `DB_PASSWORD` mora biti postavljen lokalno ili kroz deploy env file
+- `AUTH_JWT_SECRET` mora biti postavljen lokalno ili kroz deploy env file
 - `SERVER_PORT=8080`
 
 Frontend API URL:
 
 - iOS simulator: `EXPO_PUBLIC_API_BASE_URL=http://localhost:8080/api`
 - Android emulator automatski mijenja localhost u `10.0.2.2` u `core/api/http-client.ts`, ali moze se koristiti `EXPO_PUBLIC_ANDROID_API_BASE_URL`.
+- Test/prod API URL i Google OAuth client ID-jeve drzi u `.env.test` lokalno ili EAS environment variables/secrets, ne u `eas.json`.
 
 ### Event backend trenutno
 
@@ -718,6 +720,8 @@ Backend:
 
 ```bash
 cd backend
+export DB_PASSWORD=gik
+export AUTH_JWT_SECRET=change-this-local-secret-to-at-least-32-bytes
 ./mvnw test
 SPRING_PROFILES_ACTIVE=dev ./mvnw spring-boot:run
 ```
