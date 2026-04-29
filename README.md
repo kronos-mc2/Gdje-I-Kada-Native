@@ -54,7 +54,7 @@ Postojece frontend tehnologije i patterni:
 - iOS glass: `expo-glass-effect` i `expo-blur` se vec koriste u `EventDetailSheet` i `MapSearchBar.ios.tsx`; `AppCard` i `AppButton` imaju blur glass varijantu. Kod novih iOS povrsina preferirati `GlassView` kad je `isLiquidGlassAvailable()` i `isGlassEffectAPIAvailable()`, uz `BlurView` ili themed surface fallback.
 - Karte:
   - iOS: `components/map/event-map-surface.ios.tsx` koristi `react-native-maps` / MapKit.
-  - Android: `components/map/event-map-surface.android.tsx` koristi `@maplibre/maplibre-react-native` i `supercluster`.
+  - Android: `components/map/event-map-surface.android.tsx` koristi `@maplibre/maplibre-react-native` i prikazuje pojedinacne event pinove bez clusteriranja.
   - Shared API: `components/map/event-map.tsx`, `components/map/types.ts`, `MapMarkerBadge`, `EventDetailSheet`.
 - Lokacija: `features/events/hooks/use-map-location-bootstrap.ts` trazi consent, koristi `expo-location`, Android MapLibre fallback i IP/capital fallback.
 - Search po eventima na mapi: `features/events/hooks/use-event-map-search.ts`, `MapSearchBar`, `MapSearchResults`.
@@ -247,7 +247,7 @@ Trenutno ponasanje:
 - Share koristi native `Share.share`.
 - Nakon uspjesnog joina sheet pita korisnika zeli li otvoriti `Poruke`; stvarni event chat room jos nije implementiran.
 - Na mapi postoji `+` floating gumb iznad recenter gumba koji vodi na `app/create-event.tsx`.
-- Android mapa ima MapLibre i clustering preko `supercluster`.
+- Android mapa ima MapLibre i prikazuje pojedinacne event pinove bez automatskog clusteriranja.
 - iOS mapa koristi MapKit.
 - iOS i Android markeri sada koriste isti custom `MapMarkerBadge` izgled: kruzni badge, lagani border, shadow i donja tocka; iOS vise nema diamond/tail marker.
 - `scripts/patch-react-native-maps-airmap.js` se vrti kroz `postinstall` i dodaje guard u `react-native-maps` `AIRMap.m` za `nil` subview koji je rusio iOS nakon login-a u RN new architecture interopu.
@@ -654,7 +654,7 @@ Kod dokazivanja ili objasnjavanja projekta moze se referencirati:
 - Frontend routing: `Gdje-I-Kada-Native/app/_layout.tsx`, `app/(tabs)/_layout.tsx`.
 - Mapa: `EventsMapExperience`, `EventMap`, `EventMapSurface`, `EventDetailSheet`.
 - iOS Liquid Glass: `components/search/map-search-bar.ios.tsx`, `components/map/event-detail-sheet.tsx`.
-- Android MapLibre + clustering: `components/map/event-map-surface.android.tsx`.
+- Android MapLibre marker surface: `components/map/event-map-surface.android.tsx`.
 - State: `core/store/app-store.ts`, `core/store/auth-store.ts`.
 - API layer: `core/api/http-client.ts`, `core/api/services.ts`, `core/api/query-hooks.ts`, `core/api/auth-services.ts`.
 - Backend auth: `AuthController`, `AuthService`, `JwtService`, `JwtAuthenticationFilter`, `SecurityConfig`, `AuthMapper.xml`.

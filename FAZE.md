@@ -166,7 +166,7 @@ Postojece stanje:
 
 - `EventsMapExperience` vec rendera search, mapu, recenter button i `EventDetailSheet`.
 - `useMapLocationBootstrap` vec rjesava precise location i fallback.
-- Android ima MapLibre clustering.
+- Android ima MapLibre marker surface bez automatskog clusteriranja.
 - iOS ima MapKit i Liquid Glass search/sheet.
 
 Zadaci:
@@ -191,6 +191,10 @@ Definition of done:
 Zavrsna biljeska:
 
 2026-04-18 - Napravljeno: mapa sada salje backendu `from`, `to`, `lat`, `lng`, `radiusKm` i `query` kroz `useEventsQuery(params)`, prikazuje date filter ispod search bara i ima `+` floating gumb iznad recenter gumba za otvaranje create event flowa. Date filter podrzava strelice za dan po dan, native date picker modal, range mode i `Svi datumi`. Backend `GET /api/events` filtrira public/published evente po datumu, radiusu i search queryju te sortira po udaljenosti kad su poslane koordinate. `EventDetailSheet` prikazuje cover/media preview, attendance, entrance podatke, cijenu/kapacitet, organizer rating i join/leave CTA. Nakon uspjesnog joina korisnik dobiva prompt za otvaranje Poruka. Datoteke: `app/(tabs)/index.tsx`, `features/events/hooks/use-events-map-screen-model.ts`, `features/events/components/events-map-experience.tsx`, `features/events/components/map-date-filter-control.tsx`, `components/map/event-detail-sheet.tsx`, `core/api/query-hooks.ts`, `core/api/services.ts`, `core/types/domain.ts`, `core/i18n/translations.ts`, backend `EventController`, `EventService`, `EventMapper`, `EventMapper.xml`, `AppEventDto`, `EventRow`, `README.md`, `FAZE.md`. Testirano: backend `export JAVA_HOME=$(/usr/libexec/java_home) && ./mvnw test`, frontend `npx tsc --noEmit`, frontend `npm run lint`. Faza 3 je zatvorena i ne radi se ponovno bez nove dopune ili regresije.
+
+Dopuna:
+
+2026-04-29 - Maknuto je automatsko Android clusteriranje event pinova. `components/map/event-map-surface.android.tsx` sada rendera pojedinacne `PointAnnotation` markere iz validnih event coordinates, a `supercluster`, `@types/supercluster` i transitive `kdbush` su uklonjeni iz dependency zapisa. Test/build nije pokretan po dogovoru.
 
 ## Faza 4 - Join state i shared event details
 
