@@ -10,5 +10,12 @@ export const queryKeys = {
   likedEvents: ['liked-events'] as const,
   friends: ['friends'] as const,
   conversations: ['conversations'] as const,
+  chatRoomsRoot: ['chat-rooms'] as const,
+  chatRooms: (query?: string) => ['chat-rooms', { query: query ?? '' }] as const,
+  chatRoomRoot: ['chat-room'] as const,
+  chatRoom: (roomId: string) => ['chat-room', roomId] as const,
+  chatMessagesRoot: ['chat-messages'] as const,
+  chatMessages: (roomId: string) => ['chat-messages', roomId] as const,
+  chatPeople: (query?: string) => ['chat-people', { query: query ?? '' }] as const,
   locationSearch: (query: string, locale: string) => ['location-search', locale, query] as const,
 };

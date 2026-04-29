@@ -92,6 +92,97 @@ export type Conversation = {
   timeLabel: string;
 };
 
+export type ChatRoomType = 'direct' | 'group' | 'event';
+export type ChatMemberRole = 'owner' | 'admin' | 'member';
+export type ChatMessageType = 'text' | 'event_share' | 'poll';
+
+export type ChatPerson = {
+  id: string;
+  name: string;
+  email: string;
+};
+
+export type ChatMember = {
+  id: string;
+  name: string;
+  role: ChatMemberRole;
+};
+
+export type EventSharePreview = {
+  id: string;
+  title: LocalizedText;
+  where: LocalizedText;
+  about: LocalizedText;
+  whenISO: string;
+  coverUrl?: string;
+};
+
+export type PollOption = {
+  id: string;
+  text: string;
+  voteCount: number;
+  votedByMe: boolean;
+};
+
+export type Poll = {
+  id: string;
+  question: string;
+  allowMultiple: boolean;
+  totalVotes: number;
+  closed: boolean;
+  myOptionIds: string[];
+  options: PollOption[];
+};
+
+export type ChatMessage = {
+  id: string;
+  roomId: string;
+  type: ChatMessageType;
+  body?: string;
+  senderUserId?: string;
+  senderName?: string;
+  createdAt: string;
+  timeLabel?: string;
+  mine: boolean;
+  event?: EventSharePreview;
+  poll?: Poll;
+};
+
+export type ChatRoom = {
+  id: string;
+  type: ChatRoomType;
+  title: string;
+  subtitle?: string;
+  lastMessage?: string;
+  lastMessageAt?: string;
+  timeLabel?: string;
+  unreadCount: number;
+  memberCount: number;
+  myRole?: ChatMemberRole;
+  adminOnly: boolean;
+  eventId?: string;
+  members?: ChatMember[];
+};
+
+export type ChatRoomDetail = {
+  room: ChatRoom;
+  messages: ChatMessage[];
+};
+
+export type CreateChatRoomPayload = {
+  type: ChatRoomType;
+  title?: string;
+  memberUserId?: string;
+  eventId?: string;
+  memberUserIds?: string[];
+};
+
+export type CreatePollPayload = {
+  question: string;
+  options: string[];
+  allowMultiple?: boolean;
+};
+
 export type UserProfile = {
   name: string;
   email: string;

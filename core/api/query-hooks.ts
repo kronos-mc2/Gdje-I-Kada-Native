@@ -2,7 +2,13 @@ import { InfiniteData, useInfiniteQuery, useMutation, useQuery, useQueryClient }
 
 import { queryKeys } from '@/core/api/query-keys';
 import {
+  createChatPoll,
+  createChatRoom,
   createEvent,
+  fetchChatMessages,
+  fetchChatPeople,
+  fetchChatRoom,
+  fetchChatRooms,
   fetchEventById,
   fetchConversations,
   fetchEvents,
@@ -10,13 +16,17 @@ import {
   fetchLikedEvents,
   fetchFriends,
   fetchMyEvents,
+  getOrCreateEventChatRoom,
   joinEvent,
   likeEvent,
   leaveEvent,
+  sendChatMessage,
   shareEventToConversation,
   unlikeEvent,
+  updateChatRoom,
+  votePoll,
 } from '@/core/api/services';
-import { AppEvent, EventQueryParams, FeedPage, MyEventsFilter } from '@/core/types/domain';
+import { AppEvent, ChatRoomDetail, EventQueryParams, FeedPage, MyEventsFilter, Poll } from '@/core/types/domain';
 
 export const useEventsQuery = (params?: EventQueryParams) =>
   useQuery({
@@ -63,6 +73,116 @@ export const useConversationsQuery = () =>
     queryKey: queryKeys.conversations,
     queryFn: fetchConversations,
   });
+
+export const useChatRoomsQuery = (query?: string) =>
+  useQuery({
+    queryKey: queryKeys.chatRooms(query),
+    queryFn: () => fetchChatRooms(query),
+    refetchInterval: query ? false : 5000,
+  });
+
+export const useChatRoomQuery = (roomId?: string | null) =>
+  useQuery({
+    queryKey: queryKeys.chatRoom(roomId ?? ''),
+    queryFn: () => fetchChatRoom(roomId ?? ''),
+    enabled: Boolean(roomId),
+    refetchInterval: 2500,
+  });
+
+export const useChatMessagesQuery = (roomId?: string | null) =>
+  useQuery({
+    queryKey: queryKeys.chatMessages(roomId ?? ''),
+    queryFn: () => fetchChatMessages(roomId ?? ''),
+    enabled: Boolean(roomId),
+    refetchInterval: 2500,
+  });
+
+export const useChatPeopleQuery = (query?: string) =>
+  useQuery({
+    queryKey: queryKeys.chatPeople(query),
+    queryFn: () => fetchChatPeople(query),
+  });
+
+export const useCreateChatRoomMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: createChatRoom,
+    onSuccess: (room) => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.chatRoomsRoot });
+      queryClient.setQueryData<ChatRoomDetail | undefined>(queryKeys.chatRoom(room.id), (current) =>
+        current ? { ...current, room } : current,
+      );
+    },
+  });
+};
+
+export const useGetOrCreateEventChatRoomMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: getOrCreateEventChatRoom,
+    onSuccess: (room) => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.chatRoomsRoot });
+      queryClient.setQueryData<ChatRoomDetail | undefined>(queryKeys.chatRoom(room.id), (current) =>
+        current ? { ...current, room } : current,
+      );
+    },
+  });
+};
+
+export const useUpdateChatRoomMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: updateChatRoom,
+    onSuccess: (room) => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.chatRoomsRoot });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.chatRoom(room.id) });
+    },
+  });
+};
+
+export const useSendChatMessageMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: sendChatMessage,
+    onSuccess: (message) => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.chatRoomsRoot });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.chatRoom(message.roomId) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.chatMessages(message.roomId) });
+    },
+  });
+};
+
+export const useCreateChatPollMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: createChatPoll,
+    onSuccess: (message) => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.chatRoomsRoot });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.chatRoom(message.roomId) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.chatMessages(message.roomId) });
+    },
+  });
+};
+
+export const useVotePollMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: votePoll,
+    onSuccess: (poll: Poll) => {
+      queryClient.setQueriesData<ChatRoomDetail>({ queryKey: ['chat-room'] }, (current) =>
+        current ? patchPollInRoomDetail(current, poll) : current,
+      );
+      queryClient.setQueriesData({ queryKey: ['chat-messages'] }, (current) => patchPollInMessages(current, poll));
+      void queryClient.invalidateQueries({ queryKey: queryKeys.chatRoomsRoot });
+    },
+  });
+};
 
 export const useCreateEventMutation = () => {
   const queryClient = useQueryClient();
@@ -162,9 +282,24 @@ export const useShareEventMutation = () => {
       shareEventToConversation(conversationId, eventId),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.conversations });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.chatRoomsRoot });
     },
   });
 };
+
+function patchPollInRoomDetail(current: ChatRoomDetail, poll: Poll): ChatRoomDetail {
+  return {
+    ...current,
+    messages: current.messages.map((message) => (message.poll?.id === poll.id ? { ...message, poll } : message)),
+  };
+}
+
+function patchPollInMessages(current: unknown, poll: Poll) {
+  if (!Array.isArray(current)) {
+    return current;
+  }
+  return current.map((message) => (message?.poll?.id === poll.id ? { ...message, poll } : message));
+}
 
 function syncEventAcrossCaches(queryClient: ReturnType<typeof useQueryClient>, event: AppEvent) {
   queryClient.setQueryData(queryKeys.event(event.id), event);

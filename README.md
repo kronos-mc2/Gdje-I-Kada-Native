@@ -33,7 +33,7 @@ Trenutno stanje tabova:
 - Mapa je implementirana kao `app/(tabs)/index.tsx` i rendera `EventsMapExperience`.
 - FYP je implementiran kao `app/(tabs)/fyp.tsx`.
 - Kalendar je implementiran kao `app/(tabs)/calendar.tsx` i prikazuje joined-only mjesecni grid s event oznakama, searchom i povratkom na danas.
-- Poruke su glavni tab kroz `app/(tabs)/messages.tsx`.
+- Poruke su glavni tab kroz `app/(tabs)/messages.tsx`; chat screen je `app/chat/[id].tsx`.
 - `app/(tabs)/social.tsx` ostaje prototip/sekundarni ekran za conversations + friends, ali vise nije glavni tab.
 - Profil je implementiran kao `app/(tabs)/profile.tsx`; trenutno prikazuje osnovni profil, liked events history, jezik, temu i odjavu. Jos trebaju transaction history, edit profila i poseban settings ekran.
 
@@ -101,8 +101,19 @@ Backend trenutno ima:
 - `GET /api/users/me/liked-events`
 - `GET /api/feed?cursor=&limit=`
 - `GET /api/social/friends`
-- `GET /api/messages/conversations`
-- `POST /api/messages/conversations/{id}/share-event`
+- `GET /api/messages/chat-rooms?query=`
+- `POST /api/messages/chat-rooms`
+- `POST /api/messages/events/{eventId}/chat-room`
+- `GET /api/messages/chat-rooms/{id}`
+- `PATCH /api/messages/chat-rooms/{id}`
+- `GET /api/messages/chat-rooms/{id}/messages`
+- `POST /api/messages/chat-rooms/{id}/messages`
+- `POST /api/messages/chat-rooms/{id}/share-event`
+- `POST /api/messages/chat-rooms/{id}/polls`
+- `POST /api/messages/polls/{id}/vote`
+- `GET /api/messages/people?query=`
+- `GET /api/messages/conversations` legacy adapter
+- `POST /api/messages/conversations/{id}/share-event` legacy adapter
 
 Svi `/api/**` endpointi osim public auth ruta traze `Authorization: Bearer <token>`.
 
@@ -134,7 +145,14 @@ Trenutna baza:
 - `event_likes` iz `V4__expand_event_domain.sql`
 - `event_organizer_ratings` iz `V4__expand_event_domain.sql`
 - `friends` iz `V1__init_schema.sql`
-- `conversations` iz `V1__init_schema.sql`
+- `conversations` iz `V1__init_schema.sql` ostaje legacy adapter/prototip
+- `chat_rooms` iz `V5__chat_rooms_messages_polls.sql`
+- `chat_members` iz `V5__chat_rooms_messages_polls.sql`
+- `messages` iz `V5__chat_rooms_messages_polls.sql`
+- `message_reads` iz `V5__chat_rooms_messages_polls.sql`
+- `polls` iz `V5__chat_rooms_messages_polls.sql`
+- `poll_options` iz `V5__chat_rooms_messages_polls.sql`
+- `poll_votes` iz `V5__chat_rooms_messages_polls.sql`
 - `app_users` iz `V3__create_users_table.sql`
   - `id`
   - `email`
@@ -152,7 +170,7 @@ Trenutni event model:
 - Service: `EventService`.
 - Mapper: `EventMapper` i `EventMapper.xml`.
 
-Event trenutno podrzava naslov, lokaciju, adresu, opis, start/end datum, coordinates, entrance coordinates, entry instructions, creator user id, visibility `public/friends`, attendance mode `open/waitlist/paid`, cijenu za paid evente, capacity, status, organizer rating agregate, `likeCount`, `likedByMe`, participant count, `joinedByMe`, `attendanceStatus` i `canJoin`. Baza ima tablice za media, participants, likes i organizer ratings. Join/leave i like/unlike rade kroz backend, a feed i detail endpointi vracaju `event_media` za reels/detail prikaz. Jos ne postoje pun UI/API flow za upload media, placanje, rating submit ni puni event chat.
+Event trenutno podrzava naslov, lokaciju, adresu, opis, start/end datum, coordinates, entrance coordinates, entry instructions, creator user id, visibility `public/friends`, attendance mode `open/waitlist/paid`, cijenu za paid evente, capacity, status, organizer rating agregate, `likeCount`, `likedByMe`, participant count, `joinedByMe`, `attendanceStatus` i `canJoin`. Baza ima tablice za media, participants, likes, organizer ratings i event chat roomove. Join/leave i like/unlike rade kroz backend, a feed i detail endpointi vracaju `event_media` za reels/detail prikaz. Jos ne postoje pun UI/API flow za upload media, placanje ni rating submit.
 
 Kad implementiras nove stvari, nadogradi postojece:
 
@@ -171,7 +189,7 @@ FYP dio aplikacije sluzi za brz discovery kroz vertikalni Reels-style feed. Svak
 
 Kalendar prikazuje samo evente na koje se korisnik pridruzio. Rijesen je kao native mjesecni grid s oznakama eventova po danima, searchom prijavljenih eventova i listom eventova za odabrani dan.
 
-Poruke trebaju podrzavati privatne razgovore, privatne i javne grupe, event-specific grupe, pollove i admin-only chat mod gdje samo admini pisu, a ostali mogu glasati na pollu.
+Poruke podrzavaju privatne razgovore, grupe, event-specific grupe, pollove i admin-only chat mod gdje samo admini pisu, a ostali mogu glasati na pollu.
 
 Profil treba prikazivati korisnikovu aktivnost: event history, joined eventove, liked reels/evente i transaction history. Profil mora imati editiranje slike i imena. Postavke trebaju biti odvojeni ekran otvoren iz profila, a tamo idu jezik, tema i slicne opcije.
 
@@ -245,7 +263,7 @@ Trenutno ponasanje:
 - Event detail sheet za odabrani marker dohvat detaila finalizira preko `GET /api/events/{id}` i koristi isti shared details content kao dedicated `app/event/[id].tsx`.
 - Event detalji u sheetu prikazuju cover sliku/media preview, naslov, mjesto, datum, broj sudionika, attendance mode, opis, join/leave CTA, entrance coordinates/instructions, cijenu/kapacitet i organizer rating.
 - Share koristi native `Share.share`.
-- Nakon uspjesnog joina sheet pita korisnika zeli li otvoriti `Poruke`; stvarni event chat room jos nije implementiran.
+- Nakon uspjesnog joina sheet pita korisnika zeli li otvoriti event chat i kreira/otvara `event` chat room.
 - Na mapi postoji `+` floating gumb iznad recenter gumba koji vodi na `app/create-event.tsx`.
 - Android mapa ima MapLibre i prikazuje pojedinacne event pinove bez automatskog clusteriranja.
 - iOS mapa koristi MapKit.
@@ -259,7 +277,6 @@ Sto fali za finalni zahtjev:
 - Prikaz posebnog entrance pina direktno na mapi, ne samo u detaljima.
 - Marker badge i dalje koriste helper cover URL, ne stvarni `event_media` render u markeru.
 - Pravi media upload/video playback umjesto cover preview helpera.
-- Stvarni event chat room iza prompta nakon joina.
 - Razlikovanje `public`, `friends`, `waitlist`, `open/free`, `paid` i drugih attendance pravila.
 
 ### Reels/FYP
@@ -281,7 +298,7 @@ Trenutno ponasanje:
 - Like je server-side preko `POST/DELETE /api/events/{id}/like`; React Query optimisticno patcha feed/detail/profile cache.
 - Bookmark/save UI je uklonjen.
 - Details iz FYP-a otvaraju isti `EventDetailSheet` kao mapa.
-- Share otvara modal koji nudi postojece razgovore kroz `POST /api/messages/conversations/{id}/share-event`, a native share ostaje fallback.
+- Share otvara modal koji nudi chat roomove kroz `POST /api/messages/chat-rooms/{id}/share-event`, a native share ostaje fallback.
 - Profil prikazuje liked history preko `GET /api/users/me/liked-events`.
 
 Sto jos fali:
@@ -313,38 +330,39 @@ Status Faze 6:
 
 Postoji:
 
-- `app/(tabs)/messages.tsx` prikazuje samo listu conversations.
-- `app/(tabs)/social.tsx` prikazuje conversations + friends.
-- `features/messages/components/conversation-row.tsx`.
-- `features/social/components/friend-row.tsx`.
+- `app/(tabs)/messages.tsx` prikazuje chat room listu s pretragom i `+` flowom za novi privatni chat.
+- `app/chat/[id].tsx` prikazuje konkretan chat room, poruke, pollove i details panel.
+- `features/messages/components/chat-room-row.tsx`.
+- `features/messages/components/message-bubble.tsx`.
+- `features/messages/components/chat-details-panel.tsx`.
+- `app/(tabs)/social.tsx` ostaje sekundarni prototip za legacy conversations + friends.
 - Backend:
   - `MessageController`
   - `MessageService`
   - `MessageMapper`
-  - `ConversationRow`
+  - chat row modeli u `messages/persistence`
   - `MessageMapper.xml`
-  - tablica `conversations`
+  - tablice `chat_rooms`, `chat_members`, `messages`, `message_reads`, `polls`, `poll_options`, `poll_votes`
 
 Trenutno ponasanje:
 
-- Dohvat liste conversations preko `/api/messages/conversations`.
-- FYP/details share mogu poslati event u postojeci conversation preview preko `/api/messages/conversations/{id}/share-event`.
-- Nema stvarnih poruka, nema chat room screena, nema slanja poruka.
+- Dohvat chat liste ide preko `/api/messages/chat-rooms?query=`.
+- Lista prikazuje samo chat roomove gdje je korisnik stvarni clan u `chat_members`; stari seedani `Ana/Marko/Lana` mock razgovori se vise ne vracaju u glavnom Poruke tabu.
+- Novi privatni chat se kreira preko `/api/messages/chat-rooms` s `type=direct`.
+- Event chat se otvara/kreira preko `/api/messages/events/{eventId}/chat-room`, a join prompt nakon uspjesnog joina vodi direktno u taj room.
+- Chat room detail dohvat vraca room metadata, members i messages preko `/api/messages/chat-rooms/{id}`.
+- Slanje teksta ide preko `/api/messages/chat-rooms/{id}/messages`.
+- Event share iz FYP/detailsa salje message tip `event_share` preko `/api/messages/chat-rooms/{id}/share-event`; u chatu se prikazuje event card s coverom, titleom, lokacijom, datumom i linkom na details.
+- Pollovi se kreiraju preko `/api/messages/chat-rooms/{id}/polls`, prikazuju se u chatu i glasanje ide preko `/api/messages/polls/{id}/vote`.
+- `adminOnly` se mijenja preko `PATCH /api/messages/chat-rooms/{id}`; owner/admin mogu pisati, clanovi mogu glasati na pollovima.
+- Chat koristi app-active React Query listener: dok je korisnik prijavljen i app je aktivan, globalni listener invalidira aktivne chat room/chat detail queryje svake 2.5 sekunde i odmah nakon povratka appa iz backgrounda. Lista Poruke dodatno refetcha svakih 5 sekundi kad nema search queryja.
+- Details panel se otvara klikom na ime osobe/grupe u headeru. Direct view trenutno prikazuje ime i placeholder da se friend eventovi trebaju povezati kad se implementira friends event model; group/event view prikazuje sudionike.
 
 Sto fali:
 
-- Modeli za `chat_rooms`, `chat_members`, `messages`, `message_reads`.
-- Tipovi chata: private DM, private group, public group, event group.
-- Admin role per chat.
-- Admin-only chat mode.
-- Pollovi:
-  - `polls`
-  - `poll_options`
-  - `poll_votes`
-  - pravilo da korisnik moze glasati, a ne pisati ako nema permission.
-- Slanje event carda u chat s minimalnim previewjem: slika, naslov, kratki opis, deep link na event details.
-- WebSocket/SSE ili polling strategy za realtime.
-- Push notifikacije kasnije.
+- WebSocket/SSE ako polling ne bude dovoljno dobar.
+- Push notifikacije.
+- Pun friends event model za prikaz evenata prijatelja u direct detail viewu.
 
 ### Profil
 
@@ -557,25 +575,32 @@ Messages:
 
 - `chat_rooms`
   - `id`
-  - `type`: `dm`, `private_group`, `public_group`, `event`
+  - `room_type`: `direct`, `group`, `event`
   - `event_id` nullable
   - `title`
   - `is_admin_only`
-  - `created_by`
+  - `created_by_user_id`
   - `created_at`
+  - `updated_at`
 - `chat_members`
-  - `chat_room_id`
+  - `room_id`
   - `user_id`
   - `role`: `owner`, `admin`, `member`
   - `joined_at`
 - `messages`
   - `id`
-  - `chat_room_id`
+  - `room_id`
   - `sender_user_id`
-  - `type`: `text`, `event_share`, `poll`, `system`
+  - `message_type`: `text`, `event_share`, `poll`
   - `body`
   - `event_id` nullable za share card
+  - `poll_id` nullable za poll message
   - `created_at`
+- `message_reads`
+  - `room_id`
+  - `user_id`
+  - `last_read_message_id`
+  - `read_at`
 - `polls`
 - `poll_options`
 - `poll_votes`
@@ -684,12 +709,18 @@ Feed:
 
 Messages:
 
-- `GET /api/chats`
-- `POST /api/chats`
-- `GET /api/chats/{id}/messages`
-- `POST /api/chats/{id}/messages`
-- `POST /api/chats/{id}/polls`
-- `POST /api/polls/{id}/votes`
+- `GET /api/messages/chat-rooms?query=`
+- `POST /api/messages/chat-rooms`
+- `POST /api/messages/events/{eventId}/chat-room`
+- `GET /api/messages/chat-rooms/{id}`
+- `PATCH /api/messages/chat-rooms/{id}`
+- `GET /api/messages/chat-rooms/{id}/messages`
+- `POST /api/messages/chat-rooms/{id}/messages`
+- `POST /api/messages/chat-rooms/{id}/share-event`
+- `POST /api/messages/chat-rooms/{id}/polls`
+- `POST /api/messages/polls/{id}/vote`
+- `GET /api/messages/people?query=`
+- `GET /api/messages/conversations`
 - `POST /api/messages/conversations/{id}/share-event`
 
 Profile:

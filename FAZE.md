@@ -27,7 +27,7 @@ Dokumentacija je dio zadatka, ne naknadni posao. Ako kod i dokumentacija nisu us
 | 4 | Join state i event details | Rijeseno | Join/leave i detalji su server-side i dijele se izmedu mape, FYP-a i kalendara. |
 | 5 | Reels/FYP | Rijeseno | FYP radi kao reels feed s media preloadom, likeovima i shareom. |
 | 6 | Kalendar | Rijeseno | Kalendar prikazuje joined evente u mjesecnom gridu. |
-| 7 | Poruke i event chat | Nije poceto | Poruke imaju chat roomove, event grupe, event share card i pollove. |
+| 7 | Poruke i event chat | Rijeseno | Poruke imaju chat roomove, event grupe, event share card i pollove. |
 | 8 | Profil i postavke | Nije poceto | Profil ima edit, history, liked history, transactions i settings screen. |
 | 9 | Placanja, rating i polish | Nije poceto | Paid eventi, transaction history, organizer rating i zavrsni UX polish. |
 
@@ -309,7 +309,7 @@ Zavrsna biljeska:
 
 ## Faza 7 - Poruke i event chat
 
-Status: Nije poceto
+Status: Rijeseno
 
 Cilj:
 
@@ -317,29 +317,29 @@ Poruke pokrivaju privatne poruke, grupe, event grupe, pollove i admin-only chat 
 
 Postojece stanje:
 
-- Backend ima samo `conversations` listu.
-- Frontend ima samo row listu.
+- Backend sada ima puni chat domain uz legacy `conversations` adapter.
+- Frontend ima chat room listu, chat screen, details panel, pollove i event share card.
 
 Zadaci backend:
 
-- [ ] Dodati `chat_rooms`.
-- [ ] Dodati `chat_members`.
-- [ ] Dodati `messages`.
-- [ ] Dodati `message_reads`.
-- [ ] Dodati `polls`, `poll_options`, `poll_votes`.
-- [ ] Dodati role: owner/admin/member.
-- [ ] Dodati admin-only permission rules.
-- [ ] Dodati event share message type.
+- [x] Dodati `chat_rooms`.
+- [x] Dodati `chat_members`.
+- [x] Dodati `messages`.
+- [x] Dodati `message_reads`.
+- [x] Dodati `polls`, `poll_options`, `poll_votes`.
+- [x] Dodati role: owner/admin/member.
+- [x] Dodati admin-only permission rules.
+- [x] Dodati event share message type.
 
 Zadaci frontend:
 
-- [ ] Chat room list.
-- [ ] Chat room screen.
-- [ ] Slanje text messagea.
-- [ ] Event share card u chatu: slika, naslov, kratki opis, link na details.
-- [ ] Poll prikaz i glasanje.
-- [ ] UI za admin-only mode.
-- [ ] Event chat prompt nakon joina.
+- [x] Chat room list.
+- [x] Chat room screen.
+- [x] Slanje text messagea.
+- [x] Event share card u chatu: slika, naslov, kratki opis, link na details.
+- [x] Poll prikaz i glasanje.
+- [x] UI za admin-only mode.
+- [x] Event chat prompt nakon joina.
 
 Realtime odluka:
 
@@ -349,6 +349,16 @@ Realtime odluka:
 Definition of done:
 
 - Korisnik moze otvoriti chat, poslati poruku, shareati event i glasati u pollu.
+
+Zavrsna biljeska:
+
+2026-04-29 - Napravljeno: backend je dobio puni chat domain kroz Flyway migraciju `V5__chat_rooms_messages_polls.sql`: `chat_rooms`, `chat_members`, `messages`, `message_reads`, `polls`, `poll_options` i `poll_votes`, s room tipovima `direct/group/event`, roleovima `owner/admin/member`, admin-only pravilima, event share message tipom i poll voting endpointima. Frontend `Poruke` tab sada ima search, listu chat roomova i `+` modal za start novog privatnog chata; dodan je `app/chat/[id].tsx` s headerom, details viewom na klik imena, sudionicima, admin-only switchom, message composerom, poll composerom, event share cardom i poll glasovanjem. Event join prompt sada pokusava otvoriti/kreirati event chat. Share iz event details/FYP-a salje event card u chat room. Datoteke: backend message DTO/row/service/controller/mapper/migration, frontend `core/api/*`, `core/types/domain.ts`, `app/(tabs)/messages.tsx`, `app/chat/[id].tsx`, `features/messages/components/*`, `features/events/*`, `core/i18n/translations.ts`, `README.md`, `FAZE.md`, `backend/README.md`. Test/build nije pokretan po dogovoru.
+
+Dopuna:
+
+2026-04-29 - Maknuti su legacy mock razgovori iz finalnog chat flowa. `GET /api/messages/chat-rooms` sada vraca samo sobe gdje je korisnik stvarni clan u `chat_members`, a migracija `V6__remove_legacy_mock_chats.sql` brise stare seedane `c1/c2/c3` conversations i njihove no-member chat room kopije ako su vec migrirane. Test/build nije pokretan po dogovoru.
+
+2026-04-29 - Dodan je frontend chat realtime listener bez dodatnog native dependencyja. `ChatRealtimeListener` radi dok je korisnik prijavljen i app je aktivan, invalidira aktivne chat list/detail/message queryje svake 2.5 sekunde i odmah na povratku iz backgrounda; chat detail polling je spusten na 2.5 sekunde, a Poruke lista refetcha svakih 5 sekundi kad nema search queryja. Test/build nije pokretan po dogovoru.
 
 ## Faza 8 - Profil i postavke
 

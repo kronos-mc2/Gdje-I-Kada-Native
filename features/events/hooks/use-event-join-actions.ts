@@ -2,7 +2,7 @@ import { useRouter } from 'expo-router';
 import { useCallback } from 'react';
 import { Alert } from 'react-native';
 
-import { useJoinEventMutation, useLeaveEventMutation } from '@/core/api/query-hooks';
+import { useGetOrCreateEventChatRoomMutation, useJoinEventMutation, useLeaveEventMutation } from '@/core/api/query-hooks';
 import { useI18n } from '@/core/i18n/use-i18n';
 import { AppEvent } from '@/core/types/domain';
 
@@ -11,6 +11,7 @@ export function useEventJoinActions(event?: AppEvent | null) {
   const { t } = useI18n();
   const joinEventMutation = useJoinEventMutation();
   const leaveEventMutation = useLeaveEventMutation();
+  const eventChatMutation = useGetOrCreateEventChatRoomMutation();
   const isJoined = event?.joinedByMe === true;
   const isJoinPending = joinEventMutation.isPending || leaveEventMutation.isPending;
   const isJoinDisabled = !event || (!isJoined && event.canJoin === false) || isJoinPending;
@@ -37,13 +38,20 @@ export function useEventJoinActions(event?: AppEvent | null) {
         { text: t('notNow'), style: 'cancel' },
         {
           text: t('openMessages'),
-          onPress: () => router.push('/(tabs)/messages'),
+          onPress: async () => {
+            try {
+              const room = await eventChatMutation.mutateAsync(joinedEvent.id);
+              router.push(`/chat/${room.id}`);
+            } catch {
+              router.push('/(tabs)/messages');
+            }
+          },
         },
       ]);
     } catch {
       Alert.alert(isJoined ? t('leaveEventFailed') : t('joinEventFailed'));
     }
-  }, [event, isJoined, joinEventMutation, leaveEventMutation, router, t]);
+  }, [event, eventChatMutation, isJoined, joinEventMutation, leaveEventMutation, router, t]);
 
   return {
     isJoined,

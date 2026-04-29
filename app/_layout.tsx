@@ -7,6 +7,7 @@ import { ActivityIndicator, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { ChatRealtimeListener } from '@/core/api/chat-realtime-listener';
 import { queryClient } from '@/core/query/query-client';
 import { useAuthStore } from '@/core/store/auth-store';
 import { AppThemeProvider, useAppTheme } from '@/core/theme';
@@ -55,6 +56,7 @@ function RootNavigator() {
         <Stack.Screen name="create-event" options={{ presentation: 'modal' }} />
         <Stack.Screen name="entrance-map-picker" options={{ presentation: 'fullScreenModal' }} />
         <Stack.Screen name="event/[id]" options={{ presentation: 'card' }} />
+        <Stack.Screen name="chat/[id]" options={{ presentation: 'card' }} />
       </Stack>
     </>
   );
@@ -64,6 +66,7 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <QueryClientProvider client={queryClient}>
+        <ChatRealtimeListener />
         <SafeAreaProvider>
           <AppThemeProvider>
             <RootNavigator />

@@ -3,7 +3,7 @@ import { useMemo } from 'react';
 import { Alert, Modal, Pressable, Share, StyleSheet, View } from 'react-native';
 
 import { AppButton, AppCard, AppText } from '@/components/primitives';
-import { useConversationsQuery, useShareEventMutation } from '@/core/api/query-hooks';
+import { useChatRoomsQuery, useShareEventMutation } from '@/core/api/query-hooks';
 import { useI18n } from '@/core/i18n/use-i18n';
 import { useAppTheme } from '@/core/theme';
 import { AppEvent, Locale } from '@/core/types/domain';
@@ -19,7 +19,7 @@ type EventShareModalProps = {
 export function EventShareModal({ event, visible, locale, onClose }: EventShareModalProps) {
   const { t } = useI18n();
   const { theme } = useAppTheme();
-  const { data: conversations = [] } = useConversationsQuery();
+  const { data: conversations = [] } = useChatRoomsQuery();
   const shareEventMutation = useShareEventMutation();
 
   const nativeMessage = useMemo(() => {
@@ -52,7 +52,7 @@ export function EventShareModal({ event, visible, locale, onClose }: EventShareM
 
     try {
       const conversation = await shareEventMutation.mutateAsync({ conversationId, eventId: event.id });
-      Alert.alert(t('eventSharedToChat'), conversation.contact);
+      Alert.alert(t('eventSharedToChat'), conversation.body ?? event.title[locale]);
       onClose();
     } catch {
       Alert.alert(t('eventShareFailed'));
@@ -105,9 +105,9 @@ export function EventShareModal({ event, visible, locale, onClose }: EventShareM
                   ]}
                 >
                   <View style={styles.conversationCopy}>
-                    <AppText variant="bodyStrong">{conversation.contact}</AppText>
+                    <AppText variant="bodyStrong">{conversation.title}</AppText>
                     <AppText variant="caption" color="textMuted">
-                      {conversation.lastMessage[locale]}
+                      {conversation.lastMessage ?? conversation.subtitle}
                     </AppText>
                   </View>
                   <Ionicons name="paper-plane-outline" size={18} color={theme.colors.textSecondary} />
