@@ -1,6 +1,6 @@
 # Gdje i Kada - fazni plan rada
 
-Status dokumenta: 2026-04-26  
+Status dokumenta: 2026-04-29
 Lokacija master dokumentacije: `README.md`
 
 ## Pravilo rada po fazama
@@ -26,7 +26,7 @@ Dokumentacija je dio zadatka, ne naknadni posao. Ako kod i dokumentacija nisu us
 | 3 | Mapa MVP+ | Rijeseno | Mapa ima search, date filter, nearby logiku, detalje i join flow. |
 | 4 | Join state i event details | Rijeseno | Join/leave i detalji su server-side i dijele se izmedu mape, FYP-a i kalendara. |
 | 5 | Reels/FYP | Rijeseno | FYP radi kao reels feed s media preloadom, likeovima i shareom. |
-| 6 | Kalendar | Nije poceto | Kalendar prikazuje joined evente u mjesecnom gridu. |
+| 6 | Kalendar | Rijeseno | Kalendar prikazuje joined evente u mjesecnom gridu. |
 | 7 | Poruke i event chat | Nije poceto | Poruke imaju chat roomove, event grupe, event share card i pollove. |
 | 8 | Profil i postavke | Nije poceto | Profil ima edit, history, liked history, transactions i settings screen. |
 | 9 | Placanja, rating i polish | Nije poceto | Paid eventi, transaction history, organizer rating i zavrsni UX polish. |
@@ -274,7 +274,7 @@ Dopuna:
 
 ## Faza 6 - Kalendar
 
-Status: Nije poceto
+Status: Rijeseno
 
 Cilj:
 
@@ -282,22 +282,26 @@ Kalendar prikazuje samo evente na koje se korisnik pridruzio, u mjesecnom gridu.
 
 Postojece stanje:
 
-- `calendar.tsx` ima day chipove i filtere.
-- Vec koristi backend `GET /api/users/me/events?filter=...`, ali jos nema mjesecni grid.
+- `calendar.tsx` koristi joined-only mjesecni grid kroz `features/calendar/components/joined-events-calendar.tsx`.
+- Koristi backend `GET /api/users/me/events?filter=joined`.
 
 Zadaci:
 
-- [ ] Maknuti `all` i `created` filtere iz glavnog kalendara ako ne trebaju finalnom zahtjevu.
+- [x] Maknuti `all` i `created` filtere iz glavnog kalendara ako ne trebaju finalnom zahtjevu.
 - [x] Koristiti backend `GET /api/users/me/events`.
-- [ ] Napraviti monthly calendar grid.
-- [ ] Default je aktualni mjesec.
-- [ ] Dodati next/previous month.
-- [ ] Prikazati title eventa unutar dana.
-- [ ] Klik na event/dan otvara event details.
+- [x] Napraviti monthly calendar grid.
+- [x] Default je aktualni mjesec.
+- [x] Dodati next/previous month.
+- [x] Prikazati title eventa unutar dana.
+- [x] Klik na event/dan otvara event details.
 
 Definition of done:
 
 - Kalendar prikazuje samo joined evente i radi kao mjesecni pregled.
+
+Zavrsna biljeska:
+
+2026-04-29 - Napravljeno: kalendar je prebacen na joined-only mjesecni prikaz preko `react-native-calendars`, s HR/EN localeom, aktualnim mjesecom po defaultu, prethodni/sljedeci mjesec navigacijom, searchom gore desno, gumbom za povratak na danas, Samsung-like oznakama eventova po danima i listom eventova za odabrani dan. Klik na dan s jednim eventom ili na event row otvara shared `event/[id]` details. Backend nije mijenjan jer `GET /api/users/me/events?filter=joined` vec vraca potreban model. Datoteke: `app/(tabs)/calendar.tsx`, `features/calendar/components/joined-events-calendar.tsx`, `features/calendar/utils/calendar-date.ts`, `core/i18n/translations.ts`, `package.json`, `package-lock.json`, `README.md`, `FAZE.md`. Testirano: `npm run typecheck`, `npm run lint` (prolazi uz postojeci warning u `components/map/event-detail-sheet.tsx` za `require()` import). Build/native run nije pokretan po dogovoru.
 
 ## Faza 7 - Poruke i event chat
 

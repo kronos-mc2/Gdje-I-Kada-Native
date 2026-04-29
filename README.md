@@ -1,6 +1,6 @@
 # Gdje i Kada - projektna dokumentacija
 
-Status dokumenta: 2026-04-26  
+Status dokumenta: 2026-04-29
 Projekt se ne radi ispocetka. Postojeci React Native/Expo frontend i Spring Boot backend ostaju baza, a nove funkcionalnosti se nadograduju na vec postojece klase, rute, storeove, hookove i dizajn sustav.
 
 Radimo mobilnu event aplikaciju "Gdje i Kada" za iOS i Android. Frontend je React Native kroz Expo Router, backend je Spring Boot s PostgreSQL bazom. Nemoj kretati ispocetka. Prvo procitaj postojeci kod i nadogradi ga prema lokalnim patternima.
@@ -32,7 +32,7 @@ Trenutno stanje tabova:
 
 - Mapa je implementirana kao `app/(tabs)/index.tsx` i rendera `EventsMapExperience`.
 - FYP je implementiran kao `app/(tabs)/fyp.tsx`.
-- Kalendar je implementiran kao `app/(tabs)/calendar.tsx`, ali jos nije mjesecni FullCalendar-style pogled.
+- Kalendar je implementiran kao `app/(tabs)/calendar.tsx` i prikazuje joined-only mjesecni grid s event oznakama, searchom i povratkom na danas.
 - Poruke su glavni tab kroz `app/(tabs)/messages.tsx`.
 - `app/(tabs)/social.tsx` ostaje prototip/sekundarni ekran za conversations + friends, ali vise nije glavni tab.
 - Profil je implementiran kao `app/(tabs)/profile.tsx`; trenutno prikazuje osnovni profil, liked events history, jezik, temu i odjavu. Jos trebaju transaction history, edit profila i poseban settings ekran.
@@ -50,6 +50,7 @@ Postojece frontend tehnologije i patterni:
 - Android test/native build mora imati SecureStore backup exclusion pravila (`secure_store_backup_rules.xml` i `secure_store_data_extraction_rules.xml`) da se encrypted SecureStore prefs ne vrate bez Android Keystore kljuca nakon install/re-run ciklusa.
 - i18n: rucni HR/EN prijevodi u `core/i18n/translations.ts` i `useI18n`.
 - Theme: `AppThemeProvider`, `createAppTheme`, `palette`, `tokens`, `ThemeToggle`.
+- Kalendar grid: `react-native-calendars` za cross-platform mjesecni prikaz bez dodatnog native linkinga.
 - iOS glass: `expo-glass-effect` i `expo-blur` se vec koriste u `EventDetailSheet` i `MapSearchBar.ios.tsx`; `AppCard` i `AppButton` imaju blur glass varijantu. Kod novih iOS povrsina preferirati `GlassView` kad je `isLiquidGlassAvailable()` i `isGlassEffectAPIAvailable()`, uz `BlurView` ili themed surface fallback.
 - Karte:
   - iOS: `components/map/event-map-surface.ios.tsx` koristi `react-native-maps` / MapKit.
@@ -168,7 +169,7 @@ Kad implementiras nove stvari, nadogradi postojece:
 
 FYP dio aplikacije sluzi za brz discovery kroz vertikalni Reels-style feed. Svaki reel je povezan s eventom. Korisnik moze lajkati, shareati i otvoriti detalje eventa. Save/bookmark nije dio finalnog zahtjeva i treba ga ukloniti ili zamijeniti ako ostane iz starog prototipa.
 
-Kalendar prikazuje samo evente na koje se korisnik pridruzio. Treba izgledati kao mjesecni kalendar s naslovima eventova unutar dana, slicno FullCalendar iskustvu, ali implementirano nativno za React Native ako FullCalendar nije primjenjiv.
+Kalendar prikazuje samo evente na koje se korisnik pridruzio. Rijesen je kao native mjesecni grid s oznakama eventova po danima, searchom prijavljenih eventova i listom eventova za odabrani dan.
 
 Poruke trebaju podrzavati privatne razgovore, privatne i javne grupe, event-specific grupe, pollove i admin-only chat mod gdje samo admini pisu, a ostali mogu glasati na pollu.
 
@@ -294,23 +295,19 @@ Sto jos fali:
 Postoji:
 
 - Screen: `app/(tabs)/calendar.tsx`.
-- Koristi `useMyEventsQuery(filter)` i `GET /api/users/me/events?filter=...`.
-- Ima filtere `all`, `joined`, `created`.
-- Prikazuje horizontalne day chipove i listu eventova za odabrani dan.
+- Koristi `useMyEventsQuery('joined')` i `GET /api/users/me/events?filter=joined`.
+- Glavni kalendar vise nema `all` i `created` filtere jer finalni zahtjev prikazuje samo evente na koje je korisnik prijavljen.
+- Mjesecni grid je implementiran kroz `features/calendar/components/joined-events-calendar.tsx` i `react-native-calendars`.
+- Default je aktualni mjesec i aktualni dan.
+- Header nema menu button; ima prethodni/sljedeci mjesec, search gore desno i gumb za povratak na danas.
+- Dani s eventima imaju Samsung-like zelene oznake i kratki title preview u danu.
+- Ispod grida je lista eventova za odabrani dan; klik na dan s jednim eventom ili na event row otvara `app/event/[id].tsx`.
+- Search pretrazuje prijavljene evente po titleu, lokaciji, adresi i opisu te skace na prvi rezultat.
+- HR/EN locale je konfiguriran za nazive mjeseci i dana.
 
-Sto treba promijeniti:
+Status Faze 6:
 
-- Finalni zahtjev: kalendar prikazuje samo evente na koje se korisnik pridruzio.
-- Treba mjesecni grid za aktualni mjesec po defaultu.
-- Svaki dan mjeseca treba prikazati event title ako dan ima joined event.
-- Treba navigacija mjesec naprijed/nazad.
-- Treba klik na event/dan otvoriti detalje.
-- Joined events sada dolaze s backenda po korisniku; i dalje fali mjesecni grid i pravi calendar UX.
-
-Preporuka za React Native:
-
-- Prije uvodjenja FullCalendara provjeriti je li uopce smislen za native. Vjerojatnije je bolje napraviti vlastiti monthly grid komponentu u RN ili koristiti provjerenu RN calendar biblioteku.
-- Ako se uvodi biblioteka, treba paziti na Expo kompatibilnost, performanse i theme integration.
+- Rijeseno 2026-04-29: kalendar je joined-only mjesecni native grid, backend nije mijenjan jer postojeci endpoint vraca potreban model.
 
 ### Poruke
 

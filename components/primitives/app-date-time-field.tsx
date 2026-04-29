@@ -21,6 +21,20 @@ type DateTimePickerEvent = {
   type: 'set' | 'dismissed' | 'neutralButtonPressed';
 };
 
+type AndroidPickerMode = 'date' | 'time';
+
+type AndroidPickerOptions = {
+  value: Date;
+  mode: AndroidPickerMode;
+  display?: 'default' | 'spinner' | 'clock' | 'calendar';
+  is24Hour?: boolean;
+  onChange?: (event: DateTimePickerEvent, date?: Date) => void;
+};
+
+type DateTimePickerAndroidApi = {
+  open: (options: AndroidPickerOptions) => void;
+};
+
 const dateTimePickerModule = (() => {
   try {
     // Some Android builds/dev clients can miss this native module.
@@ -28,6 +42,7 @@ const dateTimePickerModule = (() => {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     return require('@react-native-community/datetimepicker') as {
       default?: ComponentType<any>;
+      DateTimePickerAndroid?: DateTimePickerAndroidApi;
     };
   } catch {
     return null;
@@ -35,6 +50,7 @@ const dateTimePickerModule = (() => {
 })();
 
 const DateTimePicker = dateTimePickerModule?.default ?? null;
+const DateTimePickerAndroid = dateTimePickerModule?.DateTimePickerAndroid ?? null;
 
 const toValidDate = (valueISO: string) => {
   const parsed = new Date(valueISO);
@@ -53,19 +69,45 @@ export function AppDateTimeField({ label, locale, valueISO, onChangeISO }: AppDa
 
   const currentDate = useMemo(() => toValidDate(valueISO), [valueISO]);
   const hasValue = !Number.isNaN(new Date(valueISO).getTime());
-  const hasNativeDateTimePicker = DateTimePicker !== null;
+  const NativeDateTimePicker = DateTimePicker;
+  const hasNativeDateTimePicker = Platform.OS === 'android' ? DateTimePickerAndroid !== null : DateTimePicker !== null;
 
-  const onPickerChange = (event: DateTimePickerEvent, nextDate?: Date) => {
-    if (Platform.OS === 'android') {
-      setShowPicker(false);
+  const openAndroidTimePicker = (datePart: Date) => {
+    DateTimePickerAndroid?.open({
+      value: datePart,
+      mode: 'time',
+      display: 'default',
+      is24Hour: locale === 'hr',
+      onChange: (event, selectedTime) => {
+        if (event.type !== 'set' || !selectedTime) {
+          return;
+        }
 
-      if (event.type === 'set' && nextDate) {
+        const nextDate = new Date(datePart);
+        nextDate.setHours(selectedTime.getHours(), selectedTime.getMinutes(), 0, 0);
         onChangeISO(nextDate.toISOString());
-      }
+      },
+    });
+  };
 
-      return;
-    }
+  const openAndroidDatePicker = () => {
+    DateTimePickerAndroid?.open({
+      value: currentDate,
+      mode: 'date',
+      display: 'default',
+      onChange: (event, selectedDate) => {
+        if (event.type !== 'set' || !selectedDate) {
+          return;
+        }
 
+        const nextDate = new Date(currentDate);
+        nextDate.setFullYear(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
+        openAndroidTimePicker(nextDate);
+      },
+    });
+  };
+
+  const onPickerChange = (_event: DateTimePickerEvent, nextDate?: Date) => {
     if (nextDate) {
       onChangeISO(nextDate.toISOString());
     }
@@ -82,16 +124,19 @@ export function AppDateTimeField({ label, locale, valueISO, onChangeISO }: AppDa
           <AppButton
             title={hasValue ? formatEventDate(valueISO, locale) : t('pickDateTime')}
             variant="secondary"
-            onPress={() => setShowPicker((current) => !current)}
+            onPress={() => {
+              if (Platform.OS === 'android') {
+                openAndroidDatePicker();
+                return;
+              }
+
+              setShowPicker((current) => !current);
+            }}
           />
 
-          {showPicker && Platform.OS === 'android' ? (
-            <DateTimePicker value={currentDate} mode="datetime" display="default" is24Hour={locale === 'hr'} onChange={onPickerChange} />
-          ) : null}
-
-          {showPicker && Platform.OS === 'ios' ? (
+          {showPicker && Platform.OS === 'ios' && NativeDateTimePicker ? (
             <AppCard variant="glass" style={{ marginTop: theme.tokens.spacing.sm }}>
-              <DateTimePicker value={currentDate} mode="datetime" display="spinner" onChange={onPickerChange} />
+              <NativeDateTimePicker value={currentDate} mode="datetime" display="spinner" onChange={onPickerChange} />
               <AppButton
                 title={t('done')}
                 variant="secondary"
