@@ -161,7 +161,6 @@ export function EventsMapExperience({
           }
 
           setSelectedEventId(eventId);
-          onSearchQueryChange(event.title[locale]);
           queueOneShotFocus(event.coordinates);
           setIsSearchPanelVisible(false);
         }}
@@ -209,7 +208,6 @@ export function EventsMapExperience({
           noResultsLabel={t('noEventsFoundForSearch')}
           hintLabel={t('typeToSearchEvents')}
           onSelectResult={(result) => {
-            onSearchQueryChange(result.title);
             setSelectedEventId(result.eventId);
             const event = eventsById.get(result.eventId);
             if (event) {
