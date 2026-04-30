@@ -34,6 +34,7 @@ export default function ChatRoomScreen() {
   const [pollOpen, setPollOpen] = useState(false);
   const room = data?.room;
   const messages = data?.messages ?? [];
+  const isInitialLoading = isLoading && !data;
   const canWrite = room ? !room.adminOnly || room.myRole === 'owner' || room.myRole === 'admin' : false;
 
   const sendMessage = async () => {
@@ -85,7 +86,7 @@ export default function ChatRoomScreen() {
             contentContainerStyle={messages.length === 0 ? styles.emptyMessages : styles.messageList}
             ListEmptyComponent={
               <AppText variant="body" color="textMuted">
-                {isLoading ? t('loading') : t('noConversations')}
+                {isInitialLoading ? t('loading') : t('noMessages')}
               </AppText>
             }
             showsVerticalScrollIndicator={false}

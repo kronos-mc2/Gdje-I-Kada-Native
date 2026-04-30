@@ -78,7 +78,6 @@ export const useChatRoomsQuery = (query?: string) =>
   useQuery({
     queryKey: queryKeys.chatRooms(query),
     queryFn: () => fetchChatRooms(query),
-    refetchInterval: query ? false : 5000,
   });
 
 export const useChatRoomQuery = (roomId?: string | null) =>
@@ -86,7 +85,6 @@ export const useChatRoomQuery = (roomId?: string | null) =>
     queryKey: queryKeys.chatRoom(roomId ?? ''),
     queryFn: () => fetchChatRoom(roomId ?? ''),
     enabled: Boolean(roomId),
-    refetchInterval: 2500,
   });
 
 export const useChatMessagesQuery = (roomId?: string | null) =>
@@ -94,7 +92,6 @@ export const useChatMessagesQuery = (roomId?: string | null) =>
     queryKey: queryKeys.chatMessages(roomId ?? ''),
     queryFn: () => fetchChatMessages(roomId ?? ''),
     enabled: Boolean(roomId),
-    refetchInterval: 2500,
   });
 
 export const useChatPeopleQuery = (query?: string) =>

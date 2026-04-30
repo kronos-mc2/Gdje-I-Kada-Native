@@ -1,6 +1,6 @@
 # Gdje i Kada - fazni plan rada
 
-Status dokumenta: 2026-04-29
+Status dokumenta: 2026-04-30
 Lokacija master dokumentacije: `README.md`
 
 ## Pravilo rada po fazama
@@ -343,8 +343,8 @@ Zadaci frontend:
 
 Realtime odluka:
 
-- Prva verzija moze koristiti polling/React Query invalidation.
-- Kasnije dodati WebSocket ili SSE ako treba real-time iskustvo.
+- Chat realtime sada koristi WebSocket `/ws/messages`.
+- Slanje poruka ostaje kroz REST endpoint, a WebSocket sluzi za server-push evente koji invalidiraju pogođene React Query cache zapise.
 
 Definition of done:
 
@@ -359,6 +359,8 @@ Dopuna:
 2026-04-29 - Maknuti su legacy mock razgovori iz finalnog chat flowa. `GET /api/messages/chat-rooms` sada vraca samo sobe gdje je korisnik stvarni clan u `chat_members`, a migracija `V6__remove_legacy_mock_chats.sql` brise stare seedane `c1/c2/c3` conversations i njihove no-member chat room kopije ako su vec migrirane. Test/build nije pokretan po dogovoru.
 
 2026-04-29 - Dodan je frontend chat realtime listener bez dodatnog native dependencyja. `ChatRealtimeListener` radi dok je korisnik prijavljen i app je aktivan, invalidira aktivne chat list/detail/message queryje svake 2.5 sekunde i odmah na povratku iz backgrounda; chat detail polling je spusten na 2.5 sekunde, a Poruke lista refetcha svakih 5 sekundi kad nema search queryja. Test/build nije pokretan po dogovoru.
+
+2026-04-30 - Polling dopuna je zamijenjena WebSocket realtime slojem. Backend sada ima `spring-boot-starter-websocket`, `/ws/messages` endpoint, JWT handshake validaciju, registry aktivnih sesija po korisniku i `ChatRealtimeService` koji emitira `message.created`, `poll.updated` i `room.updated` clanovima chata nakon uspjesnih REST write akcija. Frontend `ChatRealtimeListener` otvara socket dok je app aktivan, koristi postojeći API base URL za izvedeni WS/WSS URL, radi exponential backoff reconnect i invalidira samo pogođene chat queryje. `refetchInterval` polling je maknut iz chat query hookova. Lokalni plan je zapisan u ignorirani file `.expo/local-docs/chat-websocket-readme.md`. Test/build nije pokretan po dogovoru.
 
 ## Faza 8 - Profil i postavke
 

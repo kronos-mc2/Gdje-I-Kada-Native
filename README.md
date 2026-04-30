@@ -1,6 +1,6 @@
 # Gdje i Kada - projektna dokumentacija
 
-Status dokumenta: 2026-04-29
+Status dokumenta: 2026-04-30
 Projekt se ne radi ispocetka. Postojeci React Native/Expo frontend i Spring Boot backend ostaju baza, a nove funkcionalnosti se nadograduju na vec postojece klase, rute, storeove, hookove i dizajn sustav.
 
 Radimo mobilnu event aplikaciju "Gdje i Kada" za iOS i Android. Frontend je React Native kroz Expo Router, backend je Spring Boot s PostgreSQL bazom. Nemoj kretati ispocetka. Prvo procitaj postojeci kod i nadogradi ga prema lokalnim patternima.
@@ -81,6 +81,7 @@ Postojece backend tehnologije i patterni:
   - `EventController`
   - `SocialController`
   - `MessageController`
+- Chat realtime koristi WebSocket endpoint `/ws/messages`; JWT se validira u handshakeu, a REST endpointi i dalje ostaju canonical write path za slanje poruka, event share, pollove i room update.
 - Backend unit testovi: JUnit 5 + Mockito, trenutno pokrivaju `EventService`, `PasswordPolicy` i `JwtService`.
 
 Backend trenutno ima:
@@ -355,12 +356,11 @@ Trenutno ponasanje:
 - Event share iz FYP/detailsa salje message tip `event_share` preko `/api/messages/chat-rooms/{id}/share-event`; u chatu se prikazuje event card s coverom, titleom, lokacijom, datumom i linkom na details.
 - Pollovi se kreiraju preko `/api/messages/chat-rooms/{id}/polls`, prikazuju se u chatu i glasanje ide preko `/api/messages/polls/{id}/vote`.
 - `adminOnly` se mijenja preko `PATCH /api/messages/chat-rooms/{id}`; owner/admin mogu pisati, clanovi mogu glasati na pollovima.
-- Chat koristi app-active React Query listener: dok je korisnik prijavljen i app je aktivan, globalni listener invalidira aktivne chat room/chat detail queryje svake 2.5 sekunde i odmah nakon povratka appa iz backgrounda. Lista Poruke dodatno refetcha svakih 5 sekundi kad nema search queryja.
+- Chat koristi WebSocket `/ws/messages` dok je korisnik prijavljen i app je aktivan. Backend nakon nove poruke, event sharea, polla, poll votea ili room updatea salje realtime event clanovima sobe; frontend tada invalidira samo pogođene chat queryje. Periodicni chat polling je maknut, a fallback ostaje refetch na socket reconnect i povratak appa iz backgrounda.
 - Details panel se otvara klikom na ime osobe/grupe u headeru. Direct view trenutno prikazuje ime i placeholder da se friend eventovi trebaju povezati kad se implementira friends event model; group/event view prikazuje sudionike.
 
 Sto fali:
 
-- WebSocket/SSE ako polling ne bude dovoljno dobar.
 - Push notifikacije.
 - Pun friends event model za prikaz evenata prijatelja u direct detail viewu.
 
