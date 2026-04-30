@@ -1,11 +1,12 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   FlatList,
   KeyboardAvoidingView,
   Modal,
+  PanResponder,
   Platform,
   Pressable,
   ScrollView,
@@ -24,9 +25,16 @@ import { ChatDetailsPanel } from '@/features/messages/components/chat-details-pa
 import { MessageBubble } from '@/features/messages/components/message-bubble';
 import { useKeyboardBottomInset } from '@/features/messages/hooks/use-keyboard-bottom-inset';
 
+type ChatListItem = { key: string; type: 'date'; label: string } | { key: string; type: 'message'; message: ChatMessage };
+
 const CHAT_HEADER_HEIGHT = 68;
 const COMPOSER_BOTTOM_PADDING = 12;
 const ANDROID_KEYBOARD_EXTRA_OFFSET = 36;
+const MIN_POLL_OPTIONS = 2;
+const MAX_POLL_OPTIONS = 8;
+const CHAT_VIEWABILITY_CONFIG = {
+  itemVisiblePercentThreshold: 8,
+};
 
 export default function ChatRoomScreen() {
   const router = useRouter();
@@ -36,19 +44,97 @@ export default function ChatRoomScreen() {
   const { theme } = useAppTheme();
   const insets = useSafeAreaInsets();
   const keyboardBottomInset = useKeyboardBottomInset();
+  const messageListRef = useRef<FlatList<ChatListItem>>(null);
+  const initialScrollRoomRef = useRef<string | null>(null);
+  const pendingInitialScrollRef = useRef(false);
   const { data, isLoading } = useChatRoomQuery(roomId);
   const sendMessageMutation = useSendChatMessageMutation();
   const [body, setBody] = useState('');
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [pollOpen, setPollOpen] = useState(false);
+  const [visibleDateLabel, setVisibleDateLabel] = useState<string | null>(null);
   const room = data?.room;
   const messages = data?.messages ?? [];
+  const chatItems = useMemo(() => buildChatListItems(messages, locale, t), [messages, locale, t]);
   const isInitialLoading = isLoading && !data;
   const canWrite = room ? !room.adminOnly || room.myRole === 'owner' || room.myRole === 'admin' : false;
   const androidComposerBottomInset =
     Platform.OS === 'android' && keyboardBottomInset > 0
       ? Math.max(0, keyboardBottomInset - insets.bottom + ANDROID_KEYBOARD_EXTRA_OFFSET)
       : 0;
+
+  useEffect(() => {
+    initialScrollRoomRef.current = null;
+    pendingInitialScrollRef.current = false;
+    setVisibleDateLabel(null);
+  }, [roomId]);
+
+  const performInitialScroll = useCallback((attempt = 0) => {
+    if (!roomId || initialScrollRoomRef.current === roomId || !pendingInitialScrollRef.current || messages.length === 0) {
+      return;
+    }
+
+    const retryScroll = () => {
+      if (attempt < 5) {
+        setTimeout(() => performInitialScroll(attempt + 1), 80);
+      }
+    };
+
+    const firstUnreadMessageIndex = getFirstUnreadMessageIndex(messages, room?.unreadCount ?? 0);
+    if (firstUnreadMessageIndex >= 0) {
+      const targetMessageId = messages[firstUnreadMessageIndex].id;
+      const targetListIndex = chatItems.findIndex((item) => item.type === 'message' && item.message.id === targetMessageId);
+
+      if (targetListIndex >= 0) {
+        try {
+          messageListRef.current?.scrollToIndex({
+            index: targetListIndex,
+            animated: false,
+            viewPosition: 0.16,
+          });
+        } catch {
+          retryScroll();
+          return;
+        }
+      }
+    } else {
+      try {
+        messageListRef.current?.scrollToEnd({ animated: false });
+        setTimeout(() => messageListRef.current?.scrollToEnd({ animated: false }), 80);
+        setTimeout(() => messageListRef.current?.scrollToEnd({ animated: false }), 220);
+      } catch {
+        retryScroll();
+        return;
+      }
+    }
+
+    pendingInitialScrollRef.current = false;
+    initialScrollRoomRef.current = roomId;
+  }, [chatItems, messages, room?.unreadCount, roomId]);
+
+  useEffect(() => {
+    if (!roomId || initialScrollRoomRef.current === roomId || messages.length === 0) {
+      return;
+    }
+
+    pendingInitialScrollRef.current = true;
+    const timeout = setTimeout(() => performInitialScroll(), 120);
+
+    return () => clearTimeout(timeout);
+  }, [messages.length, performInitialScroll, roomId]);
+
+  const handleViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: Array<{ item?: ChatListItem }> }) => {
+    const firstVisibleMessage = viewableItems.find((viewableItem) => viewableItem.item?.type === 'message')?.item;
+    if (firstVisibleMessage?.type === 'message') {
+      setVisibleDateLabel(formatChatDateLabel(firstVisibleMessage.message.createdAt, locale, t));
+      return;
+    }
+
+    const firstVisibleDate = viewableItems.find((viewableItem) => viewableItem.item?.type === 'date')?.item;
+    if (firstVisibleDate?.type === 'date') {
+      setVisibleDateLabel(firstVisibleDate.label);
+    }
+  }).current;
 
   const sendMessage = async () => {
     const text = body.trim();
@@ -96,12 +182,46 @@ export default function ChatRoomScreen() {
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           keyboardVerticalOffset={CHAT_HEADER_HEIGHT}
         >
-          <FlatList<ChatMessage>
-            data={messages}
-            keyExtractor={(message) => message.id}
-            renderItem={({ item }) => <MessageBubble message={item} locale={locale} onOpenEvent={openEvent} />}
+          <FlatList<ChatListItem>
+            ref={messageListRef}
+            data={chatItems}
+            keyExtractor={(item) => item.key}
+            renderItem={({ item }) =>
+              item.type === 'date' ? (
+                <DateSeparator label={item.label} />
+              ) : (
+                <MessageBubble message={item.message} locale={locale} onOpenEvent={openEvent} />
+              )
+            }
             contentContainerStyle={messages.length === 0 ? styles.emptyMessages : styles.messageList}
             keyboardShouldPersistTaps="handled"
+            removeClippedSubviews={false}
+            onContentSizeChange={performInitialScroll}
+            onLayout={performInitialScroll}
+            onViewableItemsChanged={handleViewableItemsChanged}
+            viewabilityConfig={CHAT_VIEWABILITY_CONFIG}
+            onScrollToIndexFailed={(info) => {
+              messageListRef.current?.scrollToOffset({
+                offset: Math.max(0, info.averageItemLength * info.index),
+                animated: false,
+              });
+              setTimeout(() => {
+                if (info.index < chatItems.length) {
+                  try {
+                    messageListRef.current?.scrollToIndex({
+                      index: info.index,
+                      animated: false,
+                      viewPosition: 0.16,
+                    });
+                  } catch {
+                    messageListRef.current?.scrollToOffset({
+                      offset: Math.max(0, info.averageItemLength * info.index),
+                      animated: false,
+                    });
+                  }
+                }
+              }, 80);
+            }}
             ListEmptyComponent={
               <AppText variant="body" color="textMuted">
                 {isInitialLoading ? t('loading') : t('noMessages')}
@@ -109,6 +229,11 @@ export default function ChatRoomScreen() {
             }
             showsVerticalScrollIndicator={false}
           />
+          {visibleDateLabel ? (
+            <View pointerEvents="none" style={styles.stickyDateOverlay}>
+              <DateSeparator label={visibleDateLabel} compact />
+            </View>
+          ) : null}
 
           <View
             style={[
@@ -165,6 +290,20 @@ export default function ChatRoomScreen() {
   );
 }
 
+function DateSeparator({ label, compact = false }: { label: string; compact?: boolean }) {
+  const { theme } = useAppTheme();
+
+  return (
+    <View style={[styles.dateSeparatorWrapper, compact ? styles.dateSeparatorWrapperCompact : null]}>
+      <View style={[styles.dateSeparatorPill, { backgroundColor: theme.colors.surfaceElevated, borderColor: theme.colors.border }]}>
+        <AppText variant="caption" color="textMuted">
+          {label}
+        </AppText>
+      </View>
+    </View>
+  );
+}
+
 function PollComposerModal({ visible, roomId, onClose }: { visible: boolean; roomId?: string; onClose: () => void }) {
   const { t } = useI18n();
   const { theme } = useAppTheme();
@@ -205,6 +344,33 @@ function PollComposerModal({ visible, roomId, onClose }: { visible: boolean; roo
     }
   };
 
+  const updateOption = (index: number, text: string) => {
+    setOptions((current) =>
+      ensureTrailingPollOption(current.map((option, optionIndex) => (optionIndex === index ? text : option))),
+    );
+  };
+
+  const compactOptions = () => {
+    setOptions((current) => ensureTrailingPollOption(current.filter((option) => option.trim().length > 0)));
+  };
+
+  const moveOption = (index: number, direction: 'up' | 'down') => {
+    setOptions((current) => {
+      if (!current[index]?.trim()) {
+        return current;
+      }
+
+      const targetIndex = direction === 'up' ? index - 1 : index + 1;
+      if (targetIndex < 0 || targetIndex >= current.length || !current[targetIndex]?.trim()) {
+        return current;
+      }
+
+      const next = [...current];
+      [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
+      return next;
+    });
+  };
+
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={[styles.modalOverlay, { backgroundColor: theme.colors.overlay }]} onPress={onClose}>
@@ -240,23 +406,26 @@ function PollComposerModal({ visible, roomId, onClose }: { visible: boolean; roo
               style={[styles.modalInput, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border, color: theme.colors.textPrimary }]}
             />
 
-            {options.map((option, index) => (
-              <TextInput
-                key={index}
-                value={option}
-                onChangeText={(text) =>
-                  setOptions((current) => current.map((value, optionIndex) => (optionIndex === index ? text : value)))
-                }
-                placeholder={`${t('pollOptionPlaceholder')} ${index + 1}`}
-                placeholderTextColor={theme.colors.textMuted}
-                style={[styles.modalInput, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border, color: theme.colors.textPrimary }]}
-              />
-            ))}
+            {options.map((option, index) => {
+              const filledOptionsCount = options.filter((currentOption) => currentOption.trim().length > 0).length;
 
-            <Pressable onPress={() => setOptions((current) => [...current, ''])} style={styles.pollToggle}>
-              <Ionicons name="add-circle-outline" size={20} color={theme.colors.textSecondary} />
-              <AppText variant="body">{t('addPollOption')}</AppText>
-            </Pressable>
+              return (
+                <PollOptionInput
+                  key={index}
+                  value={option}
+                  placeholder={t('pollOptionAddPlaceholder')}
+                  placeholderTextColor={theme.colors.textMuted}
+                  backgroundColor={theme.colors.surface}
+                  borderColor={theme.colors.border}
+                  color={theme.colors.textPrimary}
+                  dragHandleColor={theme.colors.textMuted}
+                  canDrag={option.trim().length > 0 && filledOptionsCount > 1}
+                  onChangeText={(text) => updateOption(index, text)}
+                  onBlur={compactOptions}
+                  onMove={(direction) => moveOption(index, direction)}
+                />
+              );
+            })}
 
             <Pressable onPress={() => setAllowMultiple((current) => !current)} style={styles.pollToggle}>
               <Ionicons
@@ -277,6 +446,172 @@ function PollComposerModal({ visible, roomId, onClose }: { visible: boolean; roo
       </Pressable>
     </Modal>
   );
+}
+
+function PollOptionInput({
+  value,
+  placeholder,
+  placeholderTextColor,
+  backgroundColor,
+  borderColor,
+  color,
+  dragHandleColor,
+  canDrag,
+  onChangeText,
+  onBlur,
+  onMove,
+}: {
+  value: string;
+  placeholder: string;
+  placeholderTextColor: string;
+  backgroundColor: string;
+  borderColor: string;
+  color: string;
+  dragHandleColor: string;
+  canDrag: boolean;
+  onChangeText: (text: string) => void;
+  onBlur: () => void;
+  onMove: (direction: 'up' | 'down') => void;
+}) {
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => canDrag,
+        onMoveShouldSetPanResponder: (_, gesture) =>
+          canDrag && Math.abs(gesture.dy) > 8 && Math.abs(gesture.dy) > Math.abs(gesture.dx),
+        onPanResponderRelease: (_, gesture) => {
+          if (gesture.dy < -24) {
+            onMove('up');
+          } else if (gesture.dy > 24) {
+            onMove('down');
+          }
+        },
+      }),
+    [canDrag, onMove],
+  );
+
+  return (
+    <View style={[styles.pollOptionRow, { backgroundColor, borderColor }]}>
+      <View {...panResponder.panHandlers} style={[styles.pollOptionDragHandle, { opacity: canDrag ? 1 : 0.35 }]}>
+        <Ionicons name="reorder-three-outline" size={20} color={dragHandleColor} />
+      </View>
+      <TextInput
+        value={value}
+        onChangeText={onChangeText}
+        onBlur={onBlur}
+        placeholder={placeholder}
+        placeholderTextColor={placeholderTextColor}
+        style={[styles.pollOptionInput, { color }]}
+      />
+    </View>
+  );
+}
+
+function ensureTrailingPollOption(nextOptions: string[]) {
+  const normalized = nextOptions.slice(0, MAX_POLL_OPTIONS);
+
+  while (normalized.length < MIN_POLL_OPTIONS) {
+    normalized.push('');
+  }
+
+  if (normalized.length < MAX_POLL_OPTIONS && normalized.every((option) => option.trim().length > 0)) {
+    normalized.push('');
+  }
+
+  return normalized;
+}
+
+function getFirstUnreadMessageIndex(messages: ChatMessage[], unreadCount: number) {
+  if (unreadCount <= 0) {
+    return -1;
+  }
+
+  let unreadMessagesLeft = unreadCount;
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    if (!messages[index].mine) {
+      unreadMessagesLeft -= 1;
+      if (unreadMessagesLeft === 0) {
+        return index;
+      }
+    }
+  }
+
+  return -1;
+}
+
+function buildChatListItems(
+  messages: ChatMessage[],
+  locale: 'hr' | 'en',
+  t: (key: 'today' | 'yesterday') => string,
+): ChatListItem[] {
+  const items: ChatListItem[] = [];
+  let previousDateKey: string | null = null;
+
+  messages.forEach((message) => {
+    const dateKey = getLocalDateKey(message.createdAt);
+    if (dateKey !== previousDateKey) {
+      items.push({
+        key: `date-${dateKey}`,
+        type: 'date',
+        label: formatChatDateLabel(message.createdAt, locale, t),
+      });
+      previousDateKey = dateKey;
+    }
+
+    items.push({
+      key: message.id,
+      type: 'message',
+      message,
+    });
+  });
+
+  return items;
+}
+
+function getLocalDateKey(isoDate: string) {
+  const date = new Date(isoDate);
+  if (Number.isNaN(date.getTime())) {
+    return isoDate;
+  }
+
+  return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+}
+
+function formatChatDateLabel(isoDate: string, locale: 'hr' | 'en', t: (key: 'today' | 'yesterday') => string) {
+  const date = new Date(isoDate);
+  if (Number.isNaN(date.getTime())) {
+    return isoDate;
+  }
+
+  const today = new Date();
+  if (isSameLocalDay(date, today)) {
+    return t('today');
+  }
+
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  if (isSameLocalDay(date, yesterday)) {
+    return t('yesterday');
+  }
+
+  const formatterLocale = locale === 'hr' ? 'hr-HR' : 'en-US';
+  const weekday = new Intl.DateTimeFormat(formatterLocale, { weekday: 'short' }).format(date).replace('.', '');
+  const day = new Intl.DateTimeFormat(formatterLocale, { day: 'numeric' }).format(date);
+  const month = new Intl.DateTimeFormat(formatterLocale, { month: 'short' }).format(date).replace('.', '');
+
+  return `${capitalizeFirstLetter(weekday)}, ${day} ${capitalizeFirstLetter(month)}`;
+}
+
+function isSameLocalDay(left: Date, right: Date) {
+  return (
+    left.getFullYear() === right.getFullYear() &&
+    left.getMonth() === right.getMonth() &&
+    left.getDate() === right.getDate()
+  );
+}
+
+function capitalizeFirstLetter(value: string) {
+  return value.length > 0 ? value.charAt(0).toUpperCase() + value.slice(1) : value;
 }
 
 const styles = StyleSheet.create({
@@ -319,6 +654,27 @@ const styles = StyleSheet.create({
   messageList: {
     padding: 16,
     paddingBottom: 24,
+  },
+  dateSeparatorWrapper: {
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  dateSeparatorWrapperCompact: {
+    paddingVertical: 0,
+  },
+  stickyDateOverlay: {
+    position: 'absolute',
+    top: 8,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  dateSeparatorPill: {
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
   },
   emptyMessages: {
     flexGrow: 1,
@@ -377,6 +733,28 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontSize: 16,
+  },
+  pollOptionRow: {
+    minHeight: 46,
+    borderRadius: 16,
+    borderWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingLeft: 10,
+    paddingRight: 14,
+  },
+  pollOptionDragHandle: {
+    width: 28,
+    height: 42,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 4,
+  },
+  pollOptionInput: {
+    flex: 1,
+    minHeight: 46,
     paddingVertical: 10,
     fontSize: 16,
   },

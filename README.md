@@ -352,10 +352,12 @@ Trenutno ponasanje:
 - Novi privatni chat se kreira preko `/api/messages/chat-rooms` s `type=direct`; `+` modal ne prikazuje osobe dok korisnik ne upise barem 2 znaka, a backend `/api/messages/people?query=` za prazan ili prekratak query vraca praznu listu.
 - Event chat se otvara/kreira preko `/api/messages/events/{eventId}/chat-room`, a join prompt nakon uspjesnog joina vodi direktno u taj room.
 - Chat room detail dohvat vraca room metadata, members i messages preko `/api/messages/chat-rooms/{id}`.
+- Pri ulasku u chat frontend automatski scrolla na najstariju neprocitanu poruku ako postoje neprocitane poruke, inace na dno razgovora.
+- Chat lista prikazuje sticky date separatore: `Danas/Today`, `Jucer/Yesterday` ili skraceni dan i datum za starije poruke.
 - Slanje teksta ide preko `/api/messages/chat-rooms/{id}/messages`.
 - Chat composer koristi iOS keyboard avoidance, a na Androidu ručni keyboard bottom inset s malim extra offsetom kad `adjustResize` ne pomakne layout dovoljno. `+` modal i poll composer koriste isti keyboard/safe-area inset pristup.
 - Event share iz FYP/detailsa salje message tip `event_share` preko `/api/messages/chat-rooms/{id}/share-event`; u chatu se prikazuje event card s coverom, titleom, lokacijom, datumom i linkom na details.
-- Pollovi se kreiraju preko `/api/messages/chat-rooms/{id}/polls`, prikazuju se u chatu i glasanje ide preko `/api/messages/polls/{id}/vote`.
+- Pollovi se kreiraju preko `/api/messages/chat-rooms/{id}/polls`, prikazuju se u chatu i glasanje ide preko `/api/messages/polls/{id}/vote`. Poll composer uvijek krece s 2 option polja, automatski dodaje prazno `Dodaj/Add` polje kad su postojeca popunjena, uklanja prazna option polja na blur i podrzava drag reorder preko handlea.
 - `adminOnly` se mijenja preko `PATCH /api/messages/chat-rooms/{id}`; owner/admin mogu pisati, clanovi mogu glasati na pollovima.
 - Chat koristi WebSocket `/ws/messages` dok je korisnik prijavljen i app je aktivan. Backend nakon nove poruke, event sharea, polla, poll votea ili room updatea salje realtime event clanovima sobe; frontend tada invalidira samo pogođene chat queryje. Periodicni chat polling je maknut, a fallback ostaje refetch na socket reconnect i povratak appa iz backgrounda.
 - Details panel se otvara klikom na ime osobe/grupe u headeru. Direct view trenutno prikazuje ime i placeholder da se friend eventovi trebaju povezati kad se implementira friends event model; group/event view prikazuje sudionike.

@@ -364,6 +364,10 @@ Dopuna:
 
 2026-04-30 - Rijesena je keyboard regresija u porukama: `app/chat/[id].tsx` koristi iOS keyboard avoidance i Android-only keyboard bottom inset fallback s malim extra offsetom kad `adjustResize` ne pomakne layout dovoljno, a `Novi chat` modal i poll composer koriste zajednicki keyboard inset hook pa inputi ostaju iznad tipkovnice na iOS-u i Androidu. Pretraga osoba vise ne prikazuje sve korisnike na pocetku: frontend ne pokrece query prije minimalno 2 znaka, a backend `GET /api/messages/people?query=` vraca praznu listu za prazan ili prekratak query. Datoteke: frontend `app/chat/[id].tsx`, `app/(tabs)/messages.tsx`, `features/messages/hooks/use-keyboard-bottom-inset.ts`, `core/api/query-hooks.ts`, `core/api/services.ts`, `core/i18n/translations.ts`, backend `MessageService`, `MessageMapper.xml`, `README.md`, `FAZE.md`, `backend/README.md`. Test/build nije pokretan po dogovoru.
 
+2026-04-30 - Doraden je poll composer UX: umjesto numeriranih option polja i rucnog gumba za dodavanje, forma uvijek krece s 2 option inputa, automatski otvara novo prazno `Dodaj/Add` polje kad su sva vidljiva polja popunjena, na blur uklanja prazna polja i pomice ostale gore, a popunjene opcije se mogu reorderati drag handleom. Payload pri spremanju i dalje salje samo neprazne opcije. Datoteke: `app/chat/[id].tsx`, `core/i18n/translations.ts`, `README.md`, `FAZE.md`. Test/build nije pokretan po dogovoru.
+
+2026-04-30 - Dodan je inicijalni scroll u chat detailu. Pri ulasku u chat `app/chat/[id].tsx` koristi `room.unreadCount` iz detail responsea i scrolla na najstariju neprocitanu tuđu poruku; ako nema neprocitanih poruka, scrolla na zadnju poruku na dnu nakon sto `FlatList` izmjeri content. Chat lista sada prikazuje sticky date separatore (`Danas/Today`, `Jucer/Yesterday`, ili skraceni dan i datum za starije poruke) koji ujedno razdvajaju poruke u listi. Backend i dalje trenutno vraca cijeli message history za room; paginacija/cursor loading ostaje zasebna veca dorada. Test/build nije pokretan po dogovoru.
+
 ## Faza 8 - Profil i postavke
 
 Status: Nije poceto
