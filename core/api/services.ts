@@ -68,7 +68,7 @@ export const fetchChatMessages = async (roomId: string): Promise<ChatMessage[]> 
 };
 
 export const fetchChatPeople = async (query?: string): Promise<ChatPerson[]> => {
-  const response = await apiClient.get<ChatPerson[]>('/messages/people', { params: { query } });
+  const response = await apiClient.get<ChatPerson[]>('/messages/people', { params: { query: query?.trim() } });
   return response.data;
 };
 

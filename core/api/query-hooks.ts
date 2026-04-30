@@ -28,6 +28,8 @@ import {
 } from '@/core/api/services';
 import { AppEvent, ChatRoomDetail, EventQueryParams, FeedPage, MyEventsFilter, Poll } from '@/core/types/domain';
 
+export const CHAT_PEOPLE_SEARCH_MIN_LENGTH = 2;
+
 export const useEventsQuery = (params?: EventQueryParams) =>
   useQuery({
     queryKey: queryKeys.events(params),
@@ -94,11 +96,15 @@ export const useChatMessagesQuery = (roomId?: string | null) =>
     enabled: Boolean(roomId),
   });
 
-export const useChatPeopleQuery = (query?: string) =>
-  useQuery({
-    queryKey: queryKeys.chatPeople(query),
-    queryFn: () => fetchChatPeople(query),
+export const useChatPeopleQuery = (query?: string) => {
+  const normalizedQuery = query?.trim() ?? '';
+
+  return useQuery({
+    queryKey: queryKeys.chatPeople(normalizedQuery),
+    queryFn: () => fetchChatPeople(normalizedQuery),
+    enabled: normalizedQuery.length >= CHAT_PEOPLE_SEARCH_MIN_LENGTH,
   });
+};
 
 export const useCreateChatRoomMutation = () => {
   const queryClient = useQueryClient();

@@ -362,6 +362,8 @@ Dopuna:
 
 2026-04-30 - Polling dopuna je zamijenjena WebSocket realtime slojem. Backend sada ima `spring-boot-starter-websocket`, `/ws/messages` endpoint, JWT handshake validaciju, registry aktivnih sesija po korisniku i `ChatRealtimeService` koji emitira `message.created`, `poll.updated` i `room.updated` clanovima chata nakon uspjesnih REST write akcija. Frontend `ChatRealtimeListener` otvara socket dok je app aktivan, koristi postojeći API base URL za izvedeni WS/WSS URL, radi exponential backoff reconnect i invalidira samo pogođene chat queryje. `refetchInterval` polling je maknut iz chat query hookova. Lokalni plan je zapisan u ignorirani file `.expo/local-docs/chat-websocket-readme.md`. Test/build nije pokretan po dogovoru.
 
+2026-04-30 - Rijesena je keyboard regresija u porukama: `app/chat/[id].tsx` koristi iOS keyboard avoidance i Android-only keyboard bottom inset fallback s malim extra offsetom kad `adjustResize` ne pomakne layout dovoljno, a `Novi chat` modal i poll composer koriste zajednicki keyboard inset hook pa inputi ostaju iznad tipkovnice na iOS-u i Androidu. Pretraga osoba vise ne prikazuje sve korisnike na pocetku: frontend ne pokrece query prije minimalno 2 znaka, a backend `GET /api/messages/people?query=` vraca praznu listu za prazan ili prekratak query. Datoteke: frontend `app/chat/[id].tsx`, `app/(tabs)/messages.tsx`, `features/messages/hooks/use-keyboard-bottom-inset.ts`, `core/api/query-hooks.ts`, `core/api/services.ts`, `core/i18n/translations.ts`, backend `MessageService`, `MessageMapper.xml`, `README.md`, `FAZE.md`, `backend/README.md`. Test/build nije pokretan po dogovoru.
+
 ## Faza 8 - Profil i postavke
 
 Status: Nije poceto

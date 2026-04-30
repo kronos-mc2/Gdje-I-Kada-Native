@@ -349,10 +349,11 @@ Trenutno ponasanje:
 
 - Dohvat chat liste ide preko `/api/messages/chat-rooms?query=`.
 - Lista prikazuje samo chat roomove gdje je korisnik stvarni clan u `chat_members`; stari seedani `Ana/Marko/Lana` mock razgovori se vise ne vracaju u glavnom Poruke tabu.
-- Novi privatni chat se kreira preko `/api/messages/chat-rooms` s `type=direct`.
+- Novi privatni chat se kreira preko `/api/messages/chat-rooms` s `type=direct`; `+` modal ne prikazuje osobe dok korisnik ne upise barem 2 znaka, a backend `/api/messages/people?query=` za prazan ili prekratak query vraca praznu listu.
 - Event chat se otvara/kreira preko `/api/messages/events/{eventId}/chat-room`, a join prompt nakon uspjesnog joina vodi direktno u taj room.
 - Chat room detail dohvat vraca room metadata, members i messages preko `/api/messages/chat-rooms/{id}`.
 - Slanje teksta ide preko `/api/messages/chat-rooms/{id}/messages`.
+- Chat composer koristi iOS keyboard avoidance, a na Androidu ručni keyboard bottom inset s malim extra offsetom kad `adjustResize` ne pomakne layout dovoljno. `+` modal i poll composer koriste isti keyboard/safe-area inset pristup.
 - Event share iz FYP/detailsa salje message tip `event_share` preko `/api/messages/chat-rooms/{id}/share-event`; u chatu se prikazuje event card s coverom, titleom, lokacijom, datumom i linkom na details.
 - Pollovi se kreiraju preko `/api/messages/chat-rooms/{id}/polls`, prikazuju se u chatu i glasanje ide preko `/api/messages/polls/{id}/vote`.
 - `adminOnly` se mijenja preko `PATCH /api/messages/chat-rooms/{id}`; owner/admin mogu pisati, clanovi mogu glasati na pollovima.
@@ -719,7 +720,7 @@ Messages:
 - `POST /api/messages/chat-rooms/{id}/share-event`
 - `POST /api/messages/chat-rooms/{id}/polls`
 - `POST /api/messages/polls/{id}/vote`
-- `GET /api/messages/people?query=`
+- `GET /api/messages/people?query=` (vraca rezultate tek za query od barem 2 znaka)
 - `GET /api/messages/conversations`
 - `POST /api/messages/conversations/{id}/share-event`
 

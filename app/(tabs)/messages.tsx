@@ -1,14 +1,21 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRouter } from 'expo-router';
-import { useDeferredValue, useState } from 'react';
+import { useDeferredValue, useEffect, useState } from 'react';
 import { FlatList, Modal, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppScreen, AppText } from '@/components/primitives';
-import { useChatPeopleQuery, useChatRoomsQuery, useCreateChatRoomMutation } from '@/core/api/query-hooks';
+import {
+  CHAT_PEOPLE_SEARCH_MIN_LENGTH,
+  useChatPeopleQuery,
+  useChatRoomsQuery,
+  useCreateChatRoomMutation,
+} from '@/core/api/query-hooks';
 import { useI18n } from '@/core/i18n/use-i18n';
 import { useAppTheme } from '@/core/theme';
 import { ChatPerson } from '@/core/types/domain';
 import { ChatRoomRow } from '@/features/messages/components/chat-room-row';
+import { useKeyboardBottomInset } from '@/features/messages/hooks/use-keyboard-bottom-inset';
 
 export default function MessagesScreen() {
   const router = useRouter();
@@ -73,10 +80,22 @@ function NewChatModal({ visible, onClose }: { visible: boolean; onClose: () => v
   const router = useRouter();
   const { t } = useI18n();
   const { theme } = useAppTheme();
+  const insets = useSafeAreaInsets();
+  const keyboardBottomInset = useKeyboardBottomInset();
   const [query, setQuery] = useState('');
   const deferredQuery = useDeferredValue(query);
-  const { data: people = [], isLoading } = useChatPeopleQuery(deferredQuery);
+  const normalizedQuery = deferredQuery.trim();
+  const canSearchPeople = normalizedQuery.length >= CHAT_PEOPLE_SEARCH_MIN_LENGTH;
+  const { data: people = [], isLoading } = useChatPeopleQuery(normalizedQuery);
   const createRoomMutation = useCreateChatRoomMutation();
+  const modalBottomInset = Math.max(0, keyboardBottomInset - insets.bottom);
+  const panelBottomPadding = Math.max(insets.bottom, 10) + 8;
+
+  useEffect(() => {
+    if (!visible) {
+      setQuery('');
+    }
+  }, [visible]);
 
   const startChat = async (person: ChatPerson) => {
     const room = await createRoomMutation.mutateAsync({ type: 'direct', memberUserId: person.id });
@@ -87,7 +106,18 @@ function NewChatModal({ visible, onClose }: { visible: boolean; onClose: () => v
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={[styles.modalOverlay, { backgroundColor: theme.colors.overlay }]} onPress={onClose}>
-        <Pressable style={[styles.modalPanel, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]} onPress={() => {}}>
+        <Pressable
+          style={[
+            styles.modalPanel,
+            {
+              backgroundColor: theme.colors.card,
+              borderColor: theme.colors.border,
+              marginBottom: modalBottomInset,
+              paddingBottom: panelBottomPadding,
+            },
+          ]}
+          onPress={() => {}}
+        >
           <View style={styles.modalHeader}>
             <View>
               <AppText variant="headline">{t('newChat')}</AppText>
@@ -113,8 +143,9 @@ function NewChatModal({ visible, onClose }: { visible: boolean; onClose: () => v
           </View>
 
           <FlatList
-            data={people}
+            data={canSearchPeople ? people : []}
             keyExtractor={(person) => person.id}
+            keyboardShouldPersistTaps="handled"
             renderItem={({ item }) => (
               <Pressable
                 onPress={() => void startChat(item)}
@@ -135,7 +166,7 @@ function NewChatModal({ visible, onClose }: { visible: boolean; onClose: () => v
             )}
             ListEmptyComponent={
               <AppText variant="body" color="textMuted" style={styles.loading}>
-                {isLoading ? t('loading') : t('noPeopleFound')}
+                {!canSearchPeople ? t('typeToSearchPeople') : isLoading ? t('loading') : t('noPeopleFound')}
               </AppText>
             }
             style={styles.peopleList}
