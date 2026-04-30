@@ -239,6 +239,8 @@ Dopuna:
 
 2026-04-25 - Dopuna iOS env switchinga: dodan je `scripts/run-ios.js` koji prije `expo run:ios` automatski prepisuje `ios/.xcode.env.local` prema aktivnom variantu. `npm run ios` / `npm run ios:dev` sada uvijek pripreme lokalni `prod` env (`localhost` backend), a `npm run ios:test` / `npm run ios:test:release` test env. Time vise ne ostaje slucajno zalijepljen `APP_VARIANT=test` nakon zadnjeg test builda. Datoteke: `scripts/run-ios.js`, `package.json`, `README.md`, `TEST_BUILD.md`, `FAZE.md`. Testirano: `node ./scripts/run-ios.js --help` nije primjenjivo; validacija kroz citanje generiranog `ios/.xcode.env.local` i `npm run lint`.
 
+2026-04-30 - Rijesena auth session cache regresija: `useAuthStore.setAuth()` i `clearAuth()` sada resetiraju React Query cache kroz novi `core/query/session-query-state.ts`, pa se per-user server state (`liked-events`, chatovi, join/like state u event/feed queryjima) vise ne zadrzava nakon odjave i automatske prijave novog korisnika kroz registraciju. Datoteke: `core/store/auth-store.ts`, `core/query/session-query-state.ts`, `README.md`, `FAZE.md`. Test/build nije pokretan po dogovoru.
+
 ## Faza 5 - Reels/FYP
 
 Status: Rijeseno

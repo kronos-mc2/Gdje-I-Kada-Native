@@ -1,6 +1,7 @@
 import * as SecureStore from 'expo-secure-store';
 import { create } from 'zustand';
 
+import { resetSessionQueryState } from '@/core/query/session-query-state';
 import { UserProfile } from '@/core/types/domain';
 import { asyncStorage } from '@/core/utils/async-storage';
 
@@ -232,12 +233,19 @@ export const useAuthStore = create<AuthStore>()((set, get) => ({
     await hydrationPromise;
   },
   setAuth: async ({ accessToken, user }) => {
+    const previousAccessToken = get().accessToken;
+    if (previousAccessToken && previousAccessToken !== accessToken) {
+      set({ accessToken: null, user: null, hydrated: true, authRestoreMessage: null });
+    }
+
+    await resetSessionQueryState();
     await writeAuthSnapshot({ accessToken, user });
-    set({ accessToken, user, hydrated: true });
+    set({ accessToken, user, hydrated: true, authRestoreMessage: null });
   },
   clearAuth: async () => {
-    await writeAuthSnapshot(null);
     set({ accessToken: null, user: null, hydrated: true, authRestoreMessage: null });
+    await resetSessionQueryState();
+    await writeAuthSnapshot(null);
   },
   consumeAuthRestoreMessage: () => {
     const message = get().authRestoreMessage;

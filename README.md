@@ -206,6 +206,7 @@ Trenutno:
 - Ako je autentificiran, prikazuje se `(tabs)`, `create-event`, `entrance-map-picker` i `event/[id]`.
 - Auth hidratacija se radi kroz `useAuthStore.hydrateAuth()`.
 - Auth hidratacija prvo cita novi stabilni SecureStore zapis, zatim legacy SecureStore zapis i na kraju AsyncStorage mirror. Validna legacy/fallback sesija se migrira natrag u primarni SecureStore zapis.
+- `useAuthStore.setAuth()` i `clearAuth()` resetiraju React Query session cache kroz `core/query/session-query-state.ts`, tako da se liked events, chatovi, join/like state i ostali per-user API podaci ne prenose izmedu korisnika nakon logout/login/register bez restarta aplikacije.
 - Ako app nakon ranije prijave zavrsi na loginu jer spremljena sesija nije ucitana, login ekran prikazuje modal s dijagnostikom storage izvora. Ako login API prodje, ali spremanje sesije padne, korisnik dobiva poseban modal za persistence problem.
 - `QueryClientProvider`, `SafeAreaProvider`, `AppThemeProvider` i `GestureHandlerRootView` su globalni wrapperi.
 
@@ -376,7 +377,7 @@ Postoji:
 - Prikazuje liked events history preko `useLikedEventsQuery()`.
 - Jezik HR/EN se mijenja preko `setLocale`.
 - Tema se mijenja preko `ThemeToggle`.
-- Odjava zove `clearAuth()` i vraca na auth flow.
+- Odjava zove `clearAuth()`, resetira session query cache i vraca na auth flow.
 
 Sto fali:
 
