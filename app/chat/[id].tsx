@@ -196,8 +196,8 @@ export default function ChatRoomScreen() {
             contentContainerStyle={messages.length === 0 ? styles.emptyMessages : styles.messageList}
             keyboardShouldPersistTaps="handled"
             removeClippedSubviews={false}
-            onContentSizeChange={performInitialScroll}
-            onLayout={performInitialScroll}
+            onContentSizeChange={() => performInitialScroll()}
+            onLayout={() => performInitialScroll()}
             onViewableItemsChanged={handleViewableItemsChanged}
             viewabilityConfig={CHAT_VIEWABILITY_CONFIG}
             onScrollToIndexFailed={(info) => {
