@@ -370,6 +370,8 @@ Dopuna:
 
 2026-04-30 - Dodan je inicijalni scroll u chat detailu. Pri ulasku u chat `app/chat/[id].tsx` koristi `room.unreadCount` iz detail responsea i scrolla na najstariju neprocitanu tuđu poruku; ako nema neprocitanih poruka, scrolla na zadnju poruku na dnu nakon sto `FlatList` izmjeri content. Chat lista sada prikazuje sticky date separatore (`Danas/Today`, `Jucer/Yesterday`, ili skraceni dan i datum za starije poruke) koji ujedno razdvajaju poruke u listi. Backend i dalje trenutno vraca cijeli message history za room; paginacija/cursor loading ostaje zasebna veca dorada. Test/build nije pokretan po dogovoru.
 
+2026-05-10 - Rijesena je dodatna Android edge-to-edge regresija u chat inputu. `app.config.ts` sada eksplicitno drzi Android keyboard layout na `resize`, a shared `useKeyboardState` hook razlikuje uredaje gdje native `adjustResize` vec pomakne layout od uredaja gdje treba fallback inset. Chat composer sada ima bottom safe-area padding kad je tipkovnica zatvorena da Android navigation bar ne prekrije polje za poruku, a kad je tipkovnica otvorena dodaje se samo preostali nepokriveni inset. `Novi chat` modal i poll composer koriste isti hook. Datoteke: `app.config.ts`, `app/chat/[id].tsx`, `app/(tabs)/messages.tsx`, `features/messages/hooks/use-keyboard-bottom-inset.ts`, `README.md`, `FAZE.md`. Test/build nije pokretan po dogovoru.
+
 ## Faza 8 - Profil i postavke
 
 Status: Rijeseno

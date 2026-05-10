@@ -40,7 +40,7 @@ Trenutno stanje tabova:
 Postojece frontend tehnologije i patterni:
 
 - Expo SDK 54, React 19, React Native 0.81, TypeScript.
-- Android i iOS trenutno koriste `newArchEnabled=true` jer `react-native-reanimated` i `react-native-worklets` to zahtijevaju pri buildu. Za iOS je ostao i pojacani `react-native-maps` (`AIRMap`) patch u `scripts/patch-react-native-maps-airmap.js`.
+- Android i iOS trenutno koriste `newArchEnabled=true` jer `react-native-reanimated` i `react-native-worklets` to zahtijevaju pri buildu. Android koristi edge-to-edge uz `softwareKeyboardLayoutMode: resize`; chat inputi dodatno koriste shared keyboard/safe-area hook samo za inset koji native resize nije vec pokrio. Za iOS je ostao i pojacani `react-native-maps` (`AIRMap`) patch u `scripts/patch-react-native-maps-airmap.js`.
 - iOS workspace sada ima dva native targeta/schemea: `GIKDev` i `GIKTest`. `npm run ios` / `npm run ios:dev` prije builda automatski pripremaju `ios/.xcode.env.local` za lokalni `prod`/dev variant (`localhost` backend) i pokrecu `GIKDev`, a `npm run ios:test` / `npm run ios:test:release` pripremaju test env i pokrecu `GIKTest`.
 - Navigacija: `expo-router` i `expo-router/unstable-native-tabs` u `app/(tabs)/_layout.tsx`.
 - Data fetching/cache: TanStack React Query u `core/api/query-hooks.ts` i `core/query/query-client.ts`.
@@ -362,7 +362,7 @@ Trenutno ponasanje:
 - Pri ulasku u chat frontend automatski scrolla na najstariju neprocitanu poruku ako postoje neprocitane poruke, inace na dno razgovora.
 - Chat lista prikazuje sticky date separatore: `Danas/Today`, `Jucer/Yesterday` ili skraceni dan i datum za starije poruke.
 - Slanje teksta ide preko `/api/messages/chat-rooms/{id}/messages`.
-- Chat composer koristi iOS keyboard avoidance, a na Androidu ručni keyboard bottom inset s malim extra offsetom kad `adjustResize` ne pomakne layout dovoljno. `+` modal i poll composer koriste isti keyboard/safe-area inset pristup.
+- Chat composer koristi iOS keyboard avoidance, a na Androidu `adjustResize` kao primarni put. Shared keyboard/safe-area hook detektira koliko je layout vec resizean i dodaje samo preostali Android inset, plus stalni bottom safe-area padding kad je tipkovnica zatvorena da navigation bar ne prekrije input. `+` modal i poll composer koriste isti keyboard/safe-area pristup.
 - Event share iz FYP/detailsa salje message tip `event_share` preko `/api/messages/chat-rooms/{id}/share-event`; u chatu se prikazuje event card s coverom, titleom, lokacijom, datumom i linkom na details.
 - Pollovi se kreiraju preko `/api/messages/chat-rooms/{id}/polls`, prikazuju se u chatu i glasanje ide preko `/api/messages/polls/{id}/vote`. Poll composer uvijek krece s 2 option polja, automatski dodaje prazno `Dodaj/Add` polje kad su postojeca popunjena, uklanja prazna option polja na blur i podrzava drag reorder preko handlea.
 - `adminOnly` se mijenja preko `PATCH /api/messages/chat-rooms/{id}`; owner/admin mogu pisati, clanovi mogu glasati na pollovima.

@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRouter } from 'expo-router';
 import { useDeferredValue, useEffect, useState } from 'react';
-import { FlatList, Modal, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { FlatList, Modal, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppScreen, AppText } from '@/components/primitives';
@@ -15,7 +15,9 @@ import { useI18n } from '@/core/i18n/use-i18n';
 import { useAppTheme } from '@/core/theme';
 import { ChatPerson } from '@/core/types/domain';
 import { ChatRoomRow } from '@/features/messages/components/chat-room-row';
-import { useKeyboardBottomInset } from '@/features/messages/hooks/use-keyboard-bottom-inset';
+import { useKeyboardState } from '@/features/messages/hooks/use-keyboard-bottom-inset';
+
+const ANDROID_MODAL_KEYBOARD_EXTRA_OFFSET = 36;
 
 export default function MessagesScreen() {
   const router = useRouter();
@@ -81,15 +83,18 @@ function NewChatModal({ visible, onClose }: { visible: boolean; onClose: () => v
   const { t } = useI18n();
   const { theme } = useAppTheme();
   const insets = useSafeAreaInsets();
-  const keyboardBottomInset = useKeyboardBottomInset();
+  const keyboardState = useKeyboardState({
+    bottomInset: insets.bottom,
+    extraOffset: Platform.OS === 'android' ? ANDROID_MODAL_KEYBOARD_EXTRA_OFFSET : 0,
+  });
   const [query, setQuery] = useState('');
   const deferredQuery = useDeferredValue(query);
   const normalizedQuery = deferredQuery.trim();
   const canSearchPeople = normalizedQuery.length >= CHAT_PEOPLE_SEARCH_MIN_LENGTH;
   const { data: people = [], isLoading } = useChatPeopleQuery(normalizedQuery);
   const createRoomMutation = useCreateChatRoomMutation();
-  const modalBottomInset = Math.max(0, keyboardBottomInset - insets.bottom);
-  const panelBottomPadding = Math.max(insets.bottom, 10) + 8;
+  const modalBottomInset = keyboardState.bottomInset;
+  const panelBottomPadding = Math.max(keyboardState.isKeyboardVisible ? 0 : insets.bottom, 10) + 8;
 
   useEffect(() => {
     if (!visible) {

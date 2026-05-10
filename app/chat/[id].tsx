@@ -23,7 +23,7 @@ import { useAppTheme } from '@/core/theme';
 import { ChatMessage, CreatePollPayload } from '@/core/types/domain';
 import { ChatDetailsPanel } from '@/features/messages/components/chat-details-panel';
 import { MessageBubble } from '@/features/messages/components/message-bubble';
-import { useKeyboardBottomInset } from '@/features/messages/hooks/use-keyboard-bottom-inset';
+import { useKeyboardState } from '@/features/messages/hooks/use-keyboard-bottom-inset';
 
 type ChatListItem = { key: string; type: 'date'; label: string } | { key: string; type: 'message'; message: ChatMessage };
 
@@ -43,7 +43,10 @@ export default function ChatRoomScreen() {
   const { t, locale } = useI18n();
   const { theme } = useAppTheme();
   const insets = useSafeAreaInsets();
-  const keyboardBottomInset = useKeyboardBottomInset();
+  const keyboardState = useKeyboardState({
+    bottomInset: insets.bottom,
+    extraOffset: Platform.OS === 'android' ? ANDROID_KEYBOARD_EXTRA_OFFSET : 0,
+  });
   const messageListRef = useRef<FlatList<ChatListItem>>(null);
   const initialScrollRoomRef = useRef<string | null>(null);
   const pendingInitialScrollRef = useRef(false);
@@ -58,10 +61,8 @@ export default function ChatRoomScreen() {
   const chatItems = useMemo(() => buildChatListItems(messages, locale, t), [messages, locale, t]);
   const isInitialLoading = isLoading && !data;
   const canWrite = room ? !room.adminOnly || room.myRole === 'owner' || room.myRole === 'admin' : false;
-  const androidComposerBottomInset =
-    Platform.OS === 'android' && keyboardBottomInset > 0
-      ? Math.max(0, keyboardBottomInset - insets.bottom + ANDROID_KEYBOARD_EXTRA_OFFSET)
-      : 0;
+  const androidComposerBottomInset = Platform.OS === 'android' ? keyboardState.bottomInset : 0;
+  const composerBottomPadding = COMPOSER_BOTTOM_PADDING + (keyboardState.isKeyboardVisible ? 0 : insets.bottom);
 
   useEffect(() => {
     initialScrollRoomRef.current = null;
@@ -241,6 +242,7 @@ export default function ChatRoomScreen() {
               {
                 borderTopColor: theme.colors.border,
                 marginBottom: androidComposerBottomInset,
+                paddingBottom: composerBottomPadding,
               },
             ]}
           >
@@ -308,19 +310,16 @@ function PollComposerModal({ visible, roomId, onClose }: { visible: boolean; roo
   const { t } = useI18n();
   const { theme } = useAppTheme();
   const insets = useSafeAreaInsets();
-  const keyboardBottomInset = useKeyboardBottomInset();
+  const keyboardState = useKeyboardState({
+    bottomInset: insets.bottom,
+    extraOffset: Platform.OS === 'android' ? ANDROID_KEYBOARD_EXTRA_OFFSET : 0,
+  });
   const createPollMutation = useCreateChatPollMutation();
   const [question, setQuestion] = useState('');
   const [options, setOptions] = useState(['', '']);
   const [allowMultiple, setAllowMultiple] = useState(false);
-  const modalBottomInset =
-    keyboardBottomInset > 0
-      ? Math.max(
-          0,
-          keyboardBottomInset - insets.bottom + (Platform.OS === 'android' ? ANDROID_KEYBOARD_EXTRA_OFFSET : 0),
-        )
-      : 0;
-  const panelBottomPadding = Math.max(insets.bottom, 10) + 8;
+  const modalBottomInset = keyboardState.bottomInset;
+  const panelBottomPadding = Math.max(keyboardState.isKeyboardVisible ? 0 : insets.bottom, 10) + 8;
 
   const createPoll = async () => {
     if (!roomId) {
