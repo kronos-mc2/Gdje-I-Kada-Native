@@ -57,6 +57,11 @@ function RootNavigator() {
         <Stack.Screen name="entrance-map-picker" options={{ presentation: 'fullScreenModal' }} />
         <Stack.Screen name="event/[id]" options={{ presentation: 'card' }} />
         <Stack.Screen name="chat/[id]" options={{ presentation: 'card' }} />
+        <Stack.Screen name="profile/settings" options={{ presentation: 'card' }} />
+        <Stack.Screen name="profile/edit" options={{ presentation: 'card' }} />
+        <Stack.Screen name="profile/activity" options={{ presentation: 'card' }} />
+        <Stack.Screen name="profile/liked" options={{ presentation: 'card' }} />
+        <Stack.Screen name="profile/transactions" options={{ presentation: 'card' }} />
       </Stack>
     </>
   );

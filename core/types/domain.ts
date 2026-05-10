@@ -186,6 +186,8 @@ export type CreatePollPayload = {
 export type UserProfile = {
   name: string;
   email: string;
+  bio?: string;
+  avatarUrl?: string;
 };
 
 export type AuthResponse = {
@@ -202,6 +204,37 @@ export type RegisterPayload = {
   name: string;
   email: string;
   password: string;
+};
+
+export type UpdateProfilePayload = {
+  name: string;
+  bio?: string;
+  avatarUrl?: string;
+};
+
+export type Transaction = {
+  id: string;
+  eventId?: string;
+  eventTitle?: string;
+  type: string;
+  amount: number;
+  currency: string;
+  status: 'pending' | 'paid' | 'failed' | 'refunded';
+  description?: string;
+  createdAt: string;
+};
+
+export type ProfileActivity = {
+  joinedEvents: AppEvent[];
+  likedEvents: AppEvent[];
+  ratingCandidates: AppEvent[];
+  transactions: Transaction[];
+};
+
+export type OrganizerRatingPayload = {
+  eventId: string;
+  rating: number;
+  comment?: string;
 };
 
 export type CreateEventPayload = {

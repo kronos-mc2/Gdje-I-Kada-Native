@@ -16,17 +16,22 @@ import {
   fetchLikedEvents,
   fetchFriends,
   fetchMyEvents,
+  fetchProfileActivity,
+  fetchTransactions,
   getOrCreateEventChatRoom,
   joinEvent,
   likeEvent,
   leaveEvent,
+  rateOrganizer,
   sendChatMessage,
   shareEventToConversation,
   unlikeEvent,
+  updateProfile,
   updateChatRoom,
   votePoll,
 } from '@/core/api/services';
-import { AppEvent, ChatRoomDetail, EventQueryParams, FeedPage, MyEventsFilter, Poll } from '@/core/types/domain';
+import { AppEvent, ChatRoomDetail, EventQueryParams, FeedPage, MyEventsFilter, Poll, UserProfile } from '@/core/types/domain';
+import { useAuthStore } from '@/core/store/auth-store';
 
 export const CHAT_PEOPLE_SEARCH_MIN_LENGTH = 2;
 
@@ -54,6 +59,18 @@ export const useLikedEventsQuery = () =>
   useQuery({
     queryKey: queryKeys.likedEvents,
     queryFn: fetchLikedEvents,
+  });
+
+export const useProfileActivityQuery = () =>
+  useQuery({
+    queryKey: queryKeys.profileActivity,
+    queryFn: fetchProfileActivity,
+  });
+
+export const useTransactionsQuery = () =>
+  useQuery({
+    queryKey: queryKeys.transactions,
+    queryFn: fetchTransactions,
   });
 
 export const useFeedInfiniteQuery = (limit = 5) =>
@@ -197,6 +214,8 @@ export const useCreateEventMutation = () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.eventsRoot });
       void queryClient.invalidateQueries({ queryKey: queryKeys.myEventsRoot });
       void queryClient.invalidateQueries({ queryKey: queryKeys.feedRoot });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.chatRoomsRoot });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.profileActivity });
     },
   });
 };
@@ -211,6 +230,7 @@ export const useJoinEventMutation = () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.eventsRoot });
       void queryClient.invalidateQueries({ queryKey: queryKeys.myEventsRoot });
       void queryClient.invalidateQueries({ queryKey: queryKeys.feedRoot });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.profileActivity });
     },
   });
 };
@@ -245,10 +265,12 @@ export const useLikeEventMutation = () => {
     onSuccess: (event) => {
       syncEventAcrossCaches(queryClient, event);
       void queryClient.invalidateQueries({ queryKey: queryKeys.likedEventsRoot });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.profileActivity });
     },
     onError: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.feedRoot });
       void queryClient.invalidateQueries({ queryKey: queryKeys.likedEventsRoot });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.profileActivity });
     },
   });
 };
@@ -269,10 +291,12 @@ export const useUnlikeEventMutation = () => {
     onSuccess: (event) => {
       syncEventAcrossCaches(queryClient, event);
       void queryClient.invalidateQueries({ queryKey: queryKeys.likedEventsRoot });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.profileActivity });
     },
     onError: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.feedRoot });
       void queryClient.invalidateQueries({ queryKey: queryKeys.likedEventsRoot });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.profileActivity });
     },
   });
 };
@@ -286,6 +310,32 @@ export const useShareEventMutation = () => {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.conversations });
       void queryClient.invalidateQueries({ queryKey: queryKeys.chatRoomsRoot });
+    },
+  });
+};
+
+export const useUpdateProfileMutation = () => {
+  const queryClient = useQueryClient();
+  const updateAuthUser = useAuthStore((state) => state.updateUser);
+
+  return useMutation({
+    mutationFn: updateProfile,
+    onSuccess: async (user: UserProfile) => {
+      await updateAuthUser(user);
+      void queryClient.invalidateQueries({ queryKey: queryKeys.profileActivity });
+    },
+  });
+};
+
+export const useRateOrganizerMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: rateOrganizer,
+    onSuccess: (event) => {
+      syncEventAcrossCaches(queryClient, event);
+      void queryClient.invalidateQueries({ queryKey: queryKeys.profileActivity });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.myEventsRoot });
     },
   });
 };

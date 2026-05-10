@@ -1,137 +1,131 @@
-import { Image } from 'expo-image';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRouter } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { AppButton, AppCard, AppScreen, AppText, SectionHeader, ThemeToggle } from '@/components/primitives';
-import { useLikedEventsQuery } from '@/core/api/query-hooks';
-import { getEventPosterUri } from '@/core/events/event-cover';
+import { AppButton, AppCard, AppScreen, AppText } from '@/components/primitives';
+import { useProfileActivityQuery } from '@/core/api/query-hooks';
 import { useI18n } from '@/core/i18n/use-i18n';
-import { useAppStore } from '@/core/store/app-store';
 import { useAuthStore } from '@/core/store/auth-store';
 import { useAppTheme } from '@/core/theme';
-import { Locale } from '@/core/types/domain';
-import { formatEventDate } from '@/core/utils/date';
-
-const LANGUAGES: Locale[] = ['hr', 'en'];
+import { ProfileAvatar } from '@/features/profile/components/profile-avatar';
+import { ProfileEventRow } from '@/features/profile/components/profile-event-row';
+import { ProfileMenuRow } from '@/features/profile/components/profile-menu-row';
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { t, locale } = useI18n();
-  const { preference } = useAppTheme();
-
+  const { t } = useI18n();
+  const { theme } = useAppTheme();
   const userProfile = useAuthStore((state) => state.user);
-  const clearAuth = useAuthStore((state) => state.clearAuth);
-  const { data: likedEvents = [] } = useLikedEventsQuery();
-  const themePreference = useAppStore((state) => state.themePreference);
-  const setThemePreference = useAppStore((state) => state.setThemePreference);
-  const setLocale = useAppStore((state) => state.setLocale);
-
-  const handleSignOut = async () => {
-    await clearAuth();
-    router.replace('/(auth)');
-  };
+  const { data: activity } = useProfileActivityQuery();
+  const recentJoined = activity?.joinedEvents.slice(0, 2) ?? [];
 
   return (
     <AppScreen scroll>
-      <AppCard variant="glass" style={styles.profileCard}>
-        {userProfile ? (
-          <>
-            <AppText variant="headline">{userProfile.name}</AppText>
-            <AppText variant="body" color="textSecondary" style={styles.email}>
-              {userProfile.email}
-            </AppText>
-          </>
+      <View style={styles.header}>
+        <Pressable onPress={() => router.push('/profile/edit')} style={styles.avatarWrap}>
+          <ProfileAvatar name={userProfile?.name} avatarUrl={userProfile?.avatarUrl} size={104} />
+          <View style={[styles.editBadge, { backgroundColor: theme.colors.surfaceElevated, borderColor: theme.colors.border }]}>
+            <Ionicons name="add" size={18} color={theme.colors.textPrimary} />
+          </View>
+        </Pressable>
+        <AppText variant="title" style={styles.name} numberOfLines={2}>
+          {userProfile?.name ?? t('notSignedIn')}
+        </AppText>
+        {userProfile?.bio ? (
+          <AppText variant="body" color="textSecondary" style={styles.bio}>
+            {userProfile.bio}
+          </AppText>
         ) : (
-          <AppText variant="body" color="textMuted">
-            {t('notSignedIn')}
+          <AppText variant="body" color="textMuted" style={styles.bio}>
+            {userProfile?.email}
           </AppText>
         )}
-      </AppCard>
-
-      <SectionHeader title={t('likedEvents')} subtitle={t('likedEventsSubtitle')} />
-      {likedEvents.length === 0 ? (
-        <AppCard variant="glass" style={styles.emptyLikesCard}>
-          <AppText variant="body" color="textMuted">
-            {t('noLikedEvents')}
-          </AppText>
-        </AppCard>
-      ) : (
-        likedEvents.map((event) => (
-          <Pressable key={event.id} onPress={() => router.push({ pathname: '/event/[id]', params: { id: event.id } })}>
-            <AppCard variant="glass" style={styles.likedEventCard}>
-              <Image source={{ uri: getEventPosterUri(event, 320, 320) }} style={styles.likedEventImage} contentFit="cover" />
-              <View style={styles.likedEventCopy}>
-                <AppText variant="bodyStrong">{event.title[locale]}</AppText>
-                <AppText variant="caption" color="textSecondary" style={styles.likedEventMeta}>
-                  {event.where[locale]}
-                </AppText>
-                <AppText variant="caption" color="textMuted">
-                  {formatEventDate(event.whenISO, locale)}
-                </AppText>
-              </View>
-            </AppCard>
-          </Pressable>
-        ))
-      )}
-
-      <SectionHeader title={t('language')} />
-      <View style={styles.languageRow}>
-        {LANGUAGES.map((item) => (
-          <AppButton
-            key={item}
-            title={item.toUpperCase()}
-            variant={locale === item ? 'primary' : 'secondary'}
-            style={styles.languageButton}
-            onPress={() => setLocale(item)}
-          />
-        ))}
+        <AppButton title={t('editProfile')} variant="glass" style={styles.editButton} onPress={() => router.push('/profile/edit')} />
       </View>
 
-      <SectionHeader title={t('theme')} subtitle={preference === 'system' ? t('themeSystem') : undefined} />
-      <ThemeToggle value={themePreference} onChange={setThemePreference} />
+      <AppCard variant="glass" style={styles.menuCard}>
+        <ProfileMenuRow icon="settings-outline" title={t('settings')} onPress={() => router.push('/profile/settings')} />
+        <ProfileMenuRow
+          icon="time-outline"
+          title={t('activityHistory')}
+          subtitle={t('activityHistorySubtitle')}
+          onPress={() => router.push('/profile/activity')}
+        />
+        <ProfileMenuRow
+          icon="receipt-outline"
+          title={t('transactionHistory')}
+          subtitle={t('transactionHistorySubtitle')}
+          onPress={() => router.push('/profile/transactions')}
+        />
+        <ProfileMenuRow icon="heart-outline" title={t('likedEvents')} subtitle={t('likedEventsSubtitle')} onPress={() => router.push('/profile/liked')} />
+      </AppCard>
 
-      <AppButton title={t('signOut')} variant="glass" style={styles.authButton} onPress={() => void handleSignOut()} />
+      <View style={styles.sectionHeader}>
+        <AppText variant="headline">{t('recentActivity')}</AppText>
+        <Pressable onPress={() => router.push('/profile/activity')}>
+          <AppText variant="caption" style={{ color: theme.colors.mapAccent }}>
+            {t('seeAll')}
+          </AppText>
+        </Pressable>
+      </View>
+
+      <AppCard variant="glass" style={styles.activityCard}>
+        {recentJoined.length === 0 ? (
+          <AppText variant="body" color="textMuted">
+            {t('noProfileActivity')}
+          </AppText>
+        ) : (
+          recentJoined.map((event) => (
+            <ProfileEventRow key={event.id} event={event} onPress={() => router.push({ pathname: '/event/[id]', params: { id: event.id } })} />
+          ))
+        )}
+      </AppCard>
     </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  profileCard: {
-    marginBottom: 18,
+  header: {
+    alignItems: 'center',
+    paddingTop: 14,
+    paddingBottom: 18,
   },
-  email: {
-    marginTop: 4,
+  avatarWrap: {
+    marginBottom: 14,
   },
-  emptyLikesCard: {
-    marginBottom: 8,
+  editBadge: {
+    position: 'absolute',
+    right: 2,
+    bottom: 2,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  likedEventCard: {
+  name: {
+    textAlign: 'center',
+  },
+  bio: {
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  editButton: {
+    marginTop: 16,
+    minWidth: 150,
+  },
+  menuCard: {
+    paddingVertical: 2,
+    marginBottom: 20,
+  },
+  sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    justifyContent: 'space-between',
     marginBottom: 10,
   },
-  likedEventImage: {
-    width: 64,
-    height: 64,
-    borderRadius: 16,
-  },
-  likedEventCopy: {
-    flex: 1,
-  },
-  likedEventMeta: {
-    marginTop: 4,
-    marginBottom: 2,
-  },
-  languageRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 16,
-  },
-  languageButton: {
-    flex: 1,
-  },
-  authButton: {
-    marginTop: 20,
+  activityCard: {
+    gap: 10,
   },
 });

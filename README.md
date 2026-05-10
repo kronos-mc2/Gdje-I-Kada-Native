@@ -1,6 +1,6 @@
 # Gdje i Kada - projektna dokumentacija
 
-Status dokumenta: 2026-04-30
+Status dokumenta: 2026-05-10
 Projekt se ne radi ispocetka. Postojeci React Native/Expo frontend i Spring Boot backend ostaju baza, a nove funkcionalnosti se nadograduju na vec postojece klase, rute, storeove, hookove i dizajn sustav.
 
 Radimo mobilnu event aplikaciju "Gdje i Kada" za iOS i Android. Frontend je React Native kroz Expo Router, backend je Spring Boot s PostgreSQL bazom. Nemoj kretati ispocetka. Prvo procitaj postojeci kod i nadogradi ga prema lokalnim patternima.
@@ -35,7 +35,7 @@ Trenutno stanje tabova:
 - Kalendar je implementiran kao `app/(tabs)/calendar.tsx` i prikazuje joined-only mjesecni grid s event oznakama, searchom i povratkom na danas.
 - Poruke su glavni tab kroz `app/(tabs)/messages.tsx`; chat screen je `app/chat/[id].tsx`.
 - `app/(tabs)/social.tsx` ostaje prototip/sekundarni ekran za conversations + friends, ali vise nije glavni tab.
-- Profil je implementiran kao `app/(tabs)/profile.tsx`; trenutno prikazuje osnovni profil, liked events history, jezik, temu i odjavu. Jos trebaju transaction history, edit profila i poseban settings ekran.
+- Profil je implementiran kao `app/(tabs)/profile.tsx`; sada je activity/profile hub s avatarom, imenom, bio tekstom, edit profilom, activity historyjem, liked historyjem, transaction historyjem i odvojenim settings screenom.
 
 Postojece frontend tehnologije i patterni:
 
@@ -100,6 +100,9 @@ Backend trenutno ima:
 - `DELETE /api/events/{id}/like`
 - `GET /api/users/me/events?filter=all|joined|created`
 - `GET /api/users/me/liked-events`
+- `PATCH /api/users/me/profile`
+- `GET /api/users/me/activity`
+- `GET /api/users/me/transactions`
 - `GET /api/feed?cursor=&limit=`
 - `GET /api/social/friends`
 - `GET /api/messages/chat-rooms?query=`
@@ -160,7 +163,10 @@ Trenutna baza:
   - `full_name`
   - `password_hash`
   - `auth_provider` (`local`, `google`, `apple`)
+  - `bio` iz `V7__profile_activity.sql`
+  - `avatar_url` iz `V7__profile_activity.sql`
   - `created_at`, `updated_at`
+- `transactions` iz `V7__profile_activity.sql`
 
 Trenutni event model:
 
@@ -171,7 +177,7 @@ Trenutni event model:
 - Service: `EventService`.
 - Mapper: `EventMapper` i `EventMapper.xml`.
 
-Event trenutno podrzava naslov, lokaciju, adresu, opis, start/end datum, coordinates, entrance coordinates, entry instructions, creator user id, visibility `public/friends`, attendance mode `open/waitlist/paid`, cijenu za paid evente, capacity, status, organizer rating agregate, `likeCount`, `likedByMe`, participant count, `joinedByMe`, `attendanceStatus` i `canJoin`. Baza ima tablice za media, participants, likes, organizer ratings i event chat roomove. Join/leave i like/unlike rade kroz backend, a feed i detail endpointi vracaju `event_media` za reels/detail prikaz. Jos ne postoje pun UI/API flow za upload media, placanje ni rating submit.
+Event trenutno podrzava naslov, lokaciju, adresu, opis, start/end datum, coordinates, entrance coordinates, entry instructions, creator user id, visibility `public/friends`, attendance mode `open/waitlist/paid`, cijenu za paid evente, capacity, status, organizer rating agregate, `likeCount`, `likedByMe`, participant count, `joinedByMe`, `attendanceStatus` i `canJoin`. Baza ima tablice za media, participants, likes, organizer ratings i event chat roomove. Join/leave i like/unlike rade kroz backend, a feed i detail endpointi vracaju `event_media` za reels/detail prikaz. Organizer rating submit radi kroz `POST /api/events/{id}/ratings`. Jos ne postoje puni UI/API flowovi za upload media ni placanje.
 
 Kad implementiras nove stvari, nadogradi postojece:
 
@@ -192,7 +198,7 @@ Kalendar prikazuje samo evente na koje se korisnik pridruzio. Rijesen je kao nat
 
 Poruke podrzavaju privatne razgovore, grupe, event-specific grupe, pollove i admin-only chat mod gdje samo admini pisu, a ostali mogu glasati na pollu.
 
-Profil treba prikazivati korisnikovu aktivnost: event history, joined eventove, liked reels/evente i transaction history. Profil mora imati editiranje slike i imena. Postavke trebaju biti odvojeni ekran otvoren iz profila, a tamo idu jezik, tema i slicne opcije.
+Profil prikazuje korisnikovu aktivnost: joined eventove, liked reels/evente, transaction history i rating flow za zavrsene evente. Profil ima editiranje imena, bio teksta i avatar URL-a. Postavke su odvojeni ekran otvoren iz profila; tamo su jezik, tema i odjava.
 
 ## Frontend dokumentacija
 
@@ -373,22 +379,18 @@ Sto fali:
 Postoji:
 
 - Screen: `app/(tabs)/profile.tsx`.
-- Prikazuje korisnikovo ime/email iz `useAuthStore`.
-- Prikazuje liked events history preko `useLikedEventsQuery()`.
-- Jezik HR/EN se mijenja preko `setLocale`.
-- Tema se mijenja preko `ThemeToggle`.
-- Odjava zove `clearAuth()`, resetira session query cache i vraca na auth flow.
+- Profil je activity/profile hub, a settings su odvojeni u `app/profile/settings.tsx`.
+- Edit profila je u `app/profile/edit.tsx` i sprema ime, bio i avatar URL preko `PATCH /api/users/me/profile`.
+- Activity history je u `app/profile/activity.tsx` i koristi `GET /api/users/me/activity`.
+- Liked history je u `app/profile/liked.tsx`.
+- Transaction history je u `app/profile/transactions.tsx` i koristi `GET /api/users/me/transactions`.
+- Organizer rating za prosle evente ide preko `POST /api/events/{id}/ratings`.
+- Odjava je premjestena u settings, zove `clearAuth()`, resetira session query cache i vraca na auth flow.
 
 Sto fali:
 
-- Odvojeni Settings screen otvoren gumbom iz profila.
-- Edit profila:
-  - ime
-  - profilna slika/avatar
-  - eventualno username/bio
-- Joined/created history blokovi i transaction history.
-- Mjesto za rating organizatora nakon zavrsenog eventa.
-- Backend endpointi za profile update, avatar upload i transactions.
+- Stvarni avatar upload/storage provider; trenutno se sprema avatar URL.
+- Puni paid transaction/payment flow iz Faze 9.
 
 ### Auth
 
@@ -416,7 +418,6 @@ Sto fali:
 
 - Refresh token model i rotacija sesije; access token sada defaultno traje 7 dana i backend odbija konfiguraciju dulju od 30 dana.
 - Logout invalidacija tokena ako bude potrebna.
-- Profile update endpoint.
 - Avatar storage.
 - Account delete/deactivate.
 
@@ -729,9 +730,9 @@ Messages:
 
 Profile:
 
-- `GET /api/users/me`
-- `PATCH /api/users/me`
-- `POST /api/users/me/avatar`
+- `GET /api/auth/me`
+- `PATCH /api/users/me/profile`
+- `GET /api/users/me/activity`
 - `GET /api/users/me/transactions`
 
 ## Testiranje i verifikacija

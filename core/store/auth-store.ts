@@ -17,6 +17,7 @@ type AuthStore = {
   authRestoreMessage: string | null;
   hydrateAuth: () => Promise<void>;
   setAuth: (payload: AuthSnapshot) => Promise<void>;
+  updateUser: (user: UserProfile) => Promise<void>;
   clearAuth: () => Promise<void>;
   consumeAuthRestoreMessage: () => string | null;
 };
@@ -241,6 +242,15 @@ export const useAuthStore = create<AuthStore>()((set, get) => ({
     await resetSessionQueryState();
     await writeAuthSnapshot({ accessToken, user });
     set({ accessToken, user, hydrated: true, authRestoreMessage: null });
+  },
+  updateUser: async (user) => {
+    const accessToken = get().accessToken;
+    if (!accessToken) {
+      return;
+    }
+
+    await writeAuthSnapshot({ accessToken, user });
+    set({ user, hydrated: true, authRestoreMessage: null });
   },
   clearAuth: async () => {
     set({ accessToken: null, user: null, hydrated: true, authRestoreMessage: null });

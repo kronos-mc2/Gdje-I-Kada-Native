@@ -1,6 +1,6 @@
 # Gdje i Kada - fazni plan rada
 
-Status dokumenta: 2026-04-30
+Status dokumenta: 2026-05-10
 Lokacija master dokumentacije: `README.md`
 
 ## Pravilo rada po fazama
@@ -28,7 +28,7 @@ Dokumentacija je dio zadatka, ne naknadni posao. Ako kod i dokumentacija nisu us
 | 5 | Reels/FYP | Rijeseno | FYP radi kao reels feed s media preloadom, likeovima i shareom. |
 | 6 | Kalendar | Rijeseno | Kalendar prikazuje joined evente u mjesecnom gridu. |
 | 7 | Poruke i event chat | Rijeseno | Poruke imaju chat roomove, event grupe, event share card i pollove. |
-| 8 | Profil i postavke | Nije poceto | Profil ima edit, history, liked history, transactions i settings screen. |
+| 8 | Profil i postavke | Rijeseno | Profil ima edit, history, liked history, transactions i settings screen. |
 | 9 | Placanja, rating i polish | Nije poceto | Paid eventi, transaction history, organizer rating i zavrsni UX polish. |
 
 ## Faza 0 - Dokumentacija i smjer
@@ -372,7 +372,7 @@ Dopuna:
 
 ## Faza 8 - Profil i postavke
 
-Status: Nije poceto
+Status: Rijeseno
 
 Cilj:
 
@@ -380,25 +380,29 @@ Profil je korisnikov centar aktivnosti, a settings su odvojeni screen.
 
 Postojece stanje:
 
-- `profile.tsx` prikazuje ime/email, jezik, temu i odjavu.
+- `profile.tsx` je activity/profile hub; jezik, tema i odjava su u `app/profile/settings.tsx`.
 
 Zadaci:
 
-- [ ] Napraviti settings screen.
-- [ ] Premjestiti jezik i temu u settings screen.
-- [ ] Dodati edit profile screen.
-- [ ] Dodati avatar upload ili avatar URL model.
-- [ ] Dodati joined event history.
-- [ ] Dodati liked reels/events history.
-- [ ] Dodati transaction history.
-- [ ] Dodati organizer rating flow za prosle evente.
-- [ ] Backend profile update endpoint.
-- [ ] Backend transaction/history endpointi.
+- [x] Napraviti settings screen.
+- [x] Premjestiti jezik i temu u settings screen.
+- [x] Dodati edit profile screen.
+- [x] Dodati avatar upload ili avatar URL model.
+- [x] Dodati joined event history.
+- [x] Dodati liked reels/events history.
+- [x] Dodati transaction history.
+- [x] Dodati organizer rating flow za prosle evente.
+- [x] Backend profile update endpoint.
+- [x] Backend transaction/history endpointi.
 
 Definition of done:
 
 - Profil vise nije settings ekran, nego activity/profile hub.
 - Settings se otvara kao poseban ekran iz profila.
+
+Zavrsna biljeska:
+
+2026-05-10 - Napravljeno: profil je odvojen od postavki i prebacen u activity/profile hub s avatarom, imenom, bio tekstom, edit screenom, settings screenom, activity historyjem, liked historyjem i transaction historyjem. Backend je dobio `PATCH /api/users/me/profile`, `GET /api/users/me/activity`, `GET /api/users/me/transactions`, `POST /api/events/{id}/ratings`, `app_users.bio`, `app_users.avatar_url`, `transactions` tablicu i organizer rating upsert/agregaciju. Event leave sada server-side uklanja korisnika iz event chat grupe. Datoteke: frontend `app/(tabs)/profile.tsx`, `app/profile/*`, `features/profile/*`, `core/api/*`, `core/types/domain.ts`, `core/store/auth-store.ts`, `core/i18n/translations.ts`; backend `UserController`, `ProfileService`, profile mapper/DTO/migracija, `EventService`, `MessageService`, mapperi, `README.md`, `FAZE.md`, `backend/README.md`. Testirano: nije pokretano po dogovoru.
 
 ## Faza 9 - Placanja, rating i polish
 

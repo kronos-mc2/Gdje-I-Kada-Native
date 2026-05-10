@@ -14,7 +14,12 @@ import {
   FeedQueryParams,
   Friend,
   MyEventsFilter,
+  OrganizerRatingPayload,
   Poll,
+  ProfileActivity,
+  Transaction,
+  UpdateProfilePayload,
+  UserProfile,
 } from '@/core/types/domain';
 
 export const fetchEvents = async (params?: EventQueryParams): Promise<AppEvent[]> => {
@@ -34,6 +39,26 @@ export const fetchMyEvents = async (filter: MyEventsFilter = 'all'): Promise<App
 
 export const fetchLikedEvents = async (): Promise<AppEvent[]> => {
   const response = await apiClient.get<AppEvent[]>('/users/me/liked-events');
+  return response.data;
+};
+
+export const updateProfile = async (payload: UpdateProfilePayload): Promise<UserProfile> => {
+  const response = await apiClient.patch<UserProfile>('/users/me/profile', payload);
+  return response.data;
+};
+
+export const fetchProfileActivity = async (): Promise<ProfileActivity> => {
+  const response = await apiClient.get<ProfileActivity>('/users/me/activity');
+  return response.data;
+};
+
+export const fetchTransactions = async (): Promise<Transaction[]> => {
+  const response = await apiClient.get<Transaction[]>('/users/me/transactions');
+  return response.data;
+};
+
+export const rateOrganizer = async ({ eventId, rating, comment }: OrganizerRatingPayload): Promise<AppEvent> => {
+  const response = await apiClient.post<AppEvent>(`/events/${eventId}/ratings`, { rating, comment });
   return response.data;
 };
 

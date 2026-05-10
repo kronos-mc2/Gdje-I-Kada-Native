@@ -1,5 +1,5 @@
 import { apiClient } from '@/core/api/http-client';
-import { AuthResponse, LoginPayload, RegisterPayload } from '@/core/types/domain';
+import { AuthResponse, LoginPayload, RegisterPayload, UserProfile } from '@/core/types/domain';
 
 export const loginWithEmail = async (payload: LoginPayload): Promise<AuthResponse> => {
   const response = await apiClient.post<AuthResponse>('/auth/login', payload);
@@ -21,7 +21,7 @@ export const loginWithApple = async (idToken: string, name?: string): Promise<Au
   return response.data;
 };
 
-export const fetchMyProfile = async (): Promise<{ name: string; email: string }> => {
-  const response = await apiClient.get<{ name: string; email: string }>('/auth/me');
+export const fetchMyProfile = async (): Promise<UserProfile> => {
+  const response = await apiClient.get<UserProfile>('/auth/me');
   return response.data;
 };
