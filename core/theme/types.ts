@@ -25,13 +25,13 @@ export type ThemeColors = {
 };
 
 export type TypographyScale = {
-  display: { fontSize: number; lineHeight: number; fontWeight: '700' | '800' };
-  title: { fontSize: number; lineHeight: number; fontWeight: '700' | '800' };
-  headline: { fontSize: number; lineHeight: number; fontWeight: '600' | '700' };
-  body: { fontSize: number; lineHeight: number; fontWeight: '400' | '500' };
-  bodyStrong: { fontSize: number; lineHeight: number; fontWeight: '600' };
-  label: { fontSize: number; lineHeight: number; fontWeight: '600' };
-  caption: { fontSize: number; lineHeight: number; fontWeight: '400' | '500' };
+  display: { fontFamily?: string; fontSize: number; lineHeight: number; fontWeight: '700' | '800' };
+  title: { fontFamily?: string; fontSize: number; lineHeight: number; fontWeight: '700' | '800' };
+  headline: { fontFamily?: string; fontSize: number; lineHeight: number; fontWeight: '600' | '700' };
+  body: { fontFamily?: string; fontSize: number; lineHeight: number; fontWeight: '400' | '500' };
+  bodyStrong: { fontFamily?: string; fontSize: number; lineHeight: number; fontWeight: '600' };
+  label: { fontFamily?: string; fontSize: number; lineHeight: number; fontWeight: '600' };
+  caption: { fontFamily?: string; fontSize: number; lineHeight: number; fontWeight: '400' | '500' };
 };
 
 export type DesignTokens = {

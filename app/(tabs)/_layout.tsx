@@ -12,8 +12,8 @@ export default function TabLayout() {
   const iosPrimaryColor =
     Platform.OS === 'ios'
       ? DynamicColorIOS({
-          dark: '#FFFFFF',
-          light: '#0E1118',
+          dark: '#F0F0F0',
+          light: '#111114',
         })
       : theme.colors.textPrimary;
 
@@ -21,7 +21,8 @@ export default function TabLayout() {
     <NativeTabs
       minimizeBehavior="onScrollDown"
       blurEffect={theme.isDark ? 'systemChromeMaterialDark' : 'systemChromeMaterialLight'}
-      backgroundColor={Platform.OS === 'android' ? (theme.isDark ? 'rgba(8, 12, 18, 0.80)' : 'rgba(246, 247, 250, 0.86)') : undefined}
+      backgroundColor={Platform.OS === 'android' ? theme.colors.surface : undefined}
+      disableTransparentOnScrollEdge
       disableIndicator
       iconColor={{
         default: theme.colors.textMuted,
@@ -31,18 +32,21 @@ export default function TabLayout() {
         default: {
           color: theme.colors.textMuted,
           fontSize: 11,
+          fontFamily: theme.tokens.typography.caption.fontFamily,
           fontWeight: '500',
         },
         selected: {
           color: iosPrimaryColor,
           fontSize: 11,
+          fontFamily: theme.tokens.typography.label.fontFamily,
           fontWeight: '600',
         },
       }}
-      shadowColor={Platform.OS === 'android' ? 'transparent' : undefined}
+      shadowColor={theme.colors.surface}
       tintColor={iosPrimaryColor}
     >
       <NativeTabs.Trigger name="index">
+        <NativeTabs.Trigger.TabBar backgroundColor={theme.colors.surface} shadowColor={theme.colors.surface} disableTransparentOnScrollEdge />
         <Icon
           sf={{ default: 'map', selected: 'map.fill' }}
           androidSrc={<VectorIcon family={Ionicons} name="map-outline" />}
@@ -51,6 +55,7 @@ export default function TabLayout() {
       </NativeTabs.Trigger>
 
       <NativeTabs.Trigger name="fyp">
+        <NativeTabs.Trigger.TabBar backgroundColor={theme.colors.surface} shadowColor={theme.colors.surface} disableTransparentOnScrollEdge />
         <Icon
           sf={{ default: 'sparkles', selected: 'sparkles' }}
           androidSrc={<VectorIcon family={Ionicons} name="sparkles-outline" />}
@@ -59,6 +64,7 @@ export default function TabLayout() {
       </NativeTabs.Trigger>
 
       <NativeTabs.Trigger name="calendar">
+        <NativeTabs.Trigger.TabBar backgroundColor={theme.colors.surface} shadowColor={theme.colors.surface} disableTransparentOnScrollEdge />
         <Icon
           sf={{ default: 'calendar.badge.clock', selected: 'calendar.badge.clock' }}
           androidSrc={<VectorIcon family={Ionicons} name="today-outline" />}
@@ -67,6 +73,7 @@ export default function TabLayout() {
       </NativeTabs.Trigger>
 
       <NativeTabs.Trigger name="messages">
+        <NativeTabs.Trigger.TabBar backgroundColor={theme.colors.surface} shadowColor={theme.colors.surface} disableTransparentOnScrollEdge />
         <Icon
           sf={{ default: 'bubble.left.and.bubble.right', selected: 'bubble.left.and.bubble.right.fill' }}
           androidSrc={<VectorIcon family={Ionicons} name="chatbubbles-outline" />}
@@ -75,6 +82,7 @@ export default function TabLayout() {
       </NativeTabs.Trigger>
 
       <NativeTabs.Trigger name="profile">
+        <NativeTabs.Trigger.TabBar backgroundColor={theme.colors.surface} shadowColor={theme.colors.surface} disableTransparentOnScrollEdge />
         <Icon
           sf={{ default: 'person.crop.circle', selected: 'person.crop.circle.fill' }}
           androidSrc={<VectorIcon family={Ionicons} name="person-circle-outline" />}

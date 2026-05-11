@@ -1,9 +1,11 @@
 import { QueryClientProvider } from '@tanstack/react-query';
+import { useFonts } from 'expo-font';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import * as SystemUI from 'expo-system-ui';
 import 'react-native-reanimated';
 import { useEffect } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, Platform, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -16,6 +18,13 @@ function RootNavigator() {
   const router = useRouter();
   const segments = useSegments();
   const { theme } = useAppTheme();
+  const [fontsLoaded] = useFonts({
+    Lexend_400Regular: require('../assets/fonts/Lexend-Regular.ttf'),
+    Lexend_500Medium: require('../assets/fonts/Lexend-Medium.ttf'),
+    Lexend_600SemiBold: require('../assets/fonts/Lexend-SemiBold.ttf'),
+    Lexend_700Bold: require('../assets/fonts/Lexend-Bold.ttf'),
+    Lexend_800ExtraBold: require('../assets/fonts/Lexend-ExtraBold.ttf'),
+  });
   const hydrated = useAuthStore((state) => state.hydrated);
   const hydrateAuth = useAuthStore((state) => state.hydrateAuth);
   const isAuthenticated = Boolean(useAuthStore((state) => state.accessToken));
@@ -29,6 +38,26 @@ function RootNavigator() {
   }, [hydrateAuth]);
 
   useEffect(() => {
+    void SystemUI.setBackgroundColorAsync(theme.colors.background);
+    if (Platform.OS === 'android') {
+      void Promise.all([import('expo-navigation-bar'), import('react-native-is-edge-to-edge')])
+        .then(([NavigationBar, EdgeToEdge]) => {
+          try {
+            NavigationBar.setStyle(theme.isDark ? 'dark' : 'light');
+          } catch {
+            // Some Android emulator/system UI combinations do not expose edge-to-edge style changes.
+          }
+          void NavigationBar.setButtonStyleAsync(theme.isDark ? 'light' : 'dark').catch(() => undefined);
+          if (!EdgeToEdge.isEdgeToEdge()) {
+            void NavigationBar.setBackgroundColorAsync(theme.colors.background).catch(() => undefined);
+            void NavigationBar.setBorderColorAsync(theme.colors.background).catch(() => undefined);
+          }
+        })
+        .catch(() => undefined);
+    }
+  }, [theme.colors.background, theme.isDark]);
+
+  useEffect(() => {
     if (shouldRedirectToTabs) {
       router.replace('/(tabs)');
       return;
@@ -39,7 +68,7 @@ function RootNavigator() {
     }
   }, [router, shouldRedirectToAuth, shouldRedirectToTabs]);
 
-  if (!hydrated || shouldRedirectToTabs || shouldRedirectToAuth) {
+  if (!fontsLoaded || !hydrated || shouldRedirectToTabs || shouldRedirectToAuth) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.background }}>
         <ActivityIndicator color={theme.colors.textSecondary} />
@@ -69,7 +98,7 @@ function RootNavigator() {
 
 export default function RootLayout() {
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#111114' }}>
       <QueryClientProvider client={queryClient}>
         <ChatRealtimeListener />
         <SafeAreaProvider>

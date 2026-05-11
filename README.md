@@ -1,6 +1,6 @@
 # Gdje i Kada - projektna dokumentacija
 
-Status dokumenta: 2026-05-10
+Status dokumenta: 2026-05-11
 Projekt se ne radi ispocetka. Postojeci React Native/Expo frontend i Spring Boot backend ostaju baza, a nove funkcionalnosti se nadograduju na vec postojece klase, rute, storeove, hookove i dizajn sustav.
 
 Radimo mobilnu event aplikaciju "Gdje i Kada" za iOS i Android. Frontend je React Native kroz Expo Router, backend je Spring Boot s PostgreSQL bazom. Nemoj kretati ispocetka. Prvo procitaj postojeci kod i nadogradi ga prema lokalnim patternima.
@@ -40,7 +40,7 @@ Trenutno stanje tabova:
 Postojece frontend tehnologije i patterni:
 
 - Expo SDK 54, React 19, React Native 0.81, TypeScript.
-- Android i iOS trenutno koriste `newArchEnabled=true` jer `react-native-reanimated` i `react-native-worklets` to zahtijevaju pri buildu. Android koristi edge-to-edge uz `softwareKeyboardLayoutMode: resize`; chat inputi dodatno koriste shared keyboard/safe-area hook samo za inset koji native resize nije vec pokrio. Za iOS je ostao i pojacani `react-native-maps` (`AIRMap`) patch u `scripts/patch-react-native-maps-airmap.js`.
+- Android i iOS trenutno koriste `newArchEnabled=true` jer `react-native-reanimated` i `react-native-worklets` to zahtijevaju pri buildu. Android trenutno ne koristi edge-to-edge jer three-button navigation bar mora pratiti app theme boju; ostaje `softwareKeyboardLayoutMode: resize`, a chat inputi dodatno koriste shared keyboard/safe-area hook samo za inset koji native resize nije vec pokrio. Za iOS je ostao i pojacani `react-native-maps` (`AIRMap`) patch u `scripts/patch-react-native-maps-airmap.js`.
 - iOS workspace sada ima dva native targeta/schemea: `GIKDev` i `GIKTest`. `npm run ios` / `npm run ios:dev` prije builda automatski pripremaju `ios/.xcode.env.local` za lokalni `prod`/dev variant (`localhost` backend) i pokrecu `GIKDev`, a `npm run ios:test` / `npm run ios:test:release` pripremaju test env i pokrecu `GIKTest`.
 - Navigacija: `expo-router` i `expo-router/unstable-native-tabs` u `app/(tabs)/_layout.tsx`.
 - Data fetching/cache: TanStack React Query u `core/api/query-hooks.ts` i `core/query/query-client.ts`.
@@ -49,7 +49,8 @@ Postojece frontend tehnologije i patterni:
 - Auth token storage: `expo-secure-store` u `core/store/auth-store.ts`, sa stabilnim `keychainService`, iOS `AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY`, migracijom iz starog SecureStore keychaina i AsyncStorage mirror fallbackom za cold start pouzdanost na lokalnim, test i produkcijskim buildovima.
 - Android test/native build mora imati SecureStore backup exclusion pravila (`secure_store_backup_rules.xml` i `secure_store_data_extraction_rules.xml`) da se encrypted SecureStore prefs ne vrate bez Android Keystore kljuca nakon install/re-run ciklusa.
 - i18n: rucni HR/EN prijevodi u `core/i18n/translations.ts` i `useI18n`.
-- Theme: `AppThemeProvider`, `createAppTheme`, `palette`, `tokens`, `ThemeToggle`.
+- Font: Lexend se ucitava kroz `expo-font` iz `assets/fonts`.
+- Theme: `AppThemeProvider`, `createAppTheme`, `palette`, `tokens`, `ThemeToggle`. Centralna paleta je ogranicena na Rich Black `#111114`, Off White `#F0F0F0`, Gunmetal Gray `#2A2D33`, Charcoal Gray `#3A3C40`, Graphite `#191B1E`, Cool Gray `#6F7072`, uz postojeci purple accent za map/app akcente.
 - Kalendar grid: `react-native-calendars` za cross-platform mjesecni prikaz bez dodatnog native linkinga.
 - iOS glass: `expo-glass-effect` i `expo-blur` se vec koriste u `EventDetailSheet` i `MapSearchBar.ios.tsx`; `AppCard` i `AppButton` imaju blur glass varijantu. Kod novih iOS povrsina preferirati `GlassView` kad je `isLiquidGlassAvailable()` i `isGlassEffectAPIAvailable()`, uz `BlurView` ili themed surface fallback.
 - Karte:
@@ -182,7 +183,7 @@ Trenutni event model:
 - Service: `EventService`.
 - Mapper: `EventMapper` i `EventMapper.xml`.
 
-Event trenutno podrzava naslov, lokaciju, adresu, opis, start/end datum, coordinates, entrance coordinates, entry instructions, creator user id, visibility `public/friends`, attendance mode `open/waitlist/paid`, cijenu za paid evente, capacity, status, organizer rating agregate, `likeCount`, `likedByMe`, participant count, `joinedByMe`, `attendanceStatus` i `canJoin`. Baza ima tablice za media, participants, likes, organizer ratings, ticket products/orders/payments/transactions i event chat roomove. Join/leave i like/unlike rade kroz backend, a feed i detail endpointi vracaju `event_media` za reels/detail prikaz. Organizer rating submit radi kroz `POST /api/events/{id}/ratings`. Paid join ide kroz Stripe-named provider stub: `POST /api/events/{eventId}/ticket-checkout` kreira order/payment, `POST /api/ticket-orders/{orderId}/confirm` potvrdjuje stub payment, zapisuje transaction i tek tada join-a event. Real Stripe React Native SDK/PaymentSheet nije dodan jer ova promjena ne pokrece native build.
+Event trenutno podrzava naslov, lokaciju, adresu, opis, start/end datum, coordinates, entrance coordinates, entry instructions, creator user id, visibility `public/friends`, attendance mode `open/waitlist/paid`, cijenu za paid evente, capacity, status, organizer rating agregate, `likeCount`, `likedByMe`, participant count, `joinedByMe`, `attendanceStatus` i `canJoin`. Create flow u frontendu koristi jedan naziv/lokaciju/opis bez odvojenih HR/EN polja, a backend `CreateEventRequest` prihvaca canonical `title`, `where`, `about` i `entryInstructions` te ih mirror-a u postojece HR/EN stupce radi kompatibilnosti. Baza ima tablice za media, participants, likes, organizer ratings, ticket products/orders/payments/transactions i event chat roomove. Join/leave i like/unlike rade kroz backend, a feed i detail endpointi vracaju `event_media` za reels/detail prikaz. Organizer rating submit radi kroz `POST /api/events/{id}/ratings`. Paid join ide kroz Stripe-named provider stub: `POST /api/events/{eventId}/ticket-checkout` kreira order/payment, `POST /api/ticket-orders/{orderId}/confirm` potvrdjuje stub payment, zapisuje transaction i tek tada join-a event. Real Stripe React Native SDK/PaymentSheet nije dodan jer ova promjena ne pokrece native build.
 
 Kad implementiras nove stvari, nadogradi postojece:
 

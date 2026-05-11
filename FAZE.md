@@ -1,6 +1,6 @@
 # Gdje i Kada - fazni plan rada
 
-Status dokumenta: 2026-05-10
+Status dokumenta: 2026-05-11
 Lokacija master dokumentacije: `README.md`
 
 ## Pravilo rada po fazama
@@ -423,7 +423,7 @@ Zadaci:
 - [x] Nakon zavrsenog eventa traziti rating organizatora.
 - [x] Dodati push notification strategiju.
 - [x] Provjeriti accessibility labels.
-- [ ] Provjeriti dark/light theme.
+- [x] Provjeriti dark/light theme.
 - [ ] Provjeriti iOS i Android layout.
 - [ ] Ocistiti prototip podatke i mock fallbacke gdje vise ne trebaju.
 
@@ -436,6 +436,10 @@ Definition of done:
 Biljeska:
 
 2026-05-11 - Napravljeno: odabran je Stripe kao payment provider za buduci production mobile checkout, a implementiran je Stripe-named stub provider bez native Stripe dependencyja. Backend je dobio `event_ticket_products`, `ticket_orders`, `payments` i prosirene `transactions`, endpointove `POST /api/events/{eventId}/ticket-checkout` i `POST /api/ticket-orders/{orderId}/confirm`, te zastitu da direct join paid eventa trazi uspjesan ticket order. Frontend paid join sada iz event detaila otvara checkout potvrdu, potvrda zapisuje transaction i join-a event; transaction row prikazuje order/provider podatke. Organizer rating kandidati iz proslih eventova ostaju povezani kroz profil activity screen. Dodani su osnovni accessibility labeli na shared button/icon button i rating zvjezdice. Push strategija je dokumentirana kao kasniji Expo Notifications/WebSocket extension, bez implementacije native dependencyja u ovoj fazi. Datoteke: backend `payments/*`, `PaymentController`, `PaymentMapper.xml`, `V8__tickets_payments.sql`, `EventService`, `TransactionDto`, `ProfileService`; frontend `features/payments/*`, `use-event-join-actions.ts`, `EventDetailsContent`, event detail sheet/screen, API services/hooks, transaction row, i18n, README/FAZE/backend README. Testirano: nije pokretano po dogovoru; build/test i uredjajski dark/light layout ostaju za rucnu provjeru.
+
+2026-05-11 - Dopuna: create event flow je prebacen iz duge forme u 4 koraka plus success ekran: osnovni podaci, vrijeme, lokacija/ulaz i postavke. Frontend vise ne prikazuje odvojena HR/EN polja za naziv, lokaciju, opis i upute, nego salje canonical `title`, `where`, `about` i `entryInstructions`; backend ih mirror-a u postojece HR/EN stupce radi kompatibilnosti sa starim DTO/modelom. Centralna paleta je uskladena na poslane boje (Rich Black, Off White, Gunmetal Gray, Charcoal Gray, Graphite, Cool Gray) uz postojeci purple accent, dodan je Lexend font, iOS back/icon button dobio je glass varijantu, a app/source ikone su generirane iz `.local/logos` za Expo assets i lokalne native iOS/Android resurse. Datoteke: `app/create-event.tsx`, `features/events/create/*`, `core/types/domain.ts`, `core/i18n/translations.ts`, `core/theme/*`, `components/primitives/*`, `assets/fonts/*`, `assets/images/*`, backend `CreateEventRequest`, `EventService`, README/FAZE. Testirano: nisu pokretani testovi, typecheck ni build po dogovoru; napravljena je ciljano staticka provjera importova/i18n kljuceva i dimenzija generiranih asseta.
+
+2026-05-11 - Dopuna UX regresije: uklonjen je bijeli Android navigation/root background ispod ekrana i povecan je defaultni bottom padding za scrollable `AppScreen` kako profil i profile detail liste ne bi zavrsavale ispod tab/navigation bara. Dodani su `expo-navigation-bar` i `react-native-is-edge-to-edge` za runtime sync Android navigation bara s trenutnim dark/light themeom bez edge-to-edge warninga; Android `edgeToEdgeEnabled` je iskljucen jer three-button navigation bar mora imati stvarnu theme pozadinu umjesto bijelog system fallbacka. Native tab bar shadow/separator je uskladen s tab surface bojom. Datoteke: `components/primitives/app-screen.tsx`, `app/_layout.tsx`, `app/(tabs)/_layout.tsx`, `app.config.ts`, `package.json`, `package-lock.json`, lokalni Android `styles.xml`. Testirano: samo `git diff --check`, bez build/test po dogovoru.
 
 ## Kako updateati ovaj dokument
 

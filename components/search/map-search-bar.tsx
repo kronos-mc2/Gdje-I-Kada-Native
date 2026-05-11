@@ -16,7 +16,7 @@ type MapSearchBarProps = {
 export function MapSearchBar({ value, placeholder, loading, onChangeText, onClear, onFocus, onBlur }: MapSearchBarProps) {
   const { theme } = useAppTheme();
   const isAndroid = Platform.OS === 'android';
-  const wrapperBackground = theme.isDark ? 'rgba(12, 18, 28, 0.72)' : 'rgba(250, 252, 255, 0.84)';
+  const wrapperBackground = theme.colors.surface;
 
   return (
     <View
@@ -24,8 +24,8 @@ export function MapSearchBar({ value, placeholder, loading, onChangeText, onClea
         styles.wrapper,
         {
           backgroundColor: wrapperBackground,
-          borderColor: isAndroid ? (theme.isDark ? 'rgba(210, 223, 242, 0.22)' : 'rgba(33, 42, 59, 0.18)') : theme.colors.border,
-          shadowColor: '#000000',
+          borderColor: theme.colors.border,
+          shadowColor: theme.colors.background,
           shadowOpacity: isAndroid ? 0.22 : 0.14,
           shadowRadius: isAndroid ? 12 : 8,
           shadowOffset: { width: 0, height: isAndroid ? 6 : 4 },
@@ -42,8 +42,8 @@ export function MapSearchBar({ value, placeholder, loading, onChangeText, onClea
           onFocus={onFocus}
           onBlur={onBlur}
           placeholder={placeholder}
-          placeholderTextColor={isAndroid ? (theme.isDark ? 'rgba(206, 216, 234, 0.64)' : 'rgba(60, 70, 86, 0.52)') : theme.colors.textMuted}
-          style={[styles.input, { color: theme.colors.textPrimary }]}
+          placeholderTextColor={theme.colors.textMuted}
+          style={[styles.input, { color: theme.colors.textPrimary, fontFamily: theme.tokens.typography.body.fontFamily }]}
           returnKeyType="search"
           autoCapitalize="none"
           autoCorrect={false}
@@ -58,7 +58,7 @@ export function MapSearchBar({ value, placeholder, loading, onChangeText, onClea
               styles.clearButton,
               {
                 borderColor: theme.colors.border,
-                backgroundColor: theme.isDark ? 'rgba(16, 22, 33, 0.62)' : 'rgba(255, 255, 255, 0.74)',
+                backgroundColor: theme.colors.surfaceElevated,
                 opacity: pressed ? 0.8 : 1,
               },
             ]}

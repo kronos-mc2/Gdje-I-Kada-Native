@@ -44,8 +44,8 @@ export function MapMarkerBadge({ selected = false, kind = 'event', coverImageUri
           {
             width: size,
             height: size,
-            borderColor: selected ? theme.colors.mapAccent : 'rgba(255,255,255,0.92)',
-            shadowColor: '#000000',
+            borderColor: selected ? theme.colors.mapAccent : theme.colors.accent,
+            shadowColor: theme.colors.background,
           },
         ]}
       >
@@ -69,8 +69,8 @@ export function MapMarkerBadge({ selected = false, kind = 'event', coverImageUri
         style={[
           styles.dot,
           {
-            backgroundColor: selected ? theme.colors.mapAccent : '#FFFFFF',
-            borderColor: 'rgba(15, 18, 28, 0.08)',
+            backgroundColor: selected ? theme.colors.mapAccent : theme.colors.accent,
+            borderColor: theme.colors.border,
           },
         ]}
       />

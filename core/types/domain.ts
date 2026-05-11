@@ -260,18 +260,22 @@ export type TicketCheckoutResult = {
 };
 
 export type CreateEventPayload = {
-  titleHr: string;
-  titleEn: string;
-  whereHr: string;
-  whereEn: string;
+  title: string;
+  titleHr?: string;
+  titleEn?: string;
+  where: string;
+  whereHr?: string;
+  whereEn?: string;
   address: string;
-  aboutHr: string;
-  aboutEn: string;
+  about: string;
+  aboutHr?: string;
+  aboutEn?: string;
   whenISO: string;
   startAt?: string;
   endAt?: string;
   coordinates: Coordinates;
   entranceCoordinates?: Coordinates;
+  entryInstructions?: string;
   entryInstructionsHr?: string;
   entryInstructionsEn?: string;
   visibility?: EventVisibility;

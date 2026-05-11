@@ -1,6 +1,7 @@
 import { PropsWithChildren } from 'react';
 import {
   ImageBackground,
+  Platform,
   ScrollView,
   ScrollViewProps,
   StyleProp,
@@ -8,7 +9,7 @@ import {
   View,
   ViewStyle,
 } from 'react-native';
-import { Edge, SafeAreaView } from 'react-native-safe-area-context';
+import { Edge, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAppTheme } from '@/core/theme';
 
@@ -31,9 +32,11 @@ export function AppScreen({
   scrollProps,
 }: AppScreenProps) {
   const { theme } = useAppTheme();
+  const insets = useSafeAreaInsets();
   const backgroundSource = theme.isDark
     ? require('../../assets/images/app-background-dark.png')
     : require('../../assets/images/app-background-light.png');
+  const scrollBottomPadding = theme.tokens.spacing.xxl + insets.bottom + (Platform.OS === 'android' ? 88 : 64);
 
   return (
     <SafeAreaView edges={edges} style={[styles.safeArea, { backgroundColor: theme.colors.background }, style]}>
@@ -42,7 +45,7 @@ export function AppScreen({
         pointerEvents="none"
         style={[
           StyleSheet.absoluteFill,
-          { backgroundColor: theme.isDark ? 'rgba(5, 8, 12, 0.70)' : 'rgba(242, 245, 251, 0.55)' },
+          { backgroundColor: 'transparent' },
         ]}
       />
 
@@ -53,7 +56,7 @@ export function AppScreen({
             styles.scrollContent,
             {
               paddingHorizontal: contentHorizontalPadding ? theme.tokens.spacing.md : 0,
-              paddingBottom: theme.tokens.spacing.xxl,
+              paddingBottom: scrollBottomPadding,
             },
             contentContainerStyle,
           ]}

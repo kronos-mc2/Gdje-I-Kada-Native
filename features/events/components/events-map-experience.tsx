@@ -233,7 +233,7 @@ export function EventsMapExperience({
           },
         ]}
       >
-        <Ionicons name="add" size={22} color="#FFFFFF" />
+        <Ionicons name="add" size={22} color={theme.isDark ? theme.colors.textPrimary : theme.colors.background} />
       </Pressable>
 
       <Pressable
