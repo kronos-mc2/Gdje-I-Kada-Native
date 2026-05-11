@@ -10,6 +10,7 @@ import { EventShareModal } from '@/features/events/components/event-share-modal'
 import { useEventJoinActions } from '@/features/events/hooks/use-event-join-actions';
 import { AppText } from '@/components/primitives';
 import { useEventQuery } from '@/core/api/query-hooks';
+import { useI18n } from '@/core/i18n/use-i18n';
 import { useAppTheme } from '@/core/theme';
 import { AppEvent, Locale } from '@/core/types/domain';
 
@@ -60,6 +61,7 @@ const getBottomSheetModule = (): OptionalBottomSheetModule | null => {
 
 export function EventDetailSheet({ event, locale, onClose, topInset = 0, bottomInset = 0 }: EventDetailSheetProps) {
   const { theme } = useAppTheme();
+  const { t } = useI18n();
   const bottomSheetModule = useMemo(() => getBottomSheetModule(), []);
   const sheetRef = useRef<SheetController | null>(null);
   const [sheetIndex, setSheetIndex] = useState(0);
@@ -68,7 +70,7 @@ export function EventDetailSheet({ event, locale, onClose, topInset = 0, bottomI
   const snapPoints = useMemo(() => ['34%', '72%'], []);
   const { data: resolvedEvent } = useEventQuery(event.id, event);
   const detailEvent = resolvedEvent ?? event;
-  const { isJoined, isJoinDisabled, onToggleJoin } = useEventJoinActions(detailEvent);
+  const { isJoined, isJoinDisabled, joinButtonTitle, onToggleJoin } = useEventJoinActions(detailEvent);
 
   useEffect(() => {
     setSheetIndex(0);
@@ -89,6 +91,8 @@ export function EventDetailSheet({ event, locale, onClose, topInset = 0, bottomI
     () => (
       <View style={styles.handleContainer}>
         <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t('details')}
           onPress={toggleExpanded}
           style={({ pressed }) => [styles.handlePress, { opacity: pressed ? 0.74 : 1 }]}
         >
@@ -96,7 +100,7 @@ export function EventDetailSheet({ event, locale, onClose, topInset = 0, bottomI
         </Pressable>
       </View>
     ),
-    [theme.colors.border, toggleExpanded],
+    [t, theme.colors.border, toggleExpanded],
   );
 
   const renderBackground = useCallback(
@@ -170,6 +174,8 @@ export function EventDetailSheet({ event, locale, onClose, topInset = 0, bottomI
               <ScrollView contentContainerStyle={styles.contentWrap} showsVerticalScrollIndicator={false}>
                 <View style={styles.headerRow}>
                   <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={t('shareEvent')}
                     onPress={() => setIsShareOpen(true)}
                     style={({ pressed }) => [
                       styles.iconButton,
@@ -188,6 +194,8 @@ export function EventDetailSheet({ event, locale, onClose, topInset = 0, bottomI
                   </AppText>
 
                   <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={t('cancel')}
                     onPress={onClose}
                     style={({ pressed }) => [
                       styles.iconButton,
@@ -208,6 +216,7 @@ export function EventDetailSheet({ event, locale, onClose, topInset = 0, bottomI
                     locale={locale}
                     isJoined={isJoined}
                     isJoinDisabled={isJoinDisabled}
+                    joinButtonTitle={joinButtonTitle}
                     onToggleJoin={onToggleJoin}
                     expanded
                   />
@@ -242,6 +251,8 @@ export function EventDetailSheet({ event, locale, onClose, topInset = 0, bottomI
       <BottomSheetView style={styles.contentWrap}>
         <View style={styles.headerRow}>
           <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t('shareEvent')}
             onPress={() => setIsShareOpen(true)}
             style={({ pressed }) => [
               styles.iconButton,
@@ -260,6 +271,8 @@ export function EventDetailSheet({ event, locale, onClose, topInset = 0, bottomI
           </AppText>
 
           <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t('cancel')}
             onPress={() => sheetRef.current?.close()}
             style={({ pressed }) => [
               styles.iconButton,
@@ -280,6 +293,7 @@ export function EventDetailSheet({ event, locale, onClose, topInset = 0, bottomI
             locale={locale}
             isJoined={isJoined}
             isJoinDisabled={isJoinDisabled}
+            joinButtonTitle={joinButtonTitle}
             onToggleJoin={onToggleJoin}
             expanded={sheetIndex >= 1}
           />

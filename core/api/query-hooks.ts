@@ -2,9 +2,11 @@ import { InfiniteData, useInfiniteQuery, useMutation, useQuery, useQueryClient }
 
 import { queryKeys } from '@/core/api/query-keys';
 import {
+  confirmTicketCheckout,
   createChatPoll,
   createChatRoom,
   createEvent,
+  createTicketCheckout,
   fetchChatMessages,
   fetchChatPeople,
   fetchChatRoom,
@@ -336,6 +338,27 @@ export const useRateOrganizerMutation = () => {
       syncEventAcrossCaches(queryClient, event);
       void queryClient.invalidateQueries({ queryKey: queryKeys.profileActivity });
       void queryClient.invalidateQueries({ queryKey: queryKeys.myEventsRoot });
+    },
+  });
+};
+
+export const useCreateTicketCheckoutMutation = () =>
+  useMutation({
+    mutationFn: createTicketCheckout,
+  });
+
+export const useConfirmTicketCheckoutMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: confirmTicketCheckout,
+    onSuccess: (result) => {
+      syncEventAcrossCaches(queryClient, result.event);
+      void queryClient.invalidateQueries({ queryKey: queryKeys.transactions });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.profileActivity });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.myEventsRoot });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.eventsRoot });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.feedRoot });
     },
   });
 };

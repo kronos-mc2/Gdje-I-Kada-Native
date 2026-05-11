@@ -29,7 +29,7 @@ Dokumentacija je dio zadatka, ne naknadni posao. Ako kod i dokumentacija nisu us
 | 6 | Kalendar | Rijeseno | Kalendar prikazuje joined evente u mjesecnom gridu. |
 | 7 | Poruke i event chat | Rijeseno | Poruke imaju chat roomove, event grupe, event share card i pollove. |
 | 8 | Profil i postavke | Rijeseno | Profil ima edit, history, liked history, transactions i settings screen. |
-| 9 | Placanja, rating i polish | Nije poceto | Paid eventi, transaction history, organizer rating i zavrsni UX polish. |
+| 9 | Placanja, rating i polish | U tijeku | Paid eventi, transaction history, organizer rating i zavrsni UX polish. |
 
 ## Faza 0 - Dokumentacija i smjer
 
@@ -408,7 +408,7 @@ Zavrsna biljeska:
 
 ## Faza 9 - Placanja, rating i polish
 
-Status: Nije poceto
+Status: U tijeku
 
 Cilj:
 
@@ -416,13 +416,13 @@ Zatvoriti proizvodne rupe: paid event, transaction history, organizer rating i s
 
 Zadaci:
 
-- [ ] Definirati payment provider.
-- [ ] Dodati ticket product/order/payment/transaction model.
-- [ ] Dodati paid join flow.
-- [ ] Dodati transaction history u profil.
-- [ ] Nakon zavrsenog eventa traziti rating organizatora.
-- [ ] Dodati push notification strategiju.
-- [ ] Provjeriti accessibility labels.
+- [x] Definirati payment provider.
+- [x] Dodati ticket product/order/payment/transaction model.
+- [x] Dodati paid join flow.
+- [x] Dodati transaction history u profil.
+- [x] Nakon zavrsenog eventa traziti rating organizatora.
+- [x] Dodati push notification strategiju.
+- [x] Provjeriti accessibility labels.
 - [ ] Provjeriti dark/light theme.
 - [ ] Provjeriti iOS i Android layout.
 - [ ] Ocistiti prototip podatke i mock fallbacke gdje vise ne trebaju.
@@ -432,6 +432,10 @@ Definition of done:
 - Paid event ima end-to-end flow ili jasno dokumentiran stub.
 - Organizer rating je povezan s proslog eventa.
 - App ima stabilno osnovno iskustvo na iOS i Android.
+
+Biljeska:
+
+2026-05-11 - Napravljeno: odabran je Stripe kao payment provider za buduci production mobile checkout, a implementiran je Stripe-named stub provider bez native Stripe dependencyja. Backend je dobio `event_ticket_products`, `ticket_orders`, `payments` i prosirene `transactions`, endpointove `POST /api/events/{eventId}/ticket-checkout` i `POST /api/ticket-orders/{orderId}/confirm`, te zastitu da direct join paid eventa trazi uspjesan ticket order. Frontend paid join sada iz event detaila otvara checkout potvrdu, potvrda zapisuje transaction i join-a event; transaction row prikazuje order/provider podatke. Organizer rating kandidati iz proslih eventova ostaju povezani kroz profil activity screen. Dodani su osnovni accessibility labeli na shared button/icon button i rating zvjezdice. Push strategija je dokumentirana kao kasniji Expo Notifications/WebSocket extension, bez implementacije native dependencyja u ovoj fazi. Datoteke: backend `payments/*`, `PaymentController`, `PaymentMapper.xml`, `V8__tickets_payments.sql`, `EventService`, `TransactionDto`, `ProfileService`; frontend `features/payments/*`, `use-event-join-actions.ts`, `EventDetailsContent`, event detail sheet/screen, API services/hooks, transaction row, i18n, README/FAZE/backend README. Testirano: nije pokretano po dogovoru; build/test i uredjajski dark/light layout ostaju za rucnu provjeru.
 
 ## Kako updateati ovaj dokument
 

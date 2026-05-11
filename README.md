@@ -94,6 +94,8 @@ Backend trenutno ima:
 - `GET /api/events?from=&to=&lat=&lng=&radiusKm=&query=`
 - `GET /api/events/{id}`
 - `POST /api/events`
+- `POST /api/events/{eventId}/ticket-checkout`
+- `POST /api/ticket-orders/{orderId}/confirm`
 - `POST /api/events/{id}/join`
 - `DELETE /api/events/{id}/join`
 - `POST /api/events/{id}/like`
@@ -166,7 +168,10 @@ Trenutna baza:
   - `bio` iz `V7__profile_activity.sql`
   - `avatar_url` iz `V7__profile_activity.sql`
   - `created_at`, `updated_at`
-- `transactions` iz `V7__profile_activity.sql`
+- `event_ticket_products` iz `V8__tickets_payments.sql`
+- `ticket_orders` iz `V8__tickets_payments.sql`
+- `payments` iz `V8__tickets_payments.sql`
+- `transactions` iz `V7__profile_activity.sql`, prosiren s `order_id`, `payment_provider` i `provider_reference` u `V8__tickets_payments.sql`
 
 Trenutni event model:
 
@@ -177,7 +182,7 @@ Trenutni event model:
 - Service: `EventService`.
 - Mapper: `EventMapper` i `EventMapper.xml`.
 
-Event trenutno podrzava naslov, lokaciju, adresu, opis, start/end datum, coordinates, entrance coordinates, entry instructions, creator user id, visibility `public/friends`, attendance mode `open/waitlist/paid`, cijenu za paid evente, capacity, status, organizer rating agregate, `likeCount`, `likedByMe`, participant count, `joinedByMe`, `attendanceStatus` i `canJoin`. Baza ima tablice za media, participants, likes, organizer ratings i event chat roomove. Join/leave i like/unlike rade kroz backend, a feed i detail endpointi vracaju `event_media` za reels/detail prikaz. Organizer rating submit radi kroz `POST /api/events/{id}/ratings`. Jos ne postoje puni UI/API flowovi za upload media ni placanje.
+Event trenutno podrzava naslov, lokaciju, adresu, opis, start/end datum, coordinates, entrance coordinates, entry instructions, creator user id, visibility `public/friends`, attendance mode `open/waitlist/paid`, cijenu za paid evente, capacity, status, organizer rating agregate, `likeCount`, `likedByMe`, participant count, `joinedByMe`, `attendanceStatus` i `canJoin`. Baza ima tablice za media, participants, likes, organizer ratings, ticket products/orders/payments/transactions i event chat roomove. Join/leave i like/unlike rade kroz backend, a feed i detail endpointi vracaju `event_media` za reels/detail prikaz. Organizer rating submit radi kroz `POST /api/events/{id}/ratings`. Paid join ide kroz Stripe-named provider stub: `POST /api/events/{eventId}/ticket-checkout` kreira order/payment, `POST /api/ticket-orders/{orderId}/confirm` potvrdjuje stub payment, zapisuje transaction i tek tada join-a event. Real Stripe React Native SDK/PaymentSheet nije dodan jer ova promjena ne pokrece native build.
 
 Kad implementiras nove stvari, nadogradi postojece:
 
@@ -570,11 +575,24 @@ Likes/Reels:
 
 Tickets/transactions:
 
-- `ticket_products`
-- `orders`
-- `order_items`
+- `event_ticket_products`
+- `ticket_orders`
 - `payments`
 - `transactions`
+
+Payment provider odluka:
+
+- Provider: Stripe za buduci production mobile checkout.
+- Razlog: sluzbena Stripe React Native dokumentacija preporucuje Mobile Payment Element/PaymentSheet za native iOS/Android placanja, a backend PaymentIntent flow je prirodan fit za ticket order model.
+- Trenutno stanje: implementiran je Stripe-named stub provider kroz `PaymentProvider`/`StripePaymentProvider`, bez `@stripe/stripe-react-native` dependencyja i bez native build promjena. Stub vraca `clientSecret`, frontend prikazuje payment potvrdu i backend zapisuje `ticket_orders`, `payments` i `transactions`.
+- Za real Stripe integraciju treba ugasiti `PAYMENTS_STUB_ENABLED`, dodati Stripe secret-key server konfiguraciju, kreirati stvarni PaymentIntent u provideru i u Expo app dodati `@stripe/stripe-react-native` PaymentSheet inicijalizaciju.
+
+Push notification strategija:
+
+- Short term: zadrzati WebSocket za aktivni chat i dodati Expo Notifications samo za background/offline evente.
+- Token model: `push_tokens` po korisniku, uredaju, platformi i app variantu; token se obnavlja na loginu i invalidira na logoutu ili provider erroru.
+- Kanali: event reminders, payment receipt, new event chat message, poll update i post-event organizer rating prompt.
+- Backend write path: notification se queue-a nakon canonical REST promjene, ne iz WebSocket listenera.
 
 Messages:
 
@@ -640,7 +658,7 @@ Detaljni operativni plan i status svake faze vodi se u `FAZE.md`. README drzi sa
 - Faza 6 - Kalendar.
 - Faza 7 - Poruke i event chat.
 - Faza 8 - Profil i postavke.
-- Faza 9 - Placanja, rating i polish.
+- Faza 9 - Placanja, rating i polish: u tijeku, Stripe stub paid join flow dodan 2026-05-11.
 
 Kad se status faze promijeni, prvo azuriraj `FAZE.md`, a zatim ovaj sazetak ako je potrebno.
 

@@ -17,7 +17,7 @@ export default function EventDetailsScreen() {
   const eventId = params.id;
   const { t, locale } = useI18n();
   const { data: event, isLoading } = useEventQuery(eventId);
-  const { isJoined, isJoinDisabled, onToggleJoin } = useEventJoinActions(event);
+  const { isJoined, isJoinDisabled, joinButtonTitle, onToggleJoin } = useEventJoinActions(event);
   const [isShareOpen, setIsShareOpen] = useState(false);
 
   if (!event && !isLoading) {
@@ -73,6 +73,7 @@ export default function EventDetailsScreen() {
               locale={locale}
               isJoined={isJoined}
               isJoinDisabled={isJoinDisabled}
+              joinButtonTitle={joinButtonTitle}
               onToggleJoin={onToggleJoin}
             />
           </AppCard>

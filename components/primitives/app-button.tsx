@@ -38,6 +38,8 @@ export function AppButton({ title, children, variant = 'primary', style, ...prop
   return (
     <Pressable
       {...props}
+      accessibilityRole="button"
+      accessibilityLabel={props.accessibilityLabel ?? title}
       style={({ pressed }) => [
         styles.base,
         {

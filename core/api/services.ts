@@ -17,6 +17,8 @@ import {
   OrganizerRatingPayload,
   Poll,
   ProfileActivity,
+  TicketCheckout,
+  TicketCheckoutResult,
   Transaction,
   UpdateProfilePayload,
   UserProfile,
@@ -59,6 +61,22 @@ export const fetchTransactions = async (): Promise<Transaction[]> => {
 
 export const rateOrganizer = async ({ eventId, rating, comment }: OrganizerRatingPayload): Promise<AppEvent> => {
   const response = await apiClient.post<AppEvent>(`/events/${eventId}/ratings`, { rating, comment });
+  return response.data;
+};
+
+export const createTicketCheckout = async (eventId: string): Promise<TicketCheckout> => {
+  const response = await apiClient.post<TicketCheckout>(`/events/${eventId}/ticket-checkout`);
+  return response.data;
+};
+
+export const confirmTicketCheckout = async ({
+  orderId,
+  confirmationToken,
+}: {
+  orderId: string;
+  confirmationToken?: string;
+}): Promise<TicketCheckoutResult> => {
+  const response = await apiClient.post<TicketCheckoutResult>(`/ticket-orders/${orderId}/confirm`, { confirmationToken });
   return response.data;
 };
 

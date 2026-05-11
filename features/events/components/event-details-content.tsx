@@ -12,6 +12,7 @@ type EventDetailsContentProps = {
   locale: Locale;
   isJoined: boolean;
   isJoinDisabled: boolean;
+  joinButtonTitle?: string;
   onToggleJoin: () => void;
   expanded?: boolean;
 };
@@ -21,6 +22,7 @@ export function EventDetailsContent({
   locale,
   isJoined,
   isJoinDisabled,
+  joinButtonTitle,
   onToggleJoin,
   expanded = true,
 }: EventDetailsContentProps) {
@@ -52,7 +54,7 @@ export function EventDetailsContent({
       </AppText>
 
       <AppButton
-        title={isJoined ? t('leaveEvent') : t('joinEvent')}
+        title={joinButtonTitle ?? (isJoined ? t('leaveEvent') : t('joinEvent'))}
         variant={isJoined ? 'secondary' : 'primary'}
         disabled={isJoinDisabled}
         onPress={onToggleJoin}

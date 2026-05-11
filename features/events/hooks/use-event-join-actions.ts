@@ -5,6 +5,7 @@ import { Alert } from 'react-native';
 import { useGetOrCreateEventChatRoomMutation, useJoinEventMutation, useLeaveEventMutation } from '@/core/api/query-hooks';
 import { useI18n } from '@/core/i18n/use-i18n';
 import { AppEvent } from '@/core/types/domain';
+import { usePaidEventCheckout } from '@/features/payments/hooks/use-paid-event-checkout';
 
 export function useEventJoinActions(event?: AppEvent | null) {
   const router = useRouter();
@@ -13,27 +14,8 @@ export function useEventJoinActions(event?: AppEvent | null) {
   const leaveEventMutation = useLeaveEventMutation();
   const eventChatMutation = useGetOrCreateEventChatRoomMutation();
   const isJoined = event?.joinedByMe === true;
-  const isJoinPending = joinEventMutation.isPending || leaveEventMutation.isPending;
-  const isJoinDisabled = !event || (!isJoined && event.canJoin === false) || isJoinPending;
-
-  const onToggleJoin = useCallback(async () => {
-    if (!event) {
-      return;
-    }
-
-    try {
-      if (isJoined) {
-        await leaveEventMutation.mutateAsync(event.id);
-        Alert.alert(t('eventLeft'));
-        return;
-      }
-
-      const joinedEvent = await joinEventMutation.mutateAsync(event.id);
-      if (joinedEvent.attendanceStatus === 'waitlisted') {
-        Alert.alert(t('eventJoined'), t('onWaitlist'));
-        return;
-      }
-
+  const promptForEventChat = useCallback(
+    (joinedEvent: AppEvent) => {
       Alert.alert(t('eventJoined'), t('joinEventChatPrompt'), [
         { text: t('notNow'), style: 'cancel' },
         {
@@ -48,15 +30,52 @@ export function useEventJoinActions(event?: AppEvent | null) {
           },
         },
       ]);
+    },
+    [eventChatMutation, router, t],
+  );
+  const joinAlreadyPaidEvent = useCallback((eventId: string) => joinEventMutation.mutateAsync(eventId), [joinEventMutation]);
+  const { isPending: isPaidJoinPending, startPaidJoin } = usePaidEventCheckout({
+    onAlreadyPaid: joinAlreadyPaidEvent,
+    onJoined: promptForEventChat,
+  });
+  const isJoinPending = joinEventMutation.isPending || leaveEventMutation.isPending || isPaidJoinPending;
+  const isJoinDisabled = !event || (!isJoined && event.canJoin === false) || isJoinPending;
+  const joinButtonTitle = !isJoined && event?.attendanceMode === 'paid' ? t('buyTicket') : isJoined ? t('leaveEvent') : t('joinEvent');
+
+  const onToggleJoin = useCallback(async () => {
+    if (!event) {
+      return;
+    }
+
+    try {
+      if (isJoined) {
+        await leaveEventMutation.mutateAsync(event.id);
+        Alert.alert(t('eventLeft'));
+        return;
+      }
+
+      if (event.attendanceMode === 'paid') {
+        await startPaidJoin(event);
+        return;
+      }
+
+      const joinedEvent = await joinEventMutation.mutateAsync(event.id);
+      if (joinedEvent.attendanceStatus === 'waitlisted') {
+        Alert.alert(t('eventJoined'), t('onWaitlist'));
+        return;
+      }
+
+      promptForEventChat(joinedEvent);
     } catch {
       Alert.alert(isJoined ? t('leaveEventFailed') : t('joinEventFailed'));
     }
-  }, [event, eventChatMutation, isJoined, joinEventMutation, leaveEventMutation, router, t]);
+  }, [event, isJoined, joinEventMutation, leaveEventMutation, promptForEventChat, startPaidJoin, t]);
 
   return {
     isJoined,
     isJoinDisabled,
     isJoinPending,
+    joinButtonTitle,
     onToggleJoin,
   };
 }

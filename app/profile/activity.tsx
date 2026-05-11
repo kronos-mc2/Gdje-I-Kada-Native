@@ -77,7 +77,14 @@ function RatingCandidate({ event }: { event: AppEvent }) {
       <View style={styles.ratingActions}>
         <View style={styles.stars}>
           {[1, 2, 3, 4, 5].map((value) => (
-            <Pressable key={value} onPress={() => setRating(value)} hitSlop={8}>
+            <Pressable
+              key={value}
+              accessibilityRole="button"
+              accessibilityLabel={`${value}/5`}
+              accessibilityState={{ selected: value === rating }}
+              onPress={() => setRating(value)}
+              hitSlop={8}
+            >
               <Ionicons name={value <= rating ? 'star' : 'star-outline'} size={26} color={value <= rating ? theme.colors.mapAccent : theme.colors.textMuted} />
             </Pressable>
           ))}

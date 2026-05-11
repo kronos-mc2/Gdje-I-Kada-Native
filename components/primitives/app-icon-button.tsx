@@ -15,6 +15,8 @@ export function AppIconButton({ icon, size = 18, style, ...props }: AppIconButto
   return (
     <Pressable
       {...props}
+      accessibilityRole="button"
+      accessibilityLabel={props.accessibilityLabel ?? icon}
       style={({ pressed }) => [
         styles.base,
         {

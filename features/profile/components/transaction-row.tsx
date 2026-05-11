@@ -15,6 +15,7 @@ export function TransactionRow({ transaction }: TransactionRowProps) {
   const { theme } = useAppTheme();
   const { locale } = useI18n();
   const amount = `${Number(transaction.amount).toFixed(2)} ${transaction.currency}`;
+  const providerLabel = transaction.paymentProvider ? ` · ${transaction.paymentProvider}` : '';
 
   return (
     <View style={[styles.row, { borderBottomColor: theme.colors.border }]}>
@@ -27,7 +28,13 @@ export function TransactionRow({ transaction }: TransactionRowProps) {
         </AppText>
         <AppText variant="caption" color="textMuted" style={styles.meta}>
           {formatEventDate(transaction.createdAt, locale)} · {transaction.status}
+          {providerLabel}
         </AppText>
+        {transaction.orderId ? (
+          <AppText variant="caption" color="textMuted" numberOfLines={1}>
+            {transaction.orderId}
+          </AppText>
+        ) : null}
       </View>
       <AppText variant="bodyStrong">{amount}</AppText>
     </View>

@@ -216,11 +216,14 @@ export type Transaction = {
   id: string;
   eventId?: string;
   eventTitle?: string;
+  orderId?: string;
   type: string;
   amount: number;
   currency: string;
   status: 'pending' | 'paid' | 'failed' | 'refunded';
   description?: string;
+  paymentProvider?: string;
+  providerReference?: string;
   createdAt: string;
 };
 
@@ -235,6 +238,25 @@ export type OrganizerRatingPayload = {
   eventId: string;
   rating: number;
   comment?: string;
+};
+
+export type TicketCheckout = {
+  orderId?: string;
+  eventId: string;
+  provider: 'stripe' | string;
+  providerMode: 'stub' | 'live' | string;
+  status: 'pending' | 'succeeded' | 'cancelled' | 'failed' | 'expired';
+  amount: number;
+  currency: string;
+  checkoutUrl?: string;
+  clientSecret?: string;
+  publishableKey?: string;
+};
+
+export type TicketCheckoutResult = {
+  checkout: TicketCheckout;
+  event: AppEvent;
+  transaction?: Transaction;
 };
 
 export type CreateEventPayload = {
