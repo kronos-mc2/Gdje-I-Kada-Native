@@ -441,6 +441,8 @@ Biljeska:
 
 2026-05-11 - Dopuna UX regresije: uklonjen je bijeli Android navigation/root background ispod ekrana i povecan je defaultni bottom padding za scrollable `AppScreen` kako profil i profile detail liste ne bi zavrsavale ispod tab/navigation bara. Dodani su `expo-navigation-bar` i `react-native-is-edge-to-edge` za runtime sync Android navigation bara s trenutnim dark/light themeom bez edge-to-edge warninga; Android `edgeToEdgeEnabled` je iskljucen jer three-button navigation bar mora imati stvarnu theme pozadinu umjesto bijelog system fallbacka. Native tab bar shadow/separator je uskladen s tab surface bojom. Datoteke: `components/primitives/app-screen.tsx`, `app/_layout.tsx`, `app/(tabs)/_layout.tsx`, `app.config.ts`, `package.json`, `package-lock.json`, lokalni Android `styles.xml`. Testirano: samo `git diff --check`, bez build/test po dogovoru.
 
+2026-05-14 - Dopuna frontend CI regresije: maknut je nevalidni `edgeToEdgeEnabled: false` iz Expo configa jer SDK 54 tipovi dopustaju samo eksplicitno ukljucivanje tog polja. Android edge-to-edge i dalje nije ukljucen; theme runtime nastavlja kontrolirati navigation bar. Datoteke: `app.config.ts`, `README.md`, `FAZE.md`. Testirano: `npm test`, `npm test -- --ci`, `npm run typecheck`.
+
 ## Kako updateati ovaj dokument
 
 Kad zavrsis zadatak, dodaj kratku biljesku u relevantnu fazu:

@@ -40,7 +40,7 @@ Trenutno stanje tabova:
 Postojece frontend tehnologije i patterni:
 
 - Expo SDK 54, React 19, React Native 0.81, TypeScript.
-- Android i iOS trenutno koriste `newArchEnabled=true` jer `react-native-reanimated` i `react-native-worklets` to zahtijevaju pri buildu. Android trenutno ne koristi edge-to-edge jer three-button navigation bar mora pratiti app theme boju; ostaje `softwareKeyboardLayoutMode: resize`, a chat inputi dodatno koriste shared keyboard/safe-area hook samo za inset koji native resize nije vec pokrio. Za iOS je ostao i pojacani `react-native-maps` (`AIRMap`) patch u `scripts/patch-react-native-maps-airmap.js`.
+- Android i iOS trenutno koriste `newArchEnabled=true` jer `react-native-reanimated` i `react-native-worklets` to zahtijevaju pri buildu. Android edge-to-edge nije eksplicitno ukljucen u Expo configu jer three-button navigation bar mora pratiti app theme boju; ostaje `softwareKeyboardLayoutMode: resize`, a chat inputi dodatno koriste shared keyboard/safe-area hook samo za inset koji native resize nije vec pokrio. Za iOS je ostao i pojacani `react-native-maps` (`AIRMap`) patch u `scripts/patch-react-native-maps-airmap.js`.
 - iOS workspace sada ima dva native targeta/schemea: `GIKDev` i `GIKTest`. `npm run ios` / `npm run ios:dev` prije builda automatski pripremaju `ios/.xcode.env.local` za lokalni `prod`/dev variant (`localhost` backend) i pokrecu `GIKDev`, a `npm run ios:test` / `npm run ios:test:release` pripremaju test env i pokrecu `GIKTest`.
 - Navigacija: `expo-router` i `expo-router/unstable-native-tabs` u `app/(tabs)/_layout.tsx`.
 - Data fetching/cache: TanStack React Query u `core/api/query-hooks.ts` i `core/query/query-client.ts`.
