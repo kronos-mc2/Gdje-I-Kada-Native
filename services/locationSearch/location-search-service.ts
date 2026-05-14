@@ -19,6 +19,39 @@ const toCacheKey = (request: LocationSearchRequest) => {
   return `${request.locale}:${limit}:${proximity}:${normalizedQuery}`;
 };
 
+const normalizeText = (value: string) =>
+  value
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ');
+
+const getDedupeKey = (result: LocationSearchResult) => {
+  const subtitleParts = result.subtitle
+    .split(',')
+    .map((part) => normalizeText(part))
+    .filter(Boolean)
+    .slice(0, 2)
+    .join(',');
+
+  return `${normalizeText(result.title)}:${subtitleParts}`;
+};
+
+const dedupeResults = (results: LocationSearchResult[]) => {
+  const seen = new Set<string>();
+
+  return results.filter((result) => {
+    const key = getDedupeKey(result);
+    if (seen.has(key)) {
+      return false;
+    }
+
+    seen.add(key);
+    return true;
+  });
+};
+
 export class LocationSearchService {
   private readonly cache = new Map<string, CacheEntry>();
 
@@ -33,12 +66,14 @@ export class LocationSearchService {
       return cached.results;
     }
 
-    const results = await this.provider.search(request);
-    this.cache.set(key, {
-      timestampMs: nowMs,
-      results,
-    });
-    this.pruneCache();
+    const results = dedupeResults(await this.provider.search(request));
+    if (results.length > 0) {
+      this.cache.set(key, {
+        timestampMs: nowMs,
+        results,
+      });
+      this.pruneCache();
+    }
 
     return results;
   }

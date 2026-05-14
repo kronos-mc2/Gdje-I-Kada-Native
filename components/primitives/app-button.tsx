@@ -1,7 +1,7 @@
-import { BlurView } from 'expo-blur';
 import { PropsWithChildren } from 'react';
-import { Platform, Pressable, PressableProps, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
+import { Platform, Pressable, PressableProps, StyleProp, StyleSheet, ViewStyle } from 'react-native';
 
+import { GlassSurface } from '@/components/primitives/glass-surface';
 import { useAppTheme } from '@/core/theme';
 import { AppText } from '@/components/primitives/app-text';
 
@@ -54,12 +54,7 @@ export function AppButton({ title, children, variant = 'primary', style, ...prop
         style,
       ]}
     >
-      {isGlass ? (
-        <>
-          <BlurView style={StyleSheet.absoluteFillObject} tint={theme.isDark ? 'systemMaterialDark' : 'systemMaterialLight'} intensity={52} />
-          <View style={[StyleSheet.absoluteFillObject, { backgroundColor: theme.colors.glassTint }]} />
-        </>
-      ) : null}
+      {isGlass ? <GlassSurface interactive /> : null}
       {title ? (
         <AppText variant="bodyStrong" style={{ color: textColor }}>
           {title}

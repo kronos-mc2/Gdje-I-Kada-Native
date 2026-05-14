@@ -52,7 +52,7 @@ Postojece frontend tehnologije i patterni:
 - Font: Lexend se ucitava kroz `expo-font` iz `assets/fonts`.
 - Theme: `AppThemeProvider`, `createAppTheme`, `palette`, `tokens`, `ThemeToggle`. Centralna paleta je ogranicena na Rich Black `#111114`, Off White `#F0F0F0`, Gunmetal Gray `#2A2D33`, Charcoal Gray `#3A3C40`, Graphite `#191B1E`, Cool Gray `#6F7072`, uz postojeci purple accent za map/app akcente.
 - Kalendar grid: `react-native-calendars` za cross-platform mjesecni prikaz bez dodatnog native linkinga.
-- iOS glass: `expo-glass-effect` i `expo-blur` se vec koriste u `EventDetailSheet` i `MapSearchBar.ios.tsx`; `AppCard` i `AppButton` imaju blur glass varijantu. Kod novih iOS povrsina preferirati `GlassView` kad je `isLiquidGlassAvailable()` i `isGlassEffectAPIAvailable()`, uz `BlurView` ili themed surface fallback.
+- iOS glass: `expo-glass-effect` i `expo-blur` se vec koriste u `EventDetailSheet` i `MapSearchBar.ios.tsx`; shared `GlassSurface` daje `GlassView` kad je Liquid Glass API dostupan, a `BlurView` + themed tint fallback inace. `AppCard`, `AppButton`, `AppHeader` i `AppIconButton` koriste taj shared surface da iOS ne povuce defaultnu sistemsku sivu.
 - Karte:
   - iOS: `components/map/event-map-surface.ios.tsx` koristi `react-native-maps` / MapKit.
   - Android: `components/map/event-map-surface.android.tsx` koristi `@maplibre/maplibre-react-native` i prikazuje pojedinacne event pinove bez clusteriranja.
@@ -93,8 +93,17 @@ Backend trenutno ima:
 - `POST /api/auth/apple`
 - `GET /api/auth/me`
 - `GET /api/events?from=&to=&lat=&lng=&radiusKm=&query=`
+- `GET /api/locations/search?query=&locale=&limit=&lat=&lng=`
 - `GET /api/events/{id}`
 - `POST /api/events`
+- `PATCH /api/events/{id}`
+- `DELETE /api/events/{id}`
+- `GET /api/events/{id}/participants`
+- `POST /api/events/{id}/participants/{userId}/approve`
+- `DELETE /api/events/{id}/participants/{userId}`
+- `POST /api/events/{id}/participants/{userId}/block`
+- `POST /api/events/{id}/media`
+- `DELETE /api/events/{id}/media/{mediaId}`
 - `POST /api/events/{eventId}/ticket-checkout`
 - `POST /api/ticket-orders/{orderId}/confirm`
 - `POST /api/events/{id}/join`
@@ -103,6 +112,7 @@ Backend trenutno ima:
 - `DELETE /api/events/{id}/like`
 - `GET /api/users/me/events?filter=all|joined|created`
 - `GET /api/users/me/liked-events`
+- `GET /api/users/{userId}/events/upcoming`
 - `PATCH /api/users/me/profile`
 - `GET /api/users/me/activity`
 - `GET /api/users/me/transactions`
@@ -151,6 +161,8 @@ Trenutna baza:
 - `event_participants` iz `V4__expand_event_domain.sql`
 - `event_likes` iz `V4__expand_event_domain.sql`
 - `event_organizer_ratings` iz `V4__expand_event_domain.sql`
+- `event_blocks` iz `V9__event_owner_management.sql`
+- `event_ratings` i `app_notifications` iz `V10__event_attendance_notifications_ratings.sql`
 - `friends` iz `V1__init_schema.sql`
 - `conversations` iz `V1__init_schema.sql` ostaje legacy adapter/prototip
 - `chat_rooms` iz `V5__chat_rooms_messages_polls.sql`
@@ -183,7 +195,7 @@ Trenutni event model:
 - Service: `EventService`.
 - Mapper: `EventMapper` i `EventMapper.xml`.
 
-Event trenutno podrzava naslov, lokaciju, adresu, opis, start/end datum, coordinates, entrance coordinates, entry instructions, creator user id, visibility `public/friends`, attendance mode `open/waitlist/paid`, cijenu za paid evente, capacity, status, organizer rating agregate, `likeCount`, `likedByMe`, participant count, `joinedByMe`, `attendanceStatus` i `canJoin`. Create flow u frontendu koristi jedan naziv/lokaciju/opis bez odvojenih HR/EN polja, a backend `CreateEventRequest` prihvaca canonical `title`, `where`, `about` i `entryInstructions` te ih mirror-a u postojece HR/EN stupce radi kompatibilnosti. Baza ima tablice za media, participants, likes, organizer ratings, ticket products/orders/payments/transactions i event chat roomove. Join/leave i like/unlike rade kroz backend, a feed i detail endpointi vracaju `event_media` za reels/detail prikaz. Organizer rating submit radi kroz `POST /api/events/{id}/ratings`. Paid join ide kroz Stripe-named provider stub: `POST /api/events/{eventId}/ticket-checkout` kreira order/payment, `POST /api/ticket-orders/{orderId}/confirm` potvrdjuje stub payment, zapisuje transaction i tek tada join-a event. Real Stripe React Native SDK/PaymentSheet nije dodan jer ova promjena ne pokrece native build.
+Event trenutno podrzava naslov, lokaciju, adresu, opis, start/end datum, coordinates, entrance coordinates, entry instructions, creator user id, visibility `public/friends`, attendance mode `open/waitlist/paid`, cijenu za paid evente, capacity, status, event i organizer rating agregate, `likeCount`, `likedByMe`, participant count, `waitlistCount`, `joinedByMe`, `attendanceStatus` i `canJoin`. Create flow u frontendu koristi jedan naziv/lokaciju/opis bez odvojenih HR/EN polja, a backend `CreateEventRequest` prihvaca canonical `title`, `where`, `about` i `entryInstructions` te ih mirror-a u postojece HR/EN stupce radi kompatibilnosti. Adresa u create flowu bira se kroz backend `GET /api/locations/search` autocomplete; odabrani rezultat postaje canonical event coordinate, a entrance pin je opcionalna zasebna koordinata. Vlasnik eventa kroz profil ima Created Events ekran i manage ekran za izmjenu osnovnih detalja, dodavanje/brisanje image media URL-ova, pregled/prihvacanje waitliste, micanje sudionika i blokiranje korisnika s neplacenih eventova. Backend za to koristi owner-only endpointove `PATCH/DELETE /api/events/{id}`, media endpointove, participant endpointove, `event_blocks` i in-app `app_notifications`. Join/leave i like/unlike rade kroz backend, a feed i detail endpointi vracaju `event_media` za reels/detail prikaz. Rating nakon zavrsenog eventa salje odvojene ocjene eventa i organizatora kroz `POST /api/events/{id}/ratings/full`. Paid join ide kroz Stripe-named provider stub: `POST /api/events/{eventId}/ticket-checkout` kreira order/payment, `POST /api/ticket-orders/{orderId}/confirm` potvrdjuje stub payment, zapisuje transaction i tek tada join-a event. Real Stripe React Native SDK/PaymentSheet nije dodan jer ova promjena ne pokrece native build.
 
 Kad implementiras nove stvari, nadogradi postojece:
 
@@ -270,7 +282,7 @@ Trenutno ponasanje:
 - Mapa se inicijalno centrira na `userLocation`.
 - Ako korisnik dopusti lokaciju, pokusava se dohvatiti precizna lokacija.
 - Ako nema precizne lokacije, koristi se IP/capital fallback.
-- Ispod search bara je date kontrola sa strelicama za dan po dan, date picker modalom, range modeom i opcijom `Svi datumi`.
+- Ispod search bara je date kontrola sa strelicama za dan po dan, date picker modalom, range modeom i opcijom `Svi datumi`. Defaultni `Svi datumi` na mapi salje `from=now`, tako mapa prikazuje samo evente od trenutnog vremena nadalje; stare evente korisnik moze traziti kroz eksplicitni dan/range.
 - Event pinovi su clickable.
 - Klik na pin otvara `EventDetailSheet`.
 - Sheet ima collapsed i expanded state.
@@ -371,14 +383,14 @@ Trenutno ponasanje:
 - Chat composer koristi iOS keyboard avoidance, a na Androidu `adjustResize` kao primarni put. Shared keyboard/safe-area hook detektira koliko je layout vec resizean i dodaje samo preostali Android inset, plus stalni bottom safe-area padding kad je tipkovnica zatvorena da navigation bar ne prekrije input. `+` modal i poll composer koriste isti keyboard/safe-area pristup.
 - Event share iz FYP/detailsa salje message tip `event_share` preko `/api/messages/chat-rooms/{id}/share-event`; u chatu se prikazuje event card s coverom, titleom, lokacijom, datumom i linkom na details.
 - Pollovi se kreiraju preko `/api/messages/chat-rooms/{id}/polls`, prikazuju se u chatu i glasanje ide preko `/api/messages/polls/{id}/vote`. Poll composer uvijek krece s 2 option polja, automatski dodaje prazno `Dodaj/Add` polje kad su postojeca popunjena, uklanja prazna option polja na blur i podrzava drag reorder preko handlea.
-- `adminOnly` se mijenja preko `PATCH /api/messages/chat-rooms/{id}`; owner/admin mogu pisati, clanovi mogu glasati na pollovima.
+- `adminOnly` se i dalje moze mijenjati za group/event sobe preko `PATCH /api/messages/chat-rooms/{id}`; direct/private chatovi ga ignoriraju jer oba korisnika uvijek mogu pisati.
 - Chat koristi WebSocket `/ws/messages` dok je korisnik prijavljen i app je aktivan. Backend nakon nove poruke, event sharea, polla, poll votea ili room updatea salje realtime event clanovima sobe; frontend tada invalidira samo pogođene chat queryje. Periodicni chat polling je maknut, a fallback ostaje refetch na socket reconnect i povratak appa iz backgrounda.
-- Details panel se otvara klikom na ime osobe/grupe u headeru. Direct view trenutno prikazuje ime i placeholder da se friend eventovi trebaju povezati kad se implementira friends event model; group/event view prikazuje sudionike.
+- Details panel se otvara klikom na ime osobe/grupe u headeru. Direct view prikazuje avatar sugovornika, Add friend akciju i buduce javno dostupne evente koje je ta osoba kreirala. Group/event view prikazuje sudionike i admin-only toggle kad korisnik ima pravo upravljanja. Chat lista, header i message bubble koriste stvarni `avatar_url` iz `app_users` kad postoji, a fallback ostaje inicijal.
 
 Sto fali:
 
 - Push notifikacije.
-- Pun friends event model za prikaz evenata prijatelja u direct detail viewu.
+- Pun friends relationship model; direct detail trenutno prikazuje Add friend UI, ali backend jos nema canonical friend-request tablicu.
 
 ### Profil
 
@@ -388,9 +400,11 @@ Postoji:
 - Profil je activity/profile hub, a settings su odvojeni u `app/profile/settings.tsx`.
 - Edit profila je u `app/profile/edit.tsx` i sprema ime, bio i avatar URL preko `PATCH /api/users/me/profile`.
 - Activity history je u `app/profile/activity.tsx` i koristi `GET /api/users/me/activity`.
+- Created Events je u `app/profile/created-events.tsx`, a owner manage ekran u `app/profile/event/[id].tsx`; koriste `GET /api/users/me/events?filter=created`, owner event update/delete/media/participants endpointove i prikazuju waitlist count.
 - Liked history je u `app/profile/liked.tsx`.
 - Transaction history je u `app/profile/transactions.tsx` i koristi `GET /api/users/me/transactions`.
-- Organizer rating za prosle evente ide preko `POST /api/events/{id}/ratings`.
+- Rating za prosle evente ide preko `POST /api/events/{id}/ratings/full` i sprema odvojenu ocjenu/komentar za event i organizatora.
+- Activity screen prikazuje in-app obavijesti za approve/remove/block promjene attendance statusa.
 - Odjava je premjestena u settings, zove `clearAuth()`, resetira session query cache i vraca na auth flow.
 
 Sto fali:
@@ -474,6 +488,13 @@ Frontend API URL:
 - `POST /api/events` -> `EventService.createEvent()`
 - `POST /api/events/{id}/join` -> `EventService.joinEvent()`
 - `DELETE /api/events/{id}/join` -> `EventService.leaveEvent()`
+- `PATCH /api/events/{id}` -> owner-only update detalja
+- `DELETE /api/events/{id}` -> owner-only brisanje eventa
+- `GET /api/events/{id}/participants` -> owner-only pregled sudionika i waitliste
+- `POST /api/events/{id}/participants/{userId}/approve` -> owner-only prihvacanje waitliste
+- `DELETE /api/events/{id}/participants/{userId}` -> owner-only micanje sudionika
+- `POST /api/events/{id}/participants/{userId}/block` -> owner-only blokiranje korisnika s neplacenog eventa
+- `POST /api/events/{id}/media` i `DELETE /api/events/{id}/media/{mediaId}` -> owner-only media URL management
 - `POST /api/events/{id}/like` -> `EventService.likeEvent()`
 - `DELETE /api/events/{id}/like` -> `EventService.unlikeEvent()`
 
@@ -489,6 +510,8 @@ Frontend API URL:
 - `participantCount` inicijalno postavlja na `1`.
 - Join upisuje `event_participants.status` kao `joined` ili `waitlisted`, leave ga mijenja u `left`.
 - Like/unlike odrzava `event_likes` za korisnika.
+- Owner akcije koriste `event_blocks` za zabranu ponovnog joina na neplacene evente; map/feed/list discovery ih vise ne vraca blokiranom korisniku, dok profil i kalendar mogu prikazati status `blocked`.
+- Scheduler na backendu oznacava `published` evente kao `finished` jedan dan nakon `end_at/start_at/when_iso`.
 - Mapira `EventRow` u `AppEventDto`.
 
 `EventMapper.xml`:
@@ -659,7 +682,7 @@ Detaljni operativni plan i status svake faze vodi se u `FAZE.md`. README drzi sa
 - Faza 6 - Kalendar.
 - Faza 7 - Poruke i event chat.
 - Faza 8 - Profil i postavke.
-- Faza 9 - Placanja, rating i polish: u tijeku, Stripe stub paid join flow dodan 2026-05-11.
+- Faza 9 - Placanja, rating i polish: u tijeku, Stripe stub paid join flow dodan 2026-05-11; create event lokacija/iOS polish dopunjen 2026-05-14.
 
 Kad se status faze promijeni, prvo azuriraj `FAZE.md`, a zatim ovaj sazetak ako je potrebno.
 
@@ -683,9 +706,9 @@ Kad se status faze promijeni, prvo azuriraj `FAZE.md`, a zatim ovaj sazetak ako 
 
 ## Dokumentacija trenutnih ogranicenja
 
-- Event create screen (`app/create-event.tsx`) salje address, start/end time, visibility, attendance mode, paid price/currency, capacity, entrance pin i entry instructions.
-- `app/entrance-map-picker.tsx` je povezan u create event flow i puni `entranceCoordinates`.
-- Ako korisnik ne odabere entrance pin, create flow koristi zadnju poznatu korisnicku lokaciju kao event coordinates.
+- Event create screen (`app/create-event.tsx`) salje address, start/end time, visibility, attendance mode, paid price/currency, capacity, entry instructions i opcionalni entrance pin.
+- Adresa u create flowu koristi autocomplete preko `GET /api/locations/search`; korisnik mora odabrati prijedlog kako bi event dobio tocne coordinates.
+- `app/entrance-map-picker.tsx` je povezan u create event flow, otvara se tek nakon odabrane adrese, starta na toj adresi s visokim zoomom i puni `entranceCoordinates` kroz fiksni center pin.
 - `EventDetailScreen` (`app/event/[id].tsx`) i `EventDetailSheet` na mapi dijele `EventDetailsContent` i `useEventJoinActions`, a detail screen koristi canonical `GET /api/events/{id}`.
 - `GET /api/users/me/events?filter=all|joined|created` je canonical izvor za korisnicke evente u kalendaru.
 - Lokalni `joinedEventIds` je maknut iz storea; join state se cita s backenda kroz `joinedByMe`/`attendanceStatus`, a FYP za details ide preko shared details screena.
@@ -716,12 +739,14 @@ Kod dokazivanja ili objasnjavanja projekta moze se referencirati:
 Eventi:
 
 - `GET /api/events?from=&to=&lat=&lng=&radiusKm=&query=`
+- `GET /api/locations/search?query=&locale=&limit=&lat=&lng=`
 - `GET /api/events/{id}`
 - `POST /api/events`
 - `PATCH /api/events/{id}`
 - `POST /api/events/{id}/join`
 - `DELETE /api/events/{id}/join`
 - `POST /api/events/{id}/ratings`
+- `POST /api/events/{id}/ratings/full`
 - `GET /api/users/me/events?filter=all|joined|created`
 - `GET /api/users/me/liked-events`
 

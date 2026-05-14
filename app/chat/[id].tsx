@@ -24,6 +24,7 @@ import { ChatMessage, CreatePollPayload } from '@/core/types/domain';
 import { ChatDetailsPanel } from '@/features/messages/components/chat-details-panel';
 import { MessageBubble } from '@/features/messages/components/message-bubble';
 import { useKeyboardState } from '@/features/messages/hooks/use-keyboard-bottom-inset';
+import { ProfileAvatar } from '@/features/profile/components/profile-avatar';
 
 type ChatListItem = { key: string; type: 'date'; label: string } | { key: string; type: 'message'; message: ChatMessage };
 
@@ -60,7 +61,7 @@ export default function ChatRoomScreen() {
   const messages = data?.messages ?? [];
   const chatItems = useMemo(() => buildChatListItems(messages, locale, t), [messages, locale, t]);
   const isInitialLoading = isLoading && !data;
-  const canWrite = room ? !room.adminOnly || room.myRole === 'owner' || room.myRole === 'admin' : false;
+  const canWrite = room ? room.type === 'direct' || !room.adminOnly || room.myRole === 'owner' || room.myRole === 'admin' : false;
   const androidComposerBottomInset = Platform.OS === 'android' ? keyboardState.bottomInset : 0;
   const composerBottomPadding = COMPOSER_BOTTOM_PADDING + (keyboardState.isKeyboardVisible ? 0 : insets.bottom);
 
@@ -161,15 +162,13 @@ export default function ChatRoomScreen() {
           <Ionicons name="arrow-back" size={26} color={theme.colors.textPrimary} />
         </Pressable>
         <Pressable onPress={() => setDetailsOpen((current) => !current)} style={styles.headerTitle}>
-          <View style={[styles.headerAvatar, { backgroundColor: theme.colors.mapAccentSoft }]}>
-            <AppText variant="label">{room?.title.slice(0, 1).toUpperCase() ?? 'G'}</AppText>
-          </View>
+          <ProfileAvatar name={room?.title} avatarUrl={room?.avatarUrl} size={42} />
           <View style={styles.headerCopy}>
             <AppText variant="bodyStrong" numberOfLines={1}>
               {room?.title ?? t('loading')}
             </AppText>
             <AppText variant="caption" color="textMuted" numberOfLines={1}>
-              {room?.adminOnly ? t('adminOnlyMode') : (room?.subtitle ?? t('chats'))}
+              {room?.type !== 'direct' && room?.adminOnly ? t('adminOnlyMode') : (room?.subtitle ?? t('chats'))}
             </AppText>
           </View>
         </Pressable>
@@ -636,13 +635,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-  },
-  headerAvatar: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   headerCopy: {
     flex: 1,

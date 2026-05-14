@@ -1,7 +1,7 @@
-import { BlurView } from 'expo-blur';
 import { PropsWithChildren } from 'react';
 import { Platform, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 
+import { GlassSurface } from '@/components/primitives/glass-surface';
 import { useAppTheme } from '@/core/theme';
 
 type AppCardProps = PropsWithChildren<{
@@ -32,12 +32,7 @@ export function AppCard({ children, style, variant = 'default' }: AppCardProps) 
         style,
       ]}
     >
-      {isIOSGlass ? (
-        <>
-          <BlurView style={StyleSheet.absoluteFillObject} tint={theme.isDark ? 'systemMaterialDark' : 'systemMaterialLight'} intensity={55} />
-          <View style={[StyleSheet.absoluteFillObject, { backgroundColor: theme.colors.glassTint }]} />
-        </>
-      ) : null}
+      {isIOSGlass ? <GlassSurface /> : null}
       {children}
     </View>
   );

@@ -396,9 +396,10 @@ type CalendarEventRowProps = {
 };
 
 function CalendarEventRow({ event, onPress }: CalendarEventRowProps) {
-  const { locale } = useI18n();
+  const { locale, t } = useI18n();
   const { theme } = useAppTheme();
   const accentColors = useMemo(() => createCalendarAccentColors(theme), [theme]);
+  const attendanceLabel = getAttendanceLabel(event.attendanceStatus, t);
 
   return (
     <Pressable onPress={onPress} style={({ pressed }) => ({ opacity: pressed ? 0.78 : 1 })}>
@@ -426,10 +427,31 @@ function CalendarEventRow({ event, onPress }: CalendarEventRowProps) {
           <AppText variant="caption" color="textMuted" numberOfLines={1}>
             {formatEventDate(event.startAt || event.whenISO, locale)}
           </AppText>
+          {attendanceLabel ? (
+            <AppText variant="caption" color="textSecondary" numberOfLines={1}>
+              {attendanceLabel}
+            </AppText>
+          ) : null}
         </View>
       </CalendarSurface>
     </Pressable>
   );
+}
+
+function getAttendanceLabel(status: AppEvent['attendanceStatus'], t: ReturnType<typeof useI18n>['t']) {
+  if (status === 'waitlisted') {
+    return t('attendanceWaitlisted');
+  }
+  if (status === 'approved') {
+    return t('attendanceApproved');
+  }
+  if (status === 'rejected') {
+    return t('attendanceRemoved');
+  }
+  if (status === 'blocked') {
+    return t('attendanceBlocked');
+  }
+  return null;
 }
 
 type CalendarSurfaceProps = PropsWithChildren<{

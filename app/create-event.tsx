@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Alert, StyleSheet, View } from 'react-native';
 
+import { EventMap } from '@/components/map';
 import { AppButton, AppCard, AppDateTimeField, AppInput, AppScreen, AppText } from '@/components/primitives';
 import { useCreateEventMutation } from '@/core/api/query-hooks';
 import { useI18n } from '@/core/i18n/use-i18n';
@@ -17,8 +18,10 @@ import {
   parseOptionalMoneyAmount,
   parseOptionalPositiveInteger,
 } from '@/features/events/create/create-event-form';
+import { CreateEventAddressField } from '@/features/events/create/create-event-address-field';
 import { CreateEventSegmentedControl } from '@/features/events/create/create-event-segmented-control';
 import { CreateEventStepShell } from '@/features/events/create/create-event-step-shell';
+import { LocationSearchResult } from '@/services/locationSearch';
 
 const getNextStep = (step: CreateEventStep) => CREATE_EVENT_STEPS[CREATE_EVENT_STEPS.indexOf(step) + 1];
 const getPreviousStep = (step: CreateEventStep) => CREATE_EVENT_STEPS[CREATE_EVENT_STEPS.indexOf(step) - 1];
@@ -38,6 +41,7 @@ export default function CreateEventScreen() {
   const [form, setForm] = useState<CreateEventFormState>(INITIAL_CREATE_EVENT_FORM);
   const [visibility, setVisibility] = useState<EventVisibility>('public');
   const [attendanceMode, setAttendanceMode] = useState<EventAttendanceMode>('open');
+  const [eventCoordinates, setEventCoordinates] = useState<Coordinates | null>(null);
   const [createdTitle, setCreatedTitle] = useState<string | null>(null);
 
   const stepCopy = useMemo(
@@ -70,6 +74,20 @@ export default function CreateEventScreen() {
     setForm((current) => ({ ...current, [key]: value }));
   };
 
+  const updateAddress = (value: string) => {
+    setForm((current) => ({ ...current, address: value }));
+    setEventCoordinates(null);
+    clearEntranceCoordinates();
+  };
+
+  const selectAddress = (result: LocationSearchResult) => {
+    setEventCoordinates(result.coordinates);
+    setForm((current) => ({
+      ...current,
+      locationName: current.locationName.trim() ? current.locationName : result.title,
+    }));
+  };
+
   const goBack = () => {
     const previousStep = getPreviousStep(step);
     if (previousStep) {
@@ -81,20 +99,20 @@ export default function CreateEventScreen() {
   };
 
   const openEntrancePicker = () => {
-    const pin = entranceCoordinates ?? userLocation;
+    if (!eventCoordinates) {
+      return;
+    }
 
     router.push({
       pathname: '/entrance-map-picker',
       params: {
-        centerLat: String(userLocation.latitude),
-        centerLng: String(userLocation.longitude),
-        pinLat: String(pin.latitude),
-        pinLng: String(pin.longitude),
+        centerLat: String(eventCoordinates.latitude),
+        centerLng: String(eventCoordinates.longitude),
       },
     });
   };
 
-  const resolveEventCoordinates = (): Coordinates => entranceCoordinates ?? userLocation;
+  const resolveEventCoordinates = (): Coordinates => eventCoordinates ?? userLocation;
 
   const validateCurrentStep = () => {
     if (step === 'basics') {
@@ -123,7 +141,16 @@ export default function CreateEventScreen() {
     }
 
     if (step === 'location') {
-      return requireFields(['locationName', 'address']);
+      if (!requireFields(['locationName', 'address'])) {
+        return false;
+      }
+
+      if (!eventCoordinates) {
+        Alert.alert(t('validation'), t('selectAddressFromSuggestions'));
+        return false;
+      }
+
+      return true;
     }
 
     if (step === 'settings') {
@@ -260,6 +287,8 @@ export default function CreateEventScreen() {
               locale={locale}
               valueISO={form.endAt}
               onChangeISO={(value) => updateField('endAt', value)}
+              onClear={() => updateField('endAt', '')}
+              clearAccessibilityLabel={t('clearDateTime')}
             />
           </>
         ) : null}
@@ -272,18 +301,40 @@ export default function CreateEventScreen() {
               onChangeText={(value) => updateField('locationName', value)}
               placeholder={t('createEventLocationPlaceholder')}
             />
-            <AppInput
+            <CreateEventAddressField
               label={t('addressLabel')}
               value={form.address}
-              onChangeText={(value) => updateField('address', value)}
+              onChangeText={updateAddress}
+              onSelectAddress={selectAddress}
               placeholder={t('createEventAddressPlaceholder')}
+              locale={locale}
+              proximity={userLocation}
+              searchingLabel={t('searchingLocations')}
+              noResultsLabel={t('noLocationsFound')}
+              hintLabel={t('typeToSearchLocation')}
+              providerLabel={t('mapSearchSource')}
             />
             <View style={[styles.mapPreview, { borderColor: theme.colors.border, backgroundColor: theme.colors.surface }]}>
-              <View style={[styles.mapGridLine, styles.mapGridLineVertical, { backgroundColor: theme.colors.border }]} />
-              <View style={[styles.mapGridLine, styles.mapGridLineHorizontal, { backgroundColor: theme.colors.border }]} />
-              <View style={[styles.pinBubble, { backgroundColor: theme.colors.accent }]}>
-                <Ionicons name="location" size={22} color={theme.colors.background} />
-              </View>
+              <EventMap
+                key={eventCoordinates ? `${eventCoordinates.latitude}:${eventCoordinates.longitude}` : 'empty-address-map'}
+                events={[]}
+                locale={locale}
+                userLocation={eventCoordinates ?? userLocation}
+                selectedEventId={null}
+                searchMarker={eventCoordinates}
+                focusCoordinate={eventCoordinates}
+                initialZoomLevel={eventCoordinates ? 16.8 : 13.2}
+                interactive={false}
+                onSelectEvent={() => undefined}
+              />
+              {!eventCoordinates ? (
+                <View style={[styles.mapPlaceholder, { backgroundColor: theme.colors.overlay }]}>
+                  <Ionicons name="location-outline" size={22} color={theme.colors.textPrimary} />
+                  <AppText variant="caption" color="textSecondary" style={styles.mapPlaceholderText}>
+                    {t('selectAddressForMapPreview')}
+                  </AppText>
+                </View>
+              ) : null}
             </View>
             <AppInput
               label={`${t('entryInstructions')} (${t('optional')})`}
@@ -294,14 +345,17 @@ export default function CreateEventScreen() {
               style={styles.textAreaSmall}
             />
             <AppButton
-              title={entranceCoordinates ? t('changeEntrancePin') : t('chooseEntrancePin')}
+              title={eventCoordinates && entranceCoordinates ? t('changeEntrancePin') : t('chooseEntrancePin')}
               variant="glass"
+              disabled={!eventCoordinates}
               onPress={openEntrancePicker}
             />
             <AppText variant="caption" color="textMuted">
-              {entranceCoordinates
+              {eventCoordinates && entranceCoordinates
                 ? `${entranceCoordinates.latitude.toFixed(5)}, ${entranceCoordinates.longitude.toFixed(5)}`
-                : t('noEntrancePin')}
+                : eventCoordinates
+                  ? t('noEntrancePin')
+                  : t('chooseAddressBeforeEntrance')}
             </AppText>
           </>
         ) : null}
@@ -391,31 +445,21 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
   },
   mapPreview: {
-    alignItems: 'center',
+    alignItems: 'stretch',
     borderRadius: 16,
     borderWidth: 1,
-    height: 148,
-    justifyContent: 'center',
+    height: 172,
     overflow: 'hidden',
   },
-  mapGridLine: {
-    opacity: 0.34,
-    position: 'absolute',
-  },
-  mapGridLineVertical: {
-    height: '100%',
-    width: 1,
-  },
-  mapGridLineHorizontal: {
-    height: 1,
-    width: '100%',
-  },
-  pinBubble: {
+  mapPlaceholder: {
+    ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
-    borderRadius: 999,
-    height: 48,
+    gap: 8,
     justifyContent: 'center',
-    width: 48,
+    paddingHorizontal: 24,
+  },
+  mapPlaceholderText: {
+    textAlign: 'center',
   },
   capacityRow: {
     alignItems: 'center',

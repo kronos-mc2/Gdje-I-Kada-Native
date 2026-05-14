@@ -15,6 +15,7 @@ export function EventMapSurface({
   markers,
   userLocation,
   initialCenter,
+  initialZoomLevel,
   focusCoordinate,
   searchMarker,
   interactive = true,
@@ -59,8 +60,8 @@ export function EventMapSurface({
         initialRegion={{
           latitude: initialCenter.latitude,
           longitude: initialCenter.longitude,
-          latitudeDelta: MAP_IOS_DELTA,
-          longitudeDelta: MAP_IOS_DELTA,
+          latitudeDelta: initialZoomLevel ? zoomToDelta(initialZoomLevel) : MAP_IOS_DELTA,
+          longitudeDelta: initialZoomLevel ? zoomToDelta(initialZoomLevel) : MAP_IOS_DELTA,
         }}
         onRegionChangeComplete={(region) => {
           onCameraStateChange?.({

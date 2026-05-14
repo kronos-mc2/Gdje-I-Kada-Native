@@ -3,8 +3,8 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
 
-import { AppButton, AppCard, AppIconButton, AppScreen, AppText, SectionHeader } from '@/components/primitives';
-import { useProfileActivityQuery, useRateOrganizerMutation } from '@/core/api/query-hooks';
+import { AppButton, AppCard, AppIconButton, AppInput, AppScreen, AppText, SectionHeader } from '@/components/primitives';
+import { useProfileActivityQuery, useRateEventMutation } from '@/core/api/query-hooks';
 import { useI18n } from '@/core/i18n/use-i18n';
 import { useAppTheme } from '@/core/theme';
 import { AppEvent } from '@/core/types/domain';
@@ -16,6 +16,7 @@ export default function ProfileActivityScreen() {
   const { data: activity, isLoading } = useProfileActivityQuery();
   const joinedEvents = activity?.joinedEvents ?? [];
   const ratingCandidates = activity?.ratingCandidates ?? [];
+  const notifications = activity?.notifications ?? [];
 
   return (
     <AppScreen scroll>
@@ -42,6 +43,24 @@ export default function ProfileActivityScreen() {
         )}
       </AppCard>
 
+      <SectionHeader title={t('notifications')} subtitle={t('activityHistorySubtitle')} />
+      <AppCard variant="glass" style={styles.card}>
+        {notifications.length === 0 ? (
+          <AppText variant="body" color="textMuted">
+            {t('noNotifications')}
+          </AppText>
+        ) : (
+          notifications.map((notification) => (
+            <View key={notification.id} style={styles.notificationRow}>
+              <AppText variant="bodyStrong">{notification.title}</AppText>
+              <AppText variant="caption" color="textMuted">
+                {notification.body}
+              </AppText>
+            </View>
+          ))
+        )}
+      </AppCard>
+
       <SectionHeader title={t('rateOrganizers')} subtitle={t('rateOrganizersSubtitle')} />
       <AppCard variant="glass" style={styles.card}>
         {ratingCandidates.length === 0 ? (
@@ -59,12 +78,21 @@ export default function ProfileActivityScreen() {
 function RatingCandidate({ event }: { event: AppEvent }) {
   const { t } = useI18n();
   const { theme } = useAppTheme();
-  const rateOrganizerMutation = useRateOrganizerMutation();
-  const [rating, setRating] = useState(5);
+  const rateEventMutation = useRateEventMutation();
+  const [eventRating, setEventRating] = useState(5);
+  const [organizerRating, setOrganizerRating] = useState(5);
+  const [eventComment, setEventComment] = useState('');
+  const [organizerComment, setOrganizerComment] = useState('');
 
   const submitRating = async () => {
     try {
-      await rateOrganizerMutation.mutateAsync({ eventId: event.id, rating });
+      await rateEventMutation.mutateAsync({
+        eventId: event.id,
+        eventRating,
+        organizerRating,
+        eventComment: eventComment.trim() || undefined,
+        organizerComment: organizerComment.trim() || undefined,
+      });
       Alert.alert(t('ratingSaved'));
     } catch {
       Alert.alert(t('ratingFailed'));
@@ -74,28 +102,58 @@ function RatingCandidate({ event }: { event: AppEvent }) {
   return (
     <View style={[styles.ratingBlock, { borderBottomColor: theme.colors.border }]}>
       <ProfileEventRow event={event} onPress={() => undefined} />
+      <RatingStars label={t('eventRating')} rating={eventRating} onChange={setEventRating} />
+      <AppInput
+        value={eventComment}
+        onChangeText={setEventComment}
+        placeholder={t('eventCommentPlaceholder')}
+        multiline
+        style={styles.commentInput}
+        containerStyle={styles.commentInputWrap}
+      />
+      <RatingStars label={t('organizerRating')} rating={organizerRating} onChange={setOrganizerRating} />
+      <AppInput
+        value={organizerComment}
+        onChangeText={setOrganizerComment}
+        placeholder={t('organizerCommentPlaceholder')}
+        multiline
+        style={styles.commentInput}
+        containerStyle={styles.commentInputWrap}
+      />
       <View style={styles.ratingActions}>
-        <View style={styles.stars}>
-          {[1, 2, 3, 4, 5].map((value) => (
-            <Pressable
-              key={value}
-              accessibilityRole="button"
-              accessibilityLabel={`${value}/5`}
-              accessibilityState={{ selected: value === rating }}
-              onPress={() => setRating(value)}
-              hitSlop={8}
-            >
-              <Ionicons name={value <= rating ? 'star' : 'star-outline'} size={26} color={value <= rating ? theme.colors.mapAccent : theme.colors.textMuted} />
-            </Pressable>
-          ))}
-        </View>
         <AppButton
-          title={rateOrganizerMutation.isPending ? t('loading') : t('rateOrganizer')}
+          title={rateEventMutation.isPending ? t('loading') : t('rateEvent')}
           variant="secondary"
-          disabled={rateOrganizerMutation.isPending}
+          disabled={rateEventMutation.isPending}
           style={styles.rateButton}
           onPress={() => void submitRating()}
         />
+      </View>
+    </View>
+  );
+}
+
+function RatingStars({ label, rating, onChange }: { label: string; rating: number; onChange: (rating: number) => void }) {
+  const { theme } = useAppTheme();
+
+  return (
+    <View style={styles.ratingLine}>
+      <AppText variant="caption" color="textMuted" style={styles.ratingLabel}>
+        {label}
+      </AppText>
+      <View style={styles.stars}>
+        {[1, 2, 3, 4, 5].map((value) => (
+          <Pressable
+            key={value}
+            accessibilityRole="button"
+            accessibilityLabel={`${label} ${value}/5`}
+            accessibilityState={{ selected: value === rating }}
+            onPress={() => onChange(value)}
+            hitSlop={8}
+          >
+            <Ionicons name={value <= rating ? 'star' : 'star-outline'} size={26} color={value <= rating ? theme.colors.mapAccent : theme.colors.textMuted} />
+          </Pressable>
+        ))}
       </View>
     </View>
   );
@@ -124,11 +182,27 @@ const styles = StyleSheet.create({
   ratingActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     gap: 12,
+  },
+  ratingLine: {
+    gap: 6,
+  },
+  ratingLabel: {
+    marginLeft: 2,
   },
   stars: {
     flexDirection: 'row',
+    gap: 4,
+  },
+  commentInputWrap: {
+    marginBottom: 0,
+  },
+  commentInput: {
+    minHeight: 72,
+    textAlignVertical: 'top',
+  },
+  notificationRow: {
     gap: 4,
   },
   rateButton: {

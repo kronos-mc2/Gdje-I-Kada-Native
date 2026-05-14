@@ -29,6 +29,7 @@ export function EventDetailsContent({
   const { t } = useI18n();
   const coverUri = getEventPosterUri(event);
   const hasOrganizerRating = (event.organizerRatingCount ?? 0) > 0;
+  const hasEventRating = (event.eventRatingCount ?? 0) > 0;
   const priceLabel = formatPrice(event);
 
   return (
@@ -75,6 +76,14 @@ export function EventDetailsContent({
             <DetailRow label={t('eventVisibility')} value={getVisibilityLabel(event, t)} />
             {priceLabel ? <DetailRow label={t('priceAmountLabel')} value={priceLabel} /> : null}
             {event.capacity ? <DetailRow label={t('capacityLabel')} value={String(event.capacity)} /> : null}
+            <DetailRow
+              label={t('eventRating')}
+              value={
+                hasEventRating
+                  ? `${event.eventRatingAverage?.toFixed(1) ?? '0.0'} (${event.eventRatingCount ?? 0})`
+                  : t('notRatedYet')
+              }
+            />
             <DetailRow
               label={t('organizerRating')}
               value={

@@ -3,15 +3,21 @@ import { InfiniteData, useInfiniteQuery, useMutation, useQuery, useQueryClient }
 import { queryKeys } from '@/core/api/query-keys';
 import {
   confirmTicketCheckout,
+  addEventMedia,
+  approveEventParticipant,
+  blockEventParticipant,
   createChatPoll,
   createChatRoom,
   createEvent,
   createTicketCheckout,
+  deleteEvent,
+  deleteEventMedia,
   fetchChatMessages,
   fetchChatPeople,
   fetchChatRoom,
   fetchChatRooms,
   fetchEventById,
+  fetchEventParticipants,
   fetchConversations,
   fetchEvents,
   fetchFeed,
@@ -20,15 +26,19 @@ import {
   fetchMyEvents,
   fetchProfileActivity,
   fetchTransactions,
+  fetchUserUpcomingEvents,
   getOrCreateEventChatRoom,
   joinEvent,
   likeEvent,
   leaveEvent,
   rateOrganizer,
+  rateEvent,
+  removeEventParticipant,
   sendChatMessage,
   shareEventToConversation,
   unlikeEvent,
   updateProfile,
+  updateEvent,
   updateChatRoom,
   votePoll,
 } from '@/core/api/services';
@@ -61,6 +71,20 @@ export const useLikedEventsQuery = () =>
   useQuery({
     queryKey: queryKeys.likedEvents,
     queryFn: fetchLikedEvents,
+  });
+
+export const useUserUpcomingEventsQuery = (userId?: string | null) =>
+  useQuery({
+    queryKey: queryKeys.userUpcomingEvents(userId ?? ''),
+    queryFn: () => fetchUserUpcomingEvents(userId ?? ''),
+    enabled: Boolean(userId),
+  });
+
+export const useEventParticipantsQuery = (eventId?: string | null) =>
+  useQuery({
+    queryKey: queryKeys.eventParticipants(eventId ?? ''),
+    queryFn: () => fetchEventParticipants(eventId ?? ''),
+    enabled: Boolean(eventId),
   });
 
 export const useProfileActivityQuery = () =>
@@ -222,6 +246,66 @@ export const useCreateEventMutation = () => {
   });
 };
 
+export const useUpdateEventMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: updateEvent,
+    onSuccess: (event) => {
+      syncEventAcrossCaches(queryClient, event);
+      void queryClient.invalidateQueries({ queryKey: queryKeys.myEventsRoot });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.profileActivity });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.eventsRoot });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.feedRoot });
+    },
+  });
+};
+
+export const useDeleteEventMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: deleteEvent,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.eventsRoot });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.myEventsRoot });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.profileActivity });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.feedRoot });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.chatRoomsRoot });
+    },
+  });
+};
+
+export const useAddEventMediaMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: addEventMedia,
+    onSuccess: (event) => {
+      syncEventAcrossCaches(queryClient, event);
+      void queryClient.invalidateQueries({ queryKey: queryKeys.myEventsRoot });
+    },
+  });
+};
+
+export const useDeleteEventMediaMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: deleteEventMedia,
+    onSuccess: (event) => {
+      syncEventAcrossCaches(queryClient, event);
+      void queryClient.invalidateQueries({ queryKey: queryKeys.myEventsRoot });
+    },
+  });
+};
+
+export const useApproveEventParticipantMutation = () => useParticipantMutation(approveEventParticipant);
+
+export const useRemoveEventParticipantMutation = () => useParticipantMutation(removeEventParticipant);
+
+export const useBlockEventParticipantMutation = () => useParticipantMutation(blockEventParticipant);
+
 export const useJoinEventMutation = () => {
   const queryClient = useQueryClient();
 
@@ -342,6 +426,19 @@ export const useRateOrganizerMutation = () => {
   });
 };
 
+export const useRateEventMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: rateEvent,
+    onSuccess: (event) => {
+      syncEventAcrossCaches(queryClient, event);
+      void queryClient.invalidateQueries({ queryKey: queryKeys.profileActivity });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.myEventsRoot });
+    },
+  });
+};
+
 export const useCreateTicketCheckoutMutation = () =>
   useMutation({
     mutationFn: createTicketCheckout,
@@ -362,6 +459,22 @@ export const useConfirmTicketCheckoutMutation = () => {
     },
   });
 };
+
+function useParticipantMutation(
+  mutationFn: (input: { eventId: string; userId: string }) => Promise<unknown>,
+) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn,
+    onSuccess: (_, variables) => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.eventParticipants(variables.eventId) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.event(variables.eventId) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.myEventsRoot });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.eventsRoot });
+    },
+  });
+}
 
 function patchPollInRoomDetail(current: ChatRoomDetail, poll: Poll): ChatRoomDetail {
   return {

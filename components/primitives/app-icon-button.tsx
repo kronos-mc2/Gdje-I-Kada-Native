@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { BlurView } from 'expo-blur';
-import { Platform, Pressable, PressableProps, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
+import { Platform, Pressable, PressableProps, StyleProp, StyleSheet, ViewStyle } from 'react-native';
 
+import { GlassSurface } from '@/components/primitives/glass-surface';
 import { useAppTheme } from '@/core/theme';
 
 type AppIconButtonProps = Omit<PressableProps, 'style'> & {
@@ -33,12 +33,7 @@ export function AppIconButton({ icon, size = 18, variant = 'default', style, ...
         style,
       ]}
     >
-      {isGlass ? (
-        <>
-          <BlurView style={StyleSheet.absoluteFillObject} tint={theme.isDark ? 'systemMaterialDark' : 'systemMaterialLight'} intensity={58} />
-          <View style={[StyleSheet.absoluteFillObject, { backgroundColor: theme.colors.glassTint }]} />
-        </>
-      ) : null}
+      {isGlass ? <GlassSurface interactive /> : null}
       <Ionicons name={icon} size={size} color={theme.colors.textSecondary} />
     </Pressable>
   );

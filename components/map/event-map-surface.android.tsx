@@ -36,6 +36,7 @@ export function EventMapSurface({
   markers,
   userLocation,
   initialCenter,
+  initialZoomLevel,
   focusCoordinate,
   searchMarker,
   interactive = true,
@@ -46,7 +47,7 @@ export function EventMapSurface({
   const mapLibreCameraRef = useRef<any>(null);
   const initialCameraSettingsRef = useRef({
     centerCoordinate: [initialCenter.longitude, initialCenter.latitude] as [number, number],
-    zoomLevel: MAP_DEFAULT_ZOOM,
+    zoomLevel: initialZoomLevel ?? MAP_DEFAULT_ZOOM,
   });
   const annotationRefs = useRef<Record<string, { refresh?: () => void } | null>>({});
   const cameraCommandResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);

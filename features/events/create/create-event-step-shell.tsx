@@ -1,5 +1,6 @@
 import { PropsWithChildren } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, useWindowDimensions } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppCard, AppIconButton, AppText } from '@/components/primitives';
 import { useAppTheme } from '@/core/theme';
@@ -16,10 +17,13 @@ type CreateEventStepShellProps = PropsWithChildren<{
 
 export function CreateEventStepShell({ step, eyebrow, title, subtitle, backLabel, onClose, children }: CreateEventStepShellProps) {
   const { theme } = useAppTheme();
+  const { height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const activeIndex = CREATE_EVENT_STEPS.indexOf(step);
+  const minScreenHeight = Math.max(620, height - insets.top - insets.bottom - 48);
 
   return (
-    <View style={styles.screen}>
+    <View style={[styles.screen, { minHeight: minScreenHeight }]}>
       <View style={styles.topBar}>
         <AppIconButton icon="chevron-back" variant="glass" accessibilityLabel={backLabel} onPress={onClose} />
       </View>

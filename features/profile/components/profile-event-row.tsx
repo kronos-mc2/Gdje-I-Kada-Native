@@ -15,7 +15,8 @@ type ProfileEventRowProps = {
 };
 
 export function ProfileEventRow({ event, onPress, right }: ProfileEventRowProps) {
-  const { locale } = useI18n();
+  const { locale, t } = useI18n();
+  const attendanceLabel = getAttendanceLabel(event.attendanceStatus, t);
 
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.row, { opacity: pressed ? 0.74 : 1 }]}>
@@ -30,6 +31,11 @@ export function ProfileEventRow({ event, onPress, right }: ProfileEventRowProps)
         <AppText variant="caption" color="textMuted" numberOfLines={1}>
           {formatEventDate(event.whenISO, locale)}
         </AppText>
+        {attendanceLabel ? (
+          <AppText variant="caption" color="textSecondary" numberOfLines={1} style={styles.status}>
+            {attendanceLabel}
+          </AppText>
+        ) : null}
       </View>
       {right ? <View>{right}</View> : null}
     </Pressable>
@@ -55,4 +61,23 @@ const styles = StyleSheet.create({
     marginTop: 2,
     marginBottom: 1,
   },
+  status: {
+    marginTop: 2,
+  },
 });
+
+function getAttendanceLabel(status: AppEvent['attendanceStatus'], t: ReturnType<typeof useI18n>['t']) {
+  if (status === 'waitlisted') {
+    return t('attendanceWaitlisted');
+  }
+  if (status === 'approved') {
+    return t('attendanceApproved');
+  }
+  if (status === 'rejected') {
+    return t('attendanceRemoved');
+  }
+  if (status === 'blocked') {
+    return t('attendanceBlocked');
+  }
+  return null;
+}

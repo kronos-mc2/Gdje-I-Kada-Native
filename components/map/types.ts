@@ -21,6 +21,7 @@ export type EventMapSurfaceProps = {
   markers: EventMapMarker[];
   userLocation: Coordinates;
   initialCenter: Coordinates;
+  initialZoomLevel?: number;
   focusCoordinate?: Coordinates | null;
   searchMarker?: Coordinates | null;
   interactive?: boolean;

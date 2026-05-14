@@ -52,6 +52,12 @@ export default function ProfileScreen() {
           onPress={() => router.push('/profile/activity')}
         />
         <ProfileMenuRow
+          icon="calendar-outline"
+          title={t('createdEventsTitle')}
+          subtitle={t('createdEventsSubtitle')}
+          onPress={() => router.push('/profile/created-events')}
+        />
+        <ProfileMenuRow
           icon="receipt-outline"
           title={t('transactionHistory')}
           subtitle={t('transactionHistorySubtitle')}

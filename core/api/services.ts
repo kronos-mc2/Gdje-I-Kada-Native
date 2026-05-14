@@ -8,8 +8,11 @@ import {
   Conversation,
   CreateChatRoomPayload,
   CreateEventPayload,
+  EventMediaPayload,
+  EventParticipant,
   CreatePollPayload,
   EventQueryParams,
+  EventRatingPayload,
   FeedPage,
   FeedQueryParams,
   Friend,
@@ -20,6 +23,7 @@ import {
   TicketCheckout,
   TicketCheckoutResult,
   Transaction,
+  UpdateEventPayload,
   UpdateProfilePayload,
   UserProfile,
 } from '@/core/types/domain';
@@ -44,6 +48,68 @@ export const fetchLikedEvents = async (): Promise<AppEvent[]> => {
   return response.data;
 };
 
+export const fetchUserUpcomingEvents = async (userId: string): Promise<AppEvent[]> => {
+  const response = await apiClient.get<AppEvent[]>(`/users/${userId}/events/upcoming`);
+  return response.data;
+};
+
+export const updateEvent = async ({ eventId, payload }: { eventId: string; payload: UpdateEventPayload }): Promise<AppEvent> => {
+  const response = await apiClient.patch<AppEvent>(`/events/${eventId}`, payload);
+  return response.data;
+};
+
+export const deleteEvent = async (eventId: string): Promise<void> => {
+  await apiClient.delete(`/events/${eventId}`);
+};
+
+export const fetchEventParticipants = async (eventId: string): Promise<EventParticipant[]> => {
+  const response = await apiClient.get<EventParticipant[]>(`/events/${eventId}/participants`);
+  return response.data;
+};
+
+export const addEventMedia = async ({ eventId, payload }: { eventId: string; payload: EventMediaPayload }): Promise<AppEvent> => {
+  const response = await apiClient.post<AppEvent>(`/events/${eventId}/media`, payload);
+  return response.data;
+};
+
+export const deleteEventMedia = async ({ eventId, mediaId }: { eventId: string; mediaId: string }): Promise<AppEvent> => {
+  const response = await apiClient.delete<AppEvent>(`/events/${eventId}/media/${mediaId}`);
+  return response.data;
+};
+
+export const approveEventParticipant = async ({
+  eventId,
+  userId,
+}: {
+  eventId: string;
+  userId: string;
+}): Promise<EventParticipant[]> => {
+  const response = await apiClient.post<EventParticipant[]>(`/events/${eventId}/participants/${userId}/approve`);
+  return response.data;
+};
+
+export const removeEventParticipant = async ({
+  eventId,
+  userId,
+}: {
+  eventId: string;
+  userId: string;
+}): Promise<EventParticipant[]> => {
+  const response = await apiClient.delete<EventParticipant[]>(`/events/${eventId}/participants/${userId}`);
+  return response.data;
+};
+
+export const blockEventParticipant = async ({
+  eventId,
+  userId,
+}: {
+  eventId: string;
+  userId: string;
+}): Promise<EventParticipant[]> => {
+  const response = await apiClient.post<EventParticipant[]>(`/events/${eventId}/participants/${userId}/block`);
+  return response.data;
+};
+
 export const updateProfile = async (payload: UpdateProfilePayload): Promise<UserProfile> => {
   const response = await apiClient.patch<UserProfile>('/users/me/profile', payload);
   return response.data;
@@ -61,6 +127,22 @@ export const fetchTransactions = async (): Promise<Transaction[]> => {
 
 export const rateOrganizer = async ({ eventId, rating, comment }: OrganizerRatingPayload): Promise<AppEvent> => {
   const response = await apiClient.post<AppEvent>(`/events/${eventId}/ratings`, { rating, comment });
+  return response.data;
+};
+
+export const rateEvent = async ({
+  eventId,
+  eventRating,
+  organizerRating,
+  eventComment,
+  organizerComment,
+}: EventRatingPayload): Promise<AppEvent> => {
+  const response = await apiClient.post<AppEvent>(`/events/${eventId}/ratings/full`, {
+    eventRating,
+    organizerRating,
+    eventComment,
+    organizerComment,
+  });
   return response.data;
 };
 

@@ -7,6 +7,7 @@ import { useI18n } from '@/core/i18n/use-i18n';
 import { useAppTheme } from '@/core/theme';
 import { ChatMessage, Locale } from '@/core/types/domain';
 import { formatEventDate } from '@/core/utils/date';
+import { ProfileAvatar } from '@/features/profile/components/profile-avatar';
 
 type MessageBubbleProps = {
   message: ChatMessage;
@@ -36,9 +37,12 @@ export function MessageBubble({ message, locale, onOpenEvent }: MessageBubblePro
   return (
     <View style={[styles.wrapper, { alignSelf }]}>
       {!message.mine && message.senderName ? (
-        <AppText variant="caption" color="textMuted" style={styles.sender}>
-          {message.senderName}
-        </AppText>
+        <View style={styles.senderRow}>
+          <ProfileAvatar name={message.senderName} avatarUrl={message.senderAvatarUrl} size={24} />
+          <AppText variant="caption" color="textMuted" style={styles.sender}>
+            {message.senderName}
+          </AppText>
+        </View>
       ) : null}
       <View style={[styles.bubble, { backgroundColor: bubbleColor, borderColor: theme.colors.border }]}>
         {message.type === 'text' ? (
@@ -115,8 +119,14 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   sender: {
+    flex: 1,
+  },
+  senderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     marginBottom: 4,
-    marginLeft: 8,
+    marginLeft: 4,
   },
   bubble: {
     borderWidth: 1,

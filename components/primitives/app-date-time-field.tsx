@@ -1,5 +1,6 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { ComponentType, useMemo, useState } from 'react';
-import { Platform, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import JsDateTimePicker from 'react-native-ui-datepicker';
 
 import { AppButton } from '@/components/primitives/app-button';
@@ -15,6 +16,8 @@ type AppDateTimeFieldProps = {
   locale: Locale;
   valueISO: string;
   onChangeISO: (nextISO: string) => void;
+  onClear?: () => void;
+  clearAccessibilityLabel?: string;
 };
 
 type DateTimePickerEvent = {
@@ -62,7 +65,7 @@ const toValidDate = (valueISO: string) => {
   return parsed;
 };
 
-export function AppDateTimeField({ label, locale, valueISO, onChangeISO }: AppDateTimeFieldProps) {
+export function AppDateTimeField({ label, locale, valueISO, onChangeISO, onClear, clearAccessibilityLabel }: AppDateTimeFieldProps) {
   const { t } = useI18n();
   const { theme } = useAppTheme();
   const [showPicker, setShowPicker] = useState(false);
@@ -71,6 +74,12 @@ export function AppDateTimeField({ label, locale, valueISO, onChangeISO }: AppDa
   const hasValue = !Number.isNaN(new Date(valueISO).getTime());
   const NativeDateTimePicker = DateTimePicker;
   const hasNativeDateTimePicker = Platform.OS === 'android' ? DateTimePickerAndroid !== null : DateTimePicker !== null;
+  const canClear = hasValue && typeof onClear === 'function';
+
+  const clearValue = () => {
+    setShowPicker(false);
+    onClear?.();
+  };
 
   const openAndroidTimePicker = (datePart: Date) => {
     DateTimePickerAndroid?.open({
@@ -121,18 +130,39 @@ export function AppDateTimeField({ label, locale, valueISO, onChangeISO }: AppDa
 
       {hasNativeDateTimePicker ? (
         <>
-          <AppButton
-            title={hasValue ? formatEventDate(valueISO, locale) : t('pickDateTime')}
-            variant="secondary"
-            onPress={() => {
-              if (Platform.OS === 'android') {
-                openAndroidDatePicker();
-                return;
-              }
+          <View style={styles.fieldButtonWrap}>
+            <AppButton
+              title={hasValue ? formatEventDate(valueISO, locale) : t('pickDateTime')}
+              variant="secondary"
+              onPress={() => {
+                if (Platform.OS === 'android') {
+                  openAndroidDatePicker();
+                  return;
+                }
 
-              setShowPicker((current) => !current);
-            }}
-          />
+                setShowPicker((current) => !current);
+              }}
+              style={canClear ? styles.clearableButton : undefined}
+            />
+            {canClear ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={clearAccessibilityLabel ?? t('clearDateTime')}
+                onPress={clearValue}
+                hitSlop={10}
+                style={({ pressed }) => [
+                  styles.clearButton,
+                  {
+                    backgroundColor: theme.colors.surfaceElevated,
+                    borderColor: theme.colors.border,
+                    opacity: pressed ? 0.72 : 1,
+                  },
+                ]}
+              >
+                <Ionicons name="close" size={16} color={theme.colors.textSecondary} />
+              </Pressable>
+            ) : null}
+          </View>
 
           {showPicker && Platform.OS === 'ios' && NativeDateTimePicker ? (
             <AppCard variant="glass" style={{ marginTop: theme.tokens.spacing.sm }}>
@@ -148,11 +178,32 @@ export function AppDateTimeField({ label, locale, valueISO, onChangeISO }: AppDa
         </>
       ) : (
         <>
-          <AppButton
-            title={hasValue ? formatEventDate(valueISO, locale) : t('pickDateTime')}
-            variant="secondary"
-            onPress={() => setShowPicker((current) => !current)}
-          />
+          <View style={styles.fieldButtonWrap}>
+            <AppButton
+              title={hasValue ? formatEventDate(valueISO, locale) : t('pickDateTime')}
+              variant="secondary"
+              onPress={() => setShowPicker((current) => !current)}
+              style={canClear ? styles.clearableButton : undefined}
+            />
+            {canClear ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={clearAccessibilityLabel ?? t('clearDateTime')}
+                onPress={clearValue}
+                hitSlop={10}
+                style={({ pressed }) => [
+                  styles.clearButton,
+                  {
+                    backgroundColor: theme.colors.surfaceElevated,
+                    borderColor: theme.colors.border,
+                    opacity: pressed ? 0.72 : 1,
+                  },
+                ]}
+              >
+                <Ionicons name="close" size={16} color={theme.colors.textSecondary} />
+              </Pressable>
+            ) : null}
+          </View>
           {showPicker ? (
             <AppCard variant="glass" style={{ marginTop: theme.tokens.spacing.sm }}>
               <JsDateTimePicker
@@ -184,3 +235,23 @@ export function AppDateTimeField({ label, locale, valueISO, onChangeISO }: AppDa
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  fieldButtonWrap: {
+    position: 'relative',
+  },
+  clearableButton: {
+    paddingRight: 52,
+  },
+  clearButton: {
+    alignItems: 'center',
+    borderRadius: 999,
+    borderWidth: 1,
+    height: 28,
+    justifyContent: 'center',
+    position: 'absolute',
+    right: 10,
+    top: 9,
+    width: 28,
+  },
+});

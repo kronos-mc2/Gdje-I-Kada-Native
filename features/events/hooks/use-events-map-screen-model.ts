@@ -55,7 +55,7 @@ export function useEventsMapScreenModel({ dateFilter, searchQuery }: UseEventsMa
 
 export function getDateRange(dateFilter: MapDateFilter): Pick<EventQueryParams, 'from' | 'to'> {
   if (dateFilter.mode === 'all') {
-    return {};
+    return { from: new Date().toISOString() };
   }
 
   if (dateFilter.mode === 'day') {

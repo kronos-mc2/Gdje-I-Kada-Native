@@ -6,7 +6,7 @@ export type EventFilter = 'nearby' | 'joined' | 'created';
 export type EventVisibility = 'public' | 'friends';
 export type EventAttendanceMode = 'open' | 'waitlist' | 'paid';
 export type EventStatus = 'draft' | 'published' | 'cancelled' | 'finished';
-export type EventAttendanceStatus = 'joined' | 'left' | 'waitlisted' | 'approved' | 'rejected';
+export type EventAttendanceStatus = 'joined' | 'left' | 'waitlisted' | 'approved' | 'rejected' | 'blocked';
 
 export type EventsView = 'list' | 'map';
 
@@ -21,6 +21,12 @@ export type EventMedia = {
   url: string;
   thumbnailUrl?: string;
   sortOrder: number;
+};
+
+export type EventMediaPayload = {
+  mediaType?: 'image' | 'video';
+  url: string;
+  thumbnailUrl?: string;
 };
 
 export type EventQueryParams = {
@@ -62,11 +68,14 @@ export type AppEvent = {
   priceCurrency?: string;
   capacity?: number;
   status?: EventStatus;
+  eventRatingAverage?: number;
+  eventRatingCount?: number;
   organizerRatingAverage?: number;
   organizerRatingCount?: number;
   likeCount: number;
   likedByMe?: boolean;
   participantCount: number;
+  waitlistCount?: number;
   joinedByMe?: boolean;
   attendanceStatus?: EventAttendanceStatus;
   canJoin?: boolean;
@@ -100,11 +109,13 @@ export type ChatPerson = {
   id: string;
   name: string;
   email: string;
+  avatarUrl?: string;
 };
 
 export type ChatMember = {
   id: string;
   name: string;
+  avatarUrl?: string;
   role: ChatMemberRole;
 };
 
@@ -141,6 +152,7 @@ export type ChatMessage = {
   body?: string;
   senderUserId?: string;
   senderName?: string;
+  senderAvatarUrl?: string;
   createdAt: string;
   timeLabel?: string;
   mine: boolean;
@@ -152,6 +164,8 @@ export type ChatRoom = {
   id: string;
   type: ChatRoomType;
   title: string;
+  avatarUrl?: string;
+  directUserId?: string;
   subtitle?: string;
   lastMessage?: string;
   lastMessageAt?: string;
@@ -162,6 +176,16 @@ export type ChatRoom = {
   adminOnly: boolean;
   eventId?: string;
   members?: ChatMember[];
+};
+
+export type EventParticipant = {
+  userId: string;
+  name: string;
+  avatarUrl?: string;
+  status: EventAttendanceStatus;
+  joinedAt?: string;
+  approvedAt?: string;
+  blocked: boolean;
 };
 
 export type ChatRoomDetail = {
@@ -232,12 +256,31 @@ export type ProfileActivity = {
   likedEvents: AppEvent[];
   ratingCandidates: AppEvent[];
   transactions: Transaction[];
+  notifications: AppNotification[];
 };
 
 export type OrganizerRatingPayload = {
   eventId: string;
   rating: number;
   comment?: string;
+};
+
+export type EventRatingPayload = {
+  eventId: string;
+  eventRating: number;
+  organizerRating: number;
+  eventComment?: string;
+  organizerComment?: string;
+};
+
+export type AppNotification = {
+  id: string;
+  type: string;
+  title: string;
+  body: string;
+  eventId?: string;
+  createdAt?: string;
+  readAt?: string;
 };
 
 export type TicketCheckout = {
@@ -257,6 +300,29 @@ export type TicketCheckoutResult = {
   checkout: TicketCheckout;
   event: AppEvent;
   transaction?: Transaction;
+};
+
+export type UpdateEventPayload = Partial<
+  Pick<
+    CreateEventPayload,
+    | 'title'
+    | 'where'
+    | 'address'
+    | 'about'
+    | 'whenISO'
+    | 'startAt'
+    | 'endAt'
+    | 'coordinates'
+    | 'entranceCoordinates'
+    | 'entryInstructions'
+    | 'visibility'
+    | 'attendanceMode'
+    | 'priceAmount'
+    | 'priceCurrency'
+    | 'capacity'
+  >
+> & {
+  status?: EventStatus;
 };
 
 export type CreateEventPayload = {

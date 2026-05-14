@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { AppText } from '@/components/primitives';
 import { useAppTheme } from '@/core/theme';
 import { ChatRoom } from '@/core/types/domain';
+import { ProfileAvatar } from '@/features/profile/components/profile-avatar';
 
 type ChatRoomRowProps = {
   room: ChatRoom;
@@ -12,12 +13,6 @@ type ChatRoomRowProps = {
 
 export function ChatRoomRow({ room, onPress }: ChatRoomRowProps) {
   const { theme } = useAppTheme();
-  const initials = room.title
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join('');
 
   return (
     <Pressable
@@ -33,7 +28,7 @@ export function ChatRoomRow({ room, onPress }: ChatRoomRowProps) {
         {room.type === 'event' ? (
           <Ionicons name="calendar-outline" size={20} color={theme.colors.textPrimary} />
         ) : (
-          <AppText variant="label">{initials || 'GI'}</AppText>
+          <ProfileAvatar name={room.title} avatarUrl={room.avatarUrl} size={44} />
         )}
       </View>
 

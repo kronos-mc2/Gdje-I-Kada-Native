@@ -8,6 +8,8 @@ export const queryKeys = {
   feed: (limit: number) => ['feed', { limit }] as const,
   likedEventsRoot: ['liked-events'] as const,
   likedEvents: ['liked-events'] as const,
+  userUpcomingEvents: (userId: string) => ['user-upcoming-events', userId] as const,
+  eventParticipants: (eventId: string) => ['event-participants', eventId] as const,
   profileActivity: ['profile-activity'] as const,
   transactions: ['transactions'] as const,
   friends: ['friends'] as const,
@@ -19,5 +21,16 @@ export const queryKeys = {
   chatMessagesRoot: ['chat-messages'] as const,
   chatMessages: (roomId: string) => ['chat-messages', roomId] as const,
   chatPeople: (query?: string) => ['chat-people', { query: query ?? '' }] as const,
-  locationSearch: (query: string, locale: string) => ['location-search', locale, query] as const,
+  locationSearch: (query: string, locale: string, proximity?: { latitude: number; longitude: number } | null) =>
+    [
+      'location-search',
+      locale,
+      query,
+      proximity
+        ? {
+            latitude: Number(proximity.latitude.toFixed(3)),
+            longitude: Number(proximity.longitude.toFixed(3)),
+          }
+        : null,
+    ] as const,
 };

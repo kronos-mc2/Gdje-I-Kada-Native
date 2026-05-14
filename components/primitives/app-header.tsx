@@ -1,8 +1,8 @@
-import { BlurView } from 'expo-blur';
 import { ReactNode } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/primitives/app-text';
+import { GlassSurface } from '@/components/primitives/glass-surface';
 import { useAppTheme } from '@/core/theme';
 
 type AppHeaderProps = {
@@ -31,16 +31,7 @@ export function AppHeader({ title, subtitle, right, left, floating = true }: App
         },
       ]}
     >
-      {useGlass ? (
-        <>
-          <BlurView
-            style={StyleSheet.absoluteFillObject}
-            tint={theme.isDark ? 'systemUltraThinMaterialDark' : 'systemUltraThinMaterialLight'}
-            intensity={62}
-          />
-          <View style={[StyleSheet.absoluteFillObject, { backgroundColor: theme.colors.glassTint }]} />
-        </>
-      ) : null}
+      {useGlass ? <GlassSurface /> : null}
 
       <View style={styles.contentRow}>
         <View style={styles.sideSlot}>{left}</View>
