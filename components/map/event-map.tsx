@@ -12,10 +12,13 @@ type EventMapProps = {
   selectedEventId: string | null;
   searchMarker?: Coordinates | null;
   focusCoordinate?: Coordinates | null;
+  focusZoomLevel?: number;
+  showsUserLocation?: boolean;
   initialZoomLevel?: number;
   interactive?: boolean;
   onSelectEvent: (eventId: string) => void;
   onCameraStateChange?: (camera: MapCameraState) => void;
+  onUserLocationUpdate?: (coordinates: Coordinates) => void;
 };
 
 export function EventMap({
@@ -25,10 +28,13 @@ export function EventMap({
   selectedEventId,
   searchMarker,
   focusCoordinate,
+  focusZoomLevel,
+  showsUserLocation = true,
   initialZoomLevel,
   interactive = true,
   onSelectEvent,
   onCameraStateChange,
+  onUserLocationUpdate,
 }: EventMapProps) {
   const initialCenterRef = useRef<Coordinates>(userLocation);
   const initialCenter = initialCenterRef.current;
@@ -53,10 +59,13 @@ export function EventMap({
       initialCenter={initialCenter}
       initialZoomLevel={initialZoomLevel}
       focusCoordinate={focusCoordinate}
+      focusZoomLevel={focusZoomLevel}
       searchMarker={searchMarker}
+      showsUserLocation={showsUserLocation}
       interactive={interactive}
       onMarkerPress={onSelectEvent}
       onCameraStateChange={onCameraStateChange}
+      onUserLocationUpdate={onUserLocationUpdate}
     />
   );
 }

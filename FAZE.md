@@ -196,6 +196,8 @@ Dopuna:
 
 2026-04-29 - Maknuto je automatsko Android clusteriranje event pinova. `components/map/event-map-surface.android.tsx` sada rendera pojedinacne `PointAnnotation` markere iz validnih event coordinates, a `supercluster`, `@types/supercluster` i transitive `kdbush` su uklonjeni iz dependency zapisa. Test/build nije pokretan po dogovoru.
 
+2026-05-16 - Rijesena je mobile regresija user lokacije na mapi. `locationSource` se vise ne persistira bez stvarne lokacije, location bootstrap odmah trazi native permission i prvo koristi last-known device fix pa ga rafinira svjezim fixom, iOS/Android vise ne crtaju korisnika kao custom marker nego koriste native MapKit/MapLibre user location layer. Dodan je accuracy krug oko korisnika kad SDK vrati preciznost, pocetni auto-center koristi blazi zoom od rucnog recenter gumba, a recenter gumb je zakljucan dok permission/location/focus akcija ne zavrsi. Datoteke: `core/store/app-store.ts`, `core/types/domain.ts`, `core/maps/location-accuracy.ts`, `core/maps/map-config.ts`, `features/events/hooks/use-map-location-bootstrap.ts`, `features/events/components/events-map-experience.tsx`, `components/map/event-map.tsx`, `components/map/types.ts`, `components/map/event-map-surface.ios.tsx`, `components/map/event-map-surface.android.tsx`, `app/entrance-map-picker.tsx`, `README.md`, `FAZE.md`. Test/build nije pokretan po dogovoru.
+
 ## Faza 4 - Join state i shared event details
 
 Status: Rijeseno

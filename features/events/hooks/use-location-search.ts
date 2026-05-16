@@ -9,7 +9,7 @@ const MIN_QUERY_LENGTH = 2;
 const SEARCH_DEBOUNCE_MS = 320;
 const SEARCH_RESULT_LIMIT = 6;
 
-export function useLocationSearch(query: string, locale: Locale, proximity?: Coordinates | null) {
+export function useLocationSearch(query: string, locale: Locale, proximity?: Coordinates | undefined) {
   const debouncedQuery = useDebouncedValue(query.trim(), SEARCH_DEBOUNCE_MS);
   const isSearchEnabled = debouncedQuery.length >= MIN_QUERY_LENGTH;
 

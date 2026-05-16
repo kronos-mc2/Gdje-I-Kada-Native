@@ -35,6 +35,8 @@ type AppStore = {
   setLocationSource: (source: LocationSource) => void;
 };
 
+type PersistedAppStore = Pick<AppStore, 'locale' | 'themePreference' | 'locationConsent'>;
+
 export const useAppStore = create<AppStore>()(
   persist(
     (set) => ({
@@ -70,12 +72,29 @@ export const useAppStore = create<AppStore>()(
     }),
     {
       name: 'gdje-i-kada-app-store',
+      version: 2,
       storage: createJSONStorage(() => getAsyncStorage()),
+      migrate: (persistedState): PersistedAppStore => {
+        if (!persistedState || typeof persistedState !== 'object') {
+          return {
+            locale: 'hr',
+            themePreference: 'dark',
+            locationConsent: 'unknown',
+          };
+        }
+
+        const state = persistedState as Partial<AppStore>;
+
+        return {
+          locale: state.locale ?? 'hr',
+          themePreference: state.themePreference ?? 'dark',
+          locationConsent: state.locationConsent ?? 'unknown',
+        };
+      },
       partialize: (state) => ({
         locale: state.locale,
         themePreference: state.themePreference,
         locationConsent: state.locationConsent,
-        locationSource: state.locationSource,
       }),
     },
   ),

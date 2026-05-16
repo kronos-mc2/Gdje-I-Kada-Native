@@ -4,6 +4,7 @@ import { NativeModules, StyleSheet, View } from 'react-native';
 import { AppText } from '@/components/primitives';
 import { MapMarkerBadge } from '@/components/map/map-marker-badge';
 import { EventMapSurfaceProps } from '@/components/map/types';
+import { createAccuracyCircleFeature, getLocationAccuracyRadiusMeters } from '@/core/maps/location-accuracy';
 import { MAP_DEFAULT_ZOOM, MAP_FOCUS_ZOOM, MAPLIBRE_STYLE_URL_DARK, MAPLIBRE_STYLE_URL_LIGHT } from '@/core/maps/map-config';
 import { useAppTheme } from '@/core/theme';
 
@@ -23,8 +24,13 @@ type CameraCommand = {
   zoomLevel: number;
   animationDuration: number;
 };
-const isValidCoordinate = (latitude: number, longitude: number) =>
-  Number.isFinite(latitude) && Number.isFinite(longitude) && Math.abs(latitude) <= 90 && Math.abs(longitude) <= 180;
+const isValidCoordinate = (latitude: unknown, longitude: unknown) =>
+  typeof latitude === 'number' &&
+  typeof longitude === 'number' &&
+  Number.isFinite(latitude) &&
+  Number.isFinite(longitude) &&
+  Math.abs(latitude) <= 90 &&
+  Math.abs(longitude) <= 180;
 
 const hasMapLibreNativeModule = Boolean(NativeModules?.MLRNModule);
 const mapLibreModule: MapLibreModule | null = hasMapLibreNativeModule
@@ -38,10 +44,13 @@ export function EventMapSurface({
   initialCenter,
   initialZoomLevel,
   focusCoordinate,
+  focusZoomLevel,
   searchMarker,
+  showsUserLocation = true,
   interactive = true,
   onMarkerPress,
   onCameraStateChange,
+  onUserLocationUpdate,
 }: EventMapSurfaceProps) {
   const { theme } = useAppTheme();
   const mapLibreCameraRef = useRef<any>(null);
@@ -77,14 +86,22 @@ export function EventMapSurface({
     () => validMarkers.map((marker, index) => ({ marker, markerKey: `${marker.id}:${index}` })),
     [validMarkers],
   );
+  const userLocationAccuracyRadius = showsUserLocation ? getLocationAccuracyRadiusMeters(userLocation) : null;
+  const userLocationAccuracyShape = useMemo(() => {
+    if (!userLocationAccuracyRadius || !isValidCoordinate(userLocation.latitude, userLocation.longitude)) {
+      return null;
+    }
+
+    return createAccuracyCircleFeature(userLocation, userLocationAccuracyRadius);
+  }, [userLocation.latitude, userLocation.longitude, userLocationAccuracyRadius]);
 
   useEffect(() => {
     if (!focusCoordinate || !mapLibreModule) {
       return;
     }
 
-    queueCameraCommand([focusCoordinate.longitude, focusCoordinate.latitude], MAP_FOCUS_ZOOM, 560);
-  }, [focusCoordinate, queueCameraCommand]);
+    queueCameraCommand([focusCoordinate.longitude, focusCoordinate.latitude], focusZoomLevel ?? MAP_FOCUS_ZOOM, 560);
+  }, [focusCoordinate, focusZoomLevel, queueCameraCommand]);
 
   useEffect(() => {
     if (!cameraCommand) {
@@ -154,7 +171,7 @@ export function EventMapSurface({
     );
   }
 
-  const { Camera, MapView, PointAnnotation } = mapLibreModule;
+  const { Camera, CircleLayer, FillLayer, LineLayer, MapView, PointAnnotation, ShapeSource, UserLocation } = mapLibreModule;
 
   return (
     <View style={styles.container}>
@@ -206,6 +223,78 @@ export function EventMapSurface({
           />
         ) : null}
 
+        {userLocationAccuracyShape ? (
+          <ShapeSource id="user-location-accuracy-source" shape={userLocationAccuracyShape}>
+            <FillLayer
+              id="user-location-accuracy-fill"
+              style={{
+                fillColor: theme.colors.mapAccent,
+                fillOpacity: 0.18,
+              }}
+            />
+            <LineLayer
+              id="user-location-accuracy-line"
+              style={{
+                lineColor: theme.colors.mapAccent,
+                lineOpacity: 0.42,
+                lineWidth: 1,
+              }}
+            />
+          </ShapeSource>
+        ) : null}
+
+        {showsUserLocation ? (
+          <UserLocation
+            visible
+            animated
+            renderMode="normal"
+            minDisplacement={4}
+            onUpdate={(location) => {
+              const latitude = location.coords?.latitude;
+              const longitude = location.coords?.longitude;
+
+              if (!isValidCoordinate(latitude, longitude)) {
+                return;
+              }
+
+              onUserLocationUpdate?.({
+                latitude,
+                longitude,
+                accuracyMeters: location.coords.accuracy,
+              });
+            }}
+          >
+            <CircleLayer
+              id="user-location-puck-soft"
+              sourceID="mlrn-user-location"
+              style={{
+                circleRadius: 16,
+                circleColor: theme.colors.mapAccent,
+                circleOpacity: 0.24,
+                circlePitchAlignment: 'map',
+              }}
+            />
+            <CircleLayer
+              id="user-location-puck-outer"
+              sourceID="mlrn-user-location"
+              style={{
+                circleRadius: 9,
+                circleColor: theme.colors.background,
+                circlePitchAlignment: 'map',
+              }}
+            />
+            <CircleLayer
+              id="user-location-puck-inner"
+              sourceID="mlrn-user-location"
+              style={{
+                circleRadius: 6,
+                circleColor: theme.colors.mapAccent,
+                circlePitchAlignment: 'map',
+              }}
+            />
+          </UserLocation>
+        ) : null}
+
         {indexedMarkers.map(({ marker, markerKey }) => {
           return (
             <PointAnnotation
@@ -237,20 +326,6 @@ export function EventMapSurface({
             <MapMarkerBadge selected kind="search" />
           </PointAnnotation>
         ) : null}
-
-        <PointAnnotation id="user-location-marker" coordinate={[userLocation.longitude, userLocation.latitude]} anchor={{ x: 0.5, y: 0.5 }}>
-          <View
-            style={[
-              styles.userLocationOuter,
-              {
-                borderColor: theme.colors.mapAccent,
-                backgroundColor: theme.colors.mapAccentSoft,
-              },
-            ]}
-          >
-            <View style={[styles.userLocationInner, { backgroundColor: theme.colors.mapAccent }]} />
-          </View>
-        </PointAnnotation>
       </MapView>
     </View>
   );
@@ -264,18 +339,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 24,
-  },
-  userLocationOuter: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  userLocationInner: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
   },
 });

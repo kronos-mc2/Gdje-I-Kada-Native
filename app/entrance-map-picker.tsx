@@ -77,6 +77,7 @@ export default function EntranceMapPickerScreen() {
             locale={locale}
             userLocation={initialCenter}
             selectedEventId={null}
+            showsUserLocation={false}
             initialZoomLevel={18.2}
             onSelectEvent={() => undefined}
             onCameraStateChange={(camera) => {

@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
-import MapView, { Marker, Region } from 'react-native-maps';
+import MapView, { Circle, Marker, Region } from 'react-native-maps';
 
+import { getLocationAccuracyRadiusMeters } from '@/core/maps/location-accuracy';
 import { MAP_FOCUS_ZOOM, MAP_IOS_DELTA } from '@/core/maps/map-config';
 import { MapMarkerBadge } from '@/components/map/map-marker-badge';
 import { EventMapSurfaceProps } from '@/components/map/types';
@@ -17,7 +18,9 @@ export function EventMapSurface({
   initialCenter,
   initialZoomLevel,
   focusCoordinate,
+  focusZoomLevel,
   searchMarker,
+  showsUserLocation = true,
   interactive = true,
   onMarkerPress,
   onCameraStateChange,
@@ -28,13 +31,14 @@ export function EventMapSurface({
     () => markers.filter((marker) => isValidCoordinate(marker.coordinate.latitude, marker.coordinate.longitude)),
     [markers],
   );
+  const userLocationAccuracyRadius = showsUserLocation ? getLocationAccuracyRadiusMeters(userLocation) : null;
 
   useEffect(() => {
     if (!focusCoordinate || !mapRef.current) {
       return;
     }
 
-    const delta = zoomToDelta(MAP_FOCUS_ZOOM);
+    const delta = zoomToDelta(focusZoomLevel ?? MAP_FOCUS_ZOOM);
     const region: Region = {
       latitude: focusCoordinate.latitude,
       longitude: focusCoordinate.longitude,
@@ -43,7 +47,7 @@ export function EventMapSurface({
     };
 
     mapRef.current.animateToRegion(region, 560);
-  }, [focusCoordinate]);
+  }, [focusCoordinate, focusZoomLevel]);
 
   return (
     <View style={styles.container}>
@@ -53,6 +57,10 @@ export function EventMapSurface({
         // iOS intentionally uses MapKit renderer (no Google provider).
         mapType="standard"
         userInterfaceStyle={theme.isDark ? 'dark' : 'light'}
+        showsUserLocation={showsUserLocation}
+        tintColor={theme.colors.mapAccent}
+        userLocationAnnotationTitle=""
+        userLocationCalloutEnabled={false}
         scrollEnabled={interactive}
         zoomEnabled={interactive}
         rotateEnabled={interactive}
@@ -71,6 +79,16 @@ export function EventMapSurface({
           });
         }}
       >
+        {userLocationAccuracyRadius && isValidCoordinate(userLocation.latitude, userLocation.longitude) ? (
+          <Circle
+            center={userLocation}
+            radius={userLocationAccuracyRadius}
+            fillColor={theme.colors.mapAccentSoft}
+            strokeColor={theme.colors.mapAccent}
+            strokeWidth={1}
+          />
+        ) : undefined}
+
         {validMarkers.map((marker, index) => (
           <Marker
             key={`event-marker-${marker.id}:${index}`}
@@ -87,22 +105,6 @@ export function EventMapSurface({
             <MapMarkerBadge selected kind="search" />
           </Marker>
         ) : undefined}
-
-        {isValidCoordinate(userLocation.latitude, userLocation.longitude) ? (
-          <Marker key="user-location-marker" coordinate={userLocation} anchor={{ x: 0.5, y: 0.5 }}>
-            <View
-              style={[
-                styles.userLocationOuter,
-                {
-                  borderColor: theme.colors.mapAccent,
-                  backgroundColor: theme.colors.mapAccentSoft,
-                },
-              ]}
-            >
-              <View style={[styles.userLocationInner, { backgroundColor: theme.colors.mapAccent }]} />
-            </View>
-          </Marker>
-        ) : undefined}
       </MapView>
     </View>
   );
@@ -111,18 +113,5 @@ export function EventMapSurface({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  userLocationOuter: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  userLocationInner: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
   },
 });

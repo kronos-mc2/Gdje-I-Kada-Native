@@ -23,8 +23,11 @@ export type EventMapSurfaceProps = {
   initialCenter: Coordinates;
   initialZoomLevel?: number;
   focusCoordinate?: Coordinates | null;
+  focusZoomLevel?: number;
   searchMarker?: Coordinates | null;
+  showsUserLocation?: boolean;
   interactive?: boolean;
   onMarkerPress: (id: string) => void;
   onCameraStateChange?: (camera: MapCameraState) => void;
+  onUserLocationUpdate?: (coordinates: Coordinates) => void;
 };

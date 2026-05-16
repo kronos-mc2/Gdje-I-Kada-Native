@@ -13,6 +13,7 @@ export type EventsView = 'list' | 'map';
 export type Coordinates = {
   latitude: number;
   longitude: number;
+  accuracyMeters?: number;
 };
 
 export type EventMedia = {

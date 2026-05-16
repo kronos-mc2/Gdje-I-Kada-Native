@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react';
-import { Alert, Platform } from 'react-native';
+import { Platform } from 'react-native';
 
-import { useI18n } from '@/core/i18n/use-i18n';
 import { useAppStore } from '@/core/store/app-store';
 import { Coordinates } from '@/core/types/domain';
 
@@ -33,7 +32,68 @@ type IpLocationResult = {
   source: 'capital' | 'ip';
 } | null;
 
+type NativePermission = {
+  status: string;
+  canAskAgain?: boolean;
+};
+
+type NativeLocationPosition = {
+  coords: {
+    latitude: number;
+    longitude: number;
+    accuracy?: number | null;
+  };
+};
+
+type ExpoLocationModule = {
+  getForegroundPermissionsAsync: () => Promise<NativePermission>;
+  requestForegroundPermissionsAsync: () => Promise<NativePermission>;
+  getLastKnownPositionAsync: (options?: { maxAge?: number; requiredAccuracy?: number }) => Promise<NativeLocationPosition | null>;
+  getCurrentPositionAsync: (options?: { accuracy?: number }) => Promise<NativeLocationPosition>;
+  Accuracy: { Balanced: number; High: number };
+};
+
+type DeviceLocationResolution = {
+  hasPermission: boolean;
+  hasLocation: boolean;
+};
+
+const LAST_KNOWN_MAX_AGE_MS = 5 * 60 * 1000;
+const LAST_KNOWN_REQUIRED_ACCURACY_METERS = 1500;
+const CURRENT_LOCATION_TIMEOUT_MS = 6500;
+
 const toNumber = (value: unknown) => (typeof value === 'number' ? value : Number(value));
+
+const toDeviceCoordinates = (position: NativeLocationPosition): Coordinates | null => {
+  const latitude = toNumber(position.coords.latitude);
+  const longitude = toNumber(position.coords.longitude);
+  const accuracyMeters = toNumber(position.coords.accuracy);
+
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    return null;
+  }
+
+  return {
+    latitude,
+    longitude,
+    accuracyMeters: Number.isFinite(accuracyMeters) ? accuracyMeters : undefined,
+  };
+};
+
+const withTimeout = async <T,>(promise: Promise<T>, timeoutMs: number): Promise<T | null> =>
+  new Promise((resolve) => {
+    const timeout = setTimeout(() => resolve(null), timeoutMs);
+
+    promise
+      .then((value) => {
+        clearTimeout(timeout);
+        resolve(value);
+      })
+      .catch(() => {
+        clearTimeout(timeout);
+        resolve(null);
+      });
+  });
 
 async function resolveLocationFromIp(): Promise<IpLocationResult> {
   try {
@@ -73,32 +133,74 @@ async function resolveLocationFromIp(): Promise<IpLocationResult> {
   return null;
 }
 
-async function resolvePreciseDeviceLocation(): Promise<Coordinates | null> {
+async function resolvePreciseDeviceLocation(onLocation: (coordinates: Coordinates) => void): Promise<DeviceLocationResolution> {
   try {
-    const Location = (await import('expo-location')) as {
-      requestForegroundPermissionsAsync: () => Promise<{ status: string }>;
-      getCurrentPositionAsync: (options?: { accuracy?: number }) => Promise<{ coords: { latitude: number; longitude: number } }>;
-      Accuracy: { High: number; Balanced: number };
-    };
+    const Location = (await import('expo-location')) as ExpoLocationModule;
 
-    const permission = await Location.requestForegroundPermissionsAsync();
+    const existingPermission = await Location.getForegroundPermissionsAsync();
+    const permission =
+      existingPermission.status === 'granted' || existingPermission.canAskAgain === false
+        ? existingPermission
+        : await Location.requestForegroundPermissionsAsync();
+
     if (permission.status !== 'granted') {
-      return null;
+      return {
+        hasPermission: false,
+        hasLocation: false,
+      };
     }
 
-    const position = await Location.getCurrentPositionAsync({
-      accuracy: Location.Accuracy.High,
-    });
+    const lastKnownPosition = await Location.getLastKnownPositionAsync({
+      maxAge: LAST_KNOWN_MAX_AGE_MS,
+      requiredAccuracy: LAST_KNOWN_REQUIRED_ACCURACY_METERS,
+    }).catch(() => null);
+
+    const lastKnownCoordinates = lastKnownPosition ? toDeviceCoordinates(lastKnownPosition) : null;
+    if (lastKnownCoordinates) {
+      onLocation(lastKnownCoordinates);
+      void Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High })
+        .then((position) => {
+          const coordinates = toDeviceCoordinates(position);
+          if (coordinates) {
+            onLocation(coordinates);
+          }
+        })
+        .catch(() => undefined);
+
+      return {
+        hasPermission: true,
+        hasLocation: true,
+      };
+    }
+
+    const currentPosition = await withTimeout(
+      Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      }),
+      CURRENT_LOCATION_TIMEOUT_MS,
+    );
+    const currentCoordinates = currentPosition ? toDeviceCoordinates(currentPosition) : null;
+
+    if (currentCoordinates) {
+      onLocation(currentCoordinates);
+      return {
+        hasPermission: true,
+        hasLocation: true,
+      };
+    }
 
     return {
-      latitude: position.coords.latitude,
-      longitude: position.coords.longitude,
+      hasPermission: true,
+      hasLocation: false,
     };
   } catch {
     // Fallback for Android when ExpoLocation native module is missing:
     // use MapLibre's built-in location manager + Android permission request.
     if (Platform.OS !== 'android') {
-      return null;
+      return {
+        hasPermission: false,
+        hasLocation: false,
+      };
     }
 
     try {
@@ -115,95 +217,100 @@ async function resolvePreciseDeviceLocation(): Promise<Coordinates | null> {
 
       const granted = await maplibre.requestAndroidLocationPermissions();
       if (!granted) {
-        return null;
-      }
-
-      const lastKnown = await maplibre.LocationManager.getLastKnownLocation();
-      if (lastKnown?.coords) {
         return {
-          latitude: lastKnown.coords.latitude,
-          longitude: lastKnown.coords.longitude,
+          hasPermission: false,
+          hasLocation: false,
         };
       }
 
-      return await new Promise<Coordinates | null>((resolve) => {
-        const timeout = setTimeout(() => {
-          maplibre.LocationManager.removeListener(onUpdate);
-          maplibre.LocationManager.stop();
-          resolve(null);
-        }, 7000);
+      const lastKnown = await maplibre.LocationManager.getLastKnownLocation().catch(() => null);
+      if (lastKnown?.coords) {
+        const coordinates = toDeviceCoordinates(lastKnown);
+        if (coordinates) {
+          onLocation(coordinates);
+          return {
+            hasPermission: true,
+            hasLocation: true,
+          };
+        }
+      }
 
-        const onUpdate = (location: { coords: { latitude: number; longitude: number } }) => {
-          clearTimeout(timeout);
-          maplibre.LocationManager.removeListener(onUpdate);
-          maplibre.LocationManager.stop();
-          resolve({
-            latitude: location.coords.latitude,
-            longitude: location.coords.longitude,
-          });
+      const nextLocation = await withTimeout(
+        new Promise<NativeLocationPosition | null>((resolve) => {
+          const timeout = setTimeout(() => {
+            maplibre.LocationManager.removeListener(onUpdate);
+            maplibre.LocationManager.stop();
+            resolve(null);
+          }, CURRENT_LOCATION_TIMEOUT_MS);
+
+          const onUpdate = (location: NativeLocationPosition) => {
+            clearTimeout(timeout);
+            maplibre.LocationManager.removeListener(onUpdate);
+            maplibre.LocationManager.stop();
+            resolve(location);
+          };
+
+          maplibre.LocationManager.addListener(onUpdate);
+          maplibre.LocationManager.start(0);
+        }),
+        CURRENT_LOCATION_TIMEOUT_MS + 500,
+      );
+      const coordinates = nextLocation ? toDeviceCoordinates(nextLocation) : null;
+
+      if (coordinates) {
+        onLocation(coordinates);
+        return {
+          hasPermission: true,
+          hasLocation: true,
         };
+      }
 
-        maplibre.LocationManager.addListener(onUpdate);
-        maplibre.LocationManager.start(0);
-      });
+      return {
+        hasPermission: true,
+        hasLocation: false,
+      };
     } catch {
-      return null;
+      return {
+        hasPermission: false,
+        hasLocation: false,
+      };
     }
   }
 }
 
 export function useMapLocationBootstrap() {
-  const { t } = useI18n();
   const consent = useAppStore((state) => state.locationConsent);
   const locationSource = useAppStore((state) => state.locationSource);
   const setLocationConsent = useAppStore((state) => state.setLocationConsent);
   const setLocationSource = useAppStore((state) => state.setLocationSource);
   const setUserLocation = useAppStore((state) => state.setUserLocation);
 
-  const hasPromptedRef = useRef(false);
   const isResolvingRef = useRef(false);
   const hasAttemptedAutoPreciseRef = useRef(false);
+  const preciseRequestRef = useRef<Promise<boolean> | null>(null);
 
   const requestPreciseLocationNow = useCallback(async () => {
-    const preciseCoordinates = await resolvePreciseDeviceLocation();
-
-    if (preciseCoordinates) {
-      setUserLocation(preciseCoordinates);
-      setLocationSource('device');
-      setLocationConsent('accepted');
-      return true;
+    if (preciseRequestRef.current) {
+      return preciseRequestRef.current;
     }
 
-    return false;
+    preciseRequestRef.current = resolvePreciseDeviceLocation((coordinates) => {
+      setUserLocation(coordinates);
+      setLocationSource('device');
+    })
+      .then((resolution) => {
+        setLocationConsent(resolution.hasPermission ? 'accepted' : 'rejected');
+        return resolution.hasLocation;
+      })
+      .finally(() => {
+        preciseRequestRef.current = null;
+      });
+
+    return preciseRequestRef.current;
   }, [setLocationConsent, setLocationSource, setUserLocation]);
 
   useEffect(() => {
-    if (consent !== 'unknown' || hasPromptedRef.current) {
-      return;
-    }
-
-    hasPromptedRef.current = true;
-
-    Alert.alert(
-      t('locationConsentTitle'),
-      t('locationConsentBody'),
-      [
-        {
-          text: t('notNow'),
-          style: 'cancel',
-          onPress: () => setLocationConsent('rejected'),
-        },
-        {
-          text: t('allow'),
-          onPress: () => setLocationConsent('accepted'),
-        },
-      ],
-      { cancelable: false },
-    );
-  }, [consent, setLocationConsent, t]);
-
-  useEffect(() => {
-    if (consent === 'unknown' || locationSource !== 'default' || isResolvingRef.current) {
+    if (locationSource !== 'default' || isResolvingRef.current) {
       return;
     }
 
@@ -211,7 +318,7 @@ export function useMapLocationBootstrap() {
     isResolvingRef.current = true;
 
     const resolve = async () => {
-      if (consent === 'accepted') {
+      if (consent !== 'rejected') {
         const hasPreciseLocation = await requestPreciseLocationNow();
 
         if (hasPreciseLocation && !cancelled) {

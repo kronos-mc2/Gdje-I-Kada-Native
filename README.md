@@ -57,7 +57,7 @@ Postojece frontend tehnologije i patterni:
   - iOS: `components/map/event-map-surface.ios.tsx` koristi `react-native-maps` / MapKit.
   - Android: `components/map/event-map-surface.android.tsx` koristi `@maplibre/maplibre-react-native` i prikazuje pojedinacne event pinove bez clusteriranja.
   - Shared API: `components/map/event-map.tsx`, `components/map/types.ts`, `MapMarkerBadge`, `EventDetailSheet`.
-- Lokacija: `features/events/hooks/use-map-location-bootstrap.ts` trazi consent, koristi `expo-location`, Android MapLibre fallback i IP/capital fallback.
+- Lokacija: `features/events/hooks/use-map-location-bootstrap.ts` odmah trazi native foreground permission kad se mapa otvori, koristi `expo-location`, Android MapLibre fallback i IP/capital fallback; `locationSource` se ne persistira jer se stvarna `userLocation` namjerno ponovno dohvaća na cold startu.
 - Search po eventima na mapi: `features/events/hooks/use-event-map-search.ts`, `MapSearchBar`, `MapSearchResults`.
 - Frontend unit testovi: Jest kroz `jest-expo`, trenutno pokrivaju `selectEvents`, date formatting i location search servise/providere.
 
@@ -279,9 +279,10 @@ Trenutno ponasanje:
 - App dohvat eventova radi preko `useEventsQuery(params)` i `/api/events?from=&to=&lat=&lng=&radiusKm=&query=`.
 - `use-events-map-screen-model.ts` salje user lokaciju, radius 50 km, debounced search query i date filter koji moze biti jedan dan, range ili svi datumi.
 - Eventi se na backendu filtriraju po datumu, radiusu i search queryju, a ako su `lat/lng` poslani sortiraju se po blizini pa po `start_at`.
-- Mapa se inicijalno centrira na `userLocation`.
-- Ako korisnik dopusti lokaciju, pokusava se dohvatiti precizna lokacija.
+- Mapa se inicijalno centrira na trenutni `userLocation`, a nakon prvog device fixa automatski se jednom blago centrira na korisnika.
+- Ako korisnik dopusti lokaciju, prvo se koristi svjeza last-known lokacija za brz prikaz, zatim se u pozadini pokusava dohvatiti precizniji fix.
 - Ako nema precizne lokacije, koristi se IP/capital fallback.
+- User lokacija se vise ne crta kao custom marker: iOS koristi native MapKit user location layer, Android koristi MapLibre user location layer, a accuracy radius se crta kao purple krug oko korisnika kad SDK vrati preciznost.
 - Ispod search bara je date kontrola sa strelicama za dan po dan, date picker modalom, range modeom i opcijom `Svi datumi`. Defaultni `Svi datumi` na mapi salje `from=now`, tako mapa prikazuje samo evente od trenutnog vremena nadalje; stare evente korisnik moze traziti kroz eksplicitni dan/range.
 - Event pinovi su clickable.
 - Klik na pin otvara `EventDetailSheet`.
@@ -291,6 +292,7 @@ Trenutno ponasanje:
 - Share koristi native `Share.share`.
 - Nakon uspjesnog joina sheet pita korisnika zeli li otvoriti event chat i kreira/otvara `event` chat room.
 - Na mapi postoji `+` floating gumb iznad recenter gumba koji vodi na `app/create-event.tsx`.
+- Recenter gumb ignorira ponovne tapove dok ne zavrsi permission/location/focus akciju.
 - Android mapa ima MapLibre i prikazuje pojedinacne event pinove bez automatskog clusteriranja.
 - iOS mapa koristi MapKit.
 - iOS i Android markeri sada koriste isti custom `MapMarkerBadge` izgled: kruzni badge, lagani border, shadow i donja tocka; iOS vise nema diamond/tail marker.

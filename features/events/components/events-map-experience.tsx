@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { GlassView, isGlassEffectAPIAvailable, isLiquidGlassAvailable } from 'expo-glass-effect';
@@ -8,6 +8,7 @@ import { EventDetailSheet, EventMap } from '@/components/map';
 import { AppText } from '@/components/primitives';
 import { MapSearchBar, MapSearchResults } from '@/components/search';
 import { useI18n } from '@/core/i18n/use-i18n';
+import { MAP_AUTO_USER_ZOOM, MAP_FOCUS_ZOOM } from '@/core/maps/map-config';
 import { useAppStore } from '@/core/store/app-store';
 import { useAppTheme } from '@/core/theme';
 import { AppEvent, Coordinates, Locale } from '@/core/types/domain';
@@ -44,11 +45,13 @@ export function EventsMapExperience({
   const canUseLiquidGlass = useMemo(() => Platform.OS === 'ios' && isLiquidGlassAvailable() && isGlassEffectAPIAvailable(), []);
   const locationConsent = useAppStore((state) => state.locationConsent);
   const locationSource = useAppStore((state) => state.locationSource);
-  const setLocationConsent = useAppStore((state) => state.setLocationConsent);
+  const setLocationSource = useAppStore((state) => state.setLocationSource);
+  const setUserLocation = useAppStore((state) => state.setUserLocation);
   const { requestPreciseLocationNow } = useMapLocationBootstrap();
 
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
-  const [focusCoordinate, setFocusCoordinate] = useState<Coordinates | null>(null);
+  const [focusTarget, setFocusTarget] = useState<{ coordinate: Coordinates; zoomLevel: number } | null>(null);
+  const [isRecenterBusy, setIsRecenterBusy] = useState(false);
   const [isSearchPanelVisible, setIsSearchPanelVisible] = useState(false);
   const { results: searchResults, isSearching } = useEventMapSearch({ events, query: searchQuery, locale });
 
@@ -56,28 +59,33 @@ export function EventsMapExperience({
   const selectedEvent = selectedEventId ? eventsById.get(selectedEventId) ?? null : null;
   const hasAutoCenteredOnDeviceRef = useRef(false);
   const focusResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const recenterResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const queueOneShotFocus = useCallback((coordinate: Coordinates) => {
+  const queueOneShotFocus = useCallback((coordinate: Coordinates, zoomLevel = MAP_FOCUS_ZOOM) => {
     const nextFocus = {
-      latitude: coordinate.latitude,
-      longitude: coordinate.longitude,
+      coordinate: {
+        latitude: coordinate.latitude,
+        longitude: coordinate.longitude,
+      },
+      zoomLevel,
     };
 
-    setFocusCoordinate(nextFocus);
+    setFocusTarget(nextFocus);
 
     if (focusResetTimerRef.current) {
       clearTimeout(focusResetTimerRef.current);
     }
 
     focusResetTimerRef.current = setTimeout(() => {
-      setFocusCoordinate((current) => {
+      setFocusTarget((current) => {
         if (!current) {
           return null;
         }
 
         const isSameTarget =
-          Math.abs(current.latitude - nextFocus.latitude) < 0.000001 &&
-          Math.abs(current.longitude - nextFocus.longitude) < 0.000001;
+          Math.abs(current.coordinate.latitude - nextFocus.coordinate.latitude) < 0.000001 &&
+          Math.abs(current.coordinate.longitude - nextFocus.coordinate.longitude) < 0.000001 &&
+          Math.abs(current.zoomLevel - nextFocus.zoomLevel) < 0.000001;
 
         return isSameTarget ? null : current;
       });
@@ -90,25 +98,50 @@ export function EventsMapExperience({
       focusResetTimerRef.current = null;
     }
 
-    setFocusCoordinate(null);
+    setFocusTarget(null);
   }, []);
 
-  const recenterToLatestKnownLocation = useCallback(() => {
+  const recenterToLatestKnownLocation = useCallback((zoomLevel = MAP_FOCUS_ZOOM) => {
     const latestUserLocation = useAppStore.getState().userLocation;
-    queueOneShotFocus(latestUserLocation);
+    queueOneShotFocus(latestUserLocation, zoomLevel);
     setSelectedEventId(null);
     setIsSearchPanelVisible(false);
   }, [queueOneShotFocus]);
 
   const runRecenterFlow = useCallback(
     async (shouldRequestPrecise: boolean) => {
-      if (shouldRequestPrecise && Platform.OS !== 'android') {
-        await requestPreciseLocationNow();
+      if (isRecenterBusy) {
+        return;
       }
 
-      recenterToLatestKnownLocation();
+      setIsRecenterBusy(true);
+
+      if (recenterResetTimerRef.current) {
+        clearTimeout(recenterResetTimerRef.current);
+      }
+
+      try {
+        if (shouldRequestPrecise) {
+          await requestPreciseLocationNow();
+        }
+
+        recenterToLatestKnownLocation(MAP_FOCUS_ZOOM);
+      } finally {
+        recenterResetTimerRef.current = setTimeout(() => {
+          setIsRecenterBusy(false);
+          recenterResetTimerRef.current = null;
+        }, 820);
+      }
     },
-    [recenterToLatestKnownLocation, requestPreciseLocationNow],
+    [isRecenterBusy, recenterToLatestKnownLocation, requestPreciseLocationNow],
+  );
+
+  const handleNativeUserLocationUpdate = useCallback(
+    (coordinates: Coordinates) => {
+      setUserLocation(coordinates);
+      setLocationSource('device');
+    },
+    [setLocationSource, setUserLocation],
   );
 
   useEffect(() => {
@@ -127,13 +160,16 @@ export function EventsMapExperience({
     }
 
     hasAutoCenteredOnDeviceRef.current = true;
-    queueOneShotFocus(userLocation);
+    queueOneShotFocus(userLocation, MAP_AUTO_USER_ZOOM);
   }, [locationSource, queueOneShotFocus, userLocation]);
 
   useEffect(
     () => () => {
       if (focusResetTimerRef.current) {
         clearTimeout(focusResetTimerRef.current);
+      }
+      if (recenterResetTimerRef.current) {
+        clearTimeout(recenterResetTimerRef.current);
       }
     },
     [],
@@ -150,10 +186,13 @@ export function EventsMapExperience({
         userLocation={userLocation}
         selectedEventId={selectedEventId}
         searchMarker={null}
-        focusCoordinate={focusCoordinate}
+        focusCoordinate={focusTarget?.coordinate ?? null}
+        focusZoomLevel={focusTarget?.zoomLevel}
+        showsUserLocation={locationConsent === 'accepted'}
         onCameraStateChange={() => {
           clearPendingFocus();
         }}
+        onUserLocationUpdate={handleNativeUserLocationUpdate}
         onSelectEvent={(eventId) => {
           const event = eventsById.get(eventId);
           if (!event) {
@@ -237,28 +276,12 @@ export function EventsMapExperience({
       </Pressable>
 
       <Pressable
+        disabled={isRecenterBusy}
+        accessibilityRole="button"
+        accessibilityLabel={t('recenterMap')}
+        accessibilityState={{ busy: isRecenterBusy, disabled: isRecenterBusy }}
         onPress={() => {
-          if (locationConsent !== 'accepted') {
-            Alert.alert(t('locationConsentTitle'), t('locationConsentBody'), [
-              {
-                text: t('notNow'),
-                style: 'cancel',
-                onPress: () => {
-                  setLocationConsent('rejected');
-                  recenterToLatestKnownLocation();
-                },
-              },
-              {
-                text: t('allow'),
-                onPress: () => {
-                  setLocationConsent('accepted');
-                  void runRecenterFlow(true);
-                },
-              },
-            ]);
-          } else {
-            void runRecenterFlow(true);
-          }
+          void runRecenterFlow(true);
         }}
         style={({ pressed }) => [
           styles.floatingButton,
@@ -267,7 +290,7 @@ export function EventsMapExperience({
             right: theme.tokens.spacing.md,
             borderColor: theme.colors.border,
             backgroundColor: theme.colors.surfaceElevated,
-            opacity: pressed ? 0.82 : 1,
+            opacity: pressed || isRecenterBusy ? 0.62 : 1,
           },
         ]}
       >
