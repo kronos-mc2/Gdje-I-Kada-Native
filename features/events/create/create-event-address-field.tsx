@@ -11,7 +11,7 @@ type CreateEventAddressFieldProps = {
   value: string;
   placeholder: string;
   locale: Locale;
-  proximity?: Coordinates | null;
+  proximity?: Coordinates | undefined;
   searchingLabel: string;
   noResultsLabel: string;
   hintLabel: string;
