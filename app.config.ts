@@ -13,10 +13,22 @@ const requireEnvForTest = (name: string) => {
 
   return value;
 };
+const normalizeEasProjectId = (value?: string) => {
+  const normalized = value?.trim();
+  if (!normalized || normalized.startsWith('your-')) {
+    return undefined;
+  }
+
+  return normalized;
+};
 const apiBaseUrl = (requireEnvForTest('EXPO_PUBLIC_API_BASE_URL') ?? localApiBaseUrl).trim();
 const androidApiBaseUrl = (
   requireEnvForTest('EXPO_PUBLIC_ANDROID_API_BASE_URL') ?? (isTestVariant ? apiBaseUrl : 'http://10.0.2.2:8080/api')
 ).trim();
+const easProjectId = normalizeEasProjectId(process.env.EXPO_PUBLIC_EAS_PROJECT_ID);
+if (isTestVariant && !easProjectId) {
+  throw new Error('EXPO_PUBLIC_EAS_PROJECT_ID must be configured for test builds. Use .env.test locally or EAS environment variables.');
+}
 const usesAppleSignIn =
   process.env.IOS_USES_APPLE_SIGN_IN === 'true' || (!isTestVariant && process.env.IOS_USES_APPLE_SIGN_IN !== 'false');
 
@@ -55,7 +67,7 @@ const config: ExpoConfig = {
   },
   android: {
     package: isTestVariant ? 'com.anonymous.GdjeIKadaNative.test' : 'com.anonymous.GdjeIKadaNative',
-    permissions: ['ACCESS_COARSE_LOCATION', 'ACCESS_FINE_LOCATION'],
+    permissions: ['ACCESS_COARSE_LOCATION', 'ACCESS_FINE_LOCATION', 'POST_NOTIFICATIONS'],
     adaptiveIcon: {
       backgroundColor: '#F0F0F0',
       foregroundImage: './assets/images/android-icon-foreground.png',
@@ -73,6 +85,14 @@ const config: ExpoConfig = {
     'expo-router',
     'expo-secure-store',
     'expo-video',
+    [
+      'expo-notifications',
+      {
+        color: '#8B5CF6',
+        defaultChannel: 'messages',
+        enableBackgroundRemoteNotifications: false,
+      },
+    ],
     [
       'expo-build-properties',
       {
@@ -108,6 +128,11 @@ const config: ExpoConfig = {
     appVariant,
     apiBaseUrl,
     androidApiBaseUrl,
+    eas: easProjectId
+      ? {
+          projectId: easProjectId,
+        }
+      : undefined,
   },
 };
 

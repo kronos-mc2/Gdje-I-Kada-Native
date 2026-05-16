@@ -10,6 +10,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { ChatRealtimeListener } from '@/core/api/chat-realtime-listener';
+import { PushNotificationRegistrar } from '@/core/notifications/push-notification-registrar';
 import { queryClient } from '@/core/query/query-client';
 import { useAuthStore } from '@/core/store/auth-store';
 import { AppThemeProvider, useAppTheme } from '@/core/theme';
@@ -87,6 +88,8 @@ function RootNavigator() {
         <Stack.Screen name="event/[id]" options={{ presentation: 'card' }} />
         <Stack.Screen name="chat/[id]" options={{ presentation: 'card' }} />
         <Stack.Screen name="profile/settings" options={{ presentation: 'card' }} />
+        <Stack.Screen name="profile/preferences" options={{ presentation: 'card' }} />
+        <Stack.Screen name="profile/preferences/notifications" options={{ presentation: 'card' }} />
         <Stack.Screen name="profile/edit" options={{ presentation: 'card' }} />
         <Stack.Screen name="profile/activity" options={{ presentation: 'card' }} />
         <Stack.Screen name="profile/created-events" options={{ presentation: 'card' }} />
@@ -103,6 +106,7 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#111114' }}>
       <QueryClientProvider client={queryClient}>
         <ChatRealtimeListener />
+        <PushNotificationRegistrar />
         <SafeAreaProvider>
           <AppThemeProvider>
             <RootNavigator />

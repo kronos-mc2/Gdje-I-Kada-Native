@@ -5,7 +5,7 @@ import { AppButton, AppText } from '@/components/primitives';
 import { getEventPosterUri } from '@/core/events/event-cover';
 import { useI18n } from '@/core/i18n/use-i18n';
 import { AppEvent, Locale } from '@/core/types/domain';
-import { formatEventDate } from '@/core/utils/date';
+import { formatEventDate, formatEventDay, formatEventDuration, formatEventTime } from '@/core/utils/date';
 
 type EventDetailsContentProps = {
   event: AppEvent;
@@ -31,6 +31,7 @@ export function EventDetailsContent({
   const hasOrganizerRating = (event.organizerRatingCount ?? 0) > 0;
   const hasEventRating = (event.eventRatingCount ?? 0) > 0;
   const priceLabel = formatPrice(event);
+  const durationLabel = formatEventDuration(event.startAt ?? event.whenISO, event.endAt, locale);
 
   return (
     <>
@@ -72,6 +73,9 @@ export function EventDetailsContent({
           </AppText>
 
           <View style={styles.detailGrid}>
+            <DetailRow label={t('startDateLabel')} value={formatEventDay(event.whenISO, locale)} />
+            <DetailRow label={t('eventTimeLabel')} value={formatEventTime(event.whenISO, locale)} />
+            {durationLabel ? <DetailRow label={t('durationLabel')} value={durationLabel} /> : null}
             <DetailRow label={t('attendanceMode')} value={getAttendanceModeLabel(event, t)} />
             <DetailRow label={t('eventVisibility')} value={getVisibilityLabel(event, t)} />
             {priceLabel ? <DetailRow label={t('priceAmountLabel')} value={priceLabel} /> : null}

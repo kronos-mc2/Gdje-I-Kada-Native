@@ -2,7 +2,11 @@ import { useRouter } from 'expo-router';
 import { ScrollView, StyleSheet, Switch, View } from 'react-native';
 
 import { AppButton, AppCard, AppText } from '@/components/primitives';
-import { useUpdateChatRoomMutation, useUserUpcomingEventsQuery } from '@/core/api/query-hooks';
+import {
+  useUpdateChatNotificationSettingsMutation,
+  useUpdateChatRoomMutation,
+  useUserUpcomingEventsQuery,
+} from '@/core/api/query-hooks';
 import { useI18n } from '@/core/i18n/use-i18n';
 import { useAppTheme } from '@/core/theme';
 import { ChatRoom } from '@/core/types/domain';
@@ -18,6 +22,7 @@ export function ChatDetailsPanel({ room }: ChatDetailsPanelProps) {
   const { t } = useI18n();
   const { theme } = useAppTheme();
   const updateRoomMutation = useUpdateChatRoomMutation();
+  const updateNotificationMutation = useUpdateChatNotificationSettingsMutation();
   const canAdmin = room.myRole === 'owner' || room.myRole === 'admin';
   const directPeer = room.type === 'direct' ? room.members?.find((member) => member.id === room.directUserId) : null;
   const { data: upcomingEvents = [], isLoading: upcomingLoading } = useUserUpcomingEventsQuery(room.directUserId);
@@ -35,6 +40,22 @@ export function ChatDetailsPanel({ room }: ChatDetailsPanelProps) {
           </View>
         </View>
         {room.type === 'direct' ? <AppButton title={t('addFriend')} variant="secondary" onPress={() => undefined} /> : null}
+      </AppCard>
+
+      <AppCard variant="glass" style={styles.card}>
+        <View style={styles.switchRow}>
+          <View style={styles.switchCopy}>
+            <AppText variant="bodyStrong">{t('muteNotifications')}</AppText>
+            <AppText variant="caption" color="textMuted">
+              {t('muteNotificationsSubtitle')}
+            </AppText>
+          </View>
+          <Switch
+            value={room.mutedByMe}
+            disabled={updateNotificationMutation.isPending}
+            onValueChange={(muted) => updateNotificationMutation.mutate({ roomId: room.id, muted })}
+          />
+        </View>
       </AppCard>
 
       {room.type !== 'direct' ? (

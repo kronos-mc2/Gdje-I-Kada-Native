@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
 import { ActivityIndicator, FlatList, StyleSheet, View, ViewToken, useWindowDimensions } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { EventDetailSheet } from '@/components/map/event-detail-sheet';
 import { AppText } from '@/components/primitives';
 import {
   useFeedInfiniteQuery,
@@ -13,7 +13,14 @@ import { useI18n } from '@/core/i18n/use-i18n';
 import { useAppTheme } from '@/core/theme';
 import { AppEvent } from '@/core/types/domain';
 import { EventShareModal } from '@/features/events/components/event-share-modal';
-import { FypReelSlide } from '@/features/events/components/fyp-reel-slide';
+import { FypEventDetailsSheet } from '@/features/events/components/fyp/fyp-event-details-sheet';
+import {
+  getEstimatedFypTabBarHeight,
+  getFypBottomContentInset,
+  getFypDetailBottomInset,
+  getFypViewportHeight,
+} from '@/features/events/components/fyp/fyp-layout';
+import { FypReelSlide } from '@/features/events/components/fyp/fyp-reel-slide';
 
 const isValidFeedEvent = (event: AppEvent | null | undefined): event is AppEvent => Boolean(event?.id);
 
@@ -21,6 +28,7 @@ export default function FypScreen() {
   const { t, locale } = useI18n();
   const { theme } = useAppTheme();
   const insets = useSafeAreaInsets();
+  const tabBarHeight = useContext(BottomTabBarHeightContext) ?? getEstimatedFypTabBarHeight(insets);
   const { height, width } = useWindowDimensions();
   const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage, refetch, isRefetching } = useFeedInfiniteQuery();
   const likeEventMutation = useLikeEventMutation();
@@ -28,7 +36,9 @@ export default function FypScreen() {
   const [selectedEvent, setSelectedEvent] = useState<AppEvent | null>(null);
   const [shareEvent, setShareEvent] = useState<AppEvent | null>(null);
   const [activeEventId, setActiveEventId] = useState<string | null>(null);
-  const itemHeight = Math.max(420, height);
+  const itemHeight = getFypViewportHeight(height, tabBarHeight);
+  const slideBottomInset = getFypBottomContentInset(insets);
+  const detailBottomInset = getFypDetailBottomInset();
   const feedEvents = useMemo(
     () =>
       data?.pages.flatMap((page) => {
@@ -100,6 +110,7 @@ export default function FypScreen() {
         </View>
       ) : (
         <FlatList
+          style={[styles.feedList, { height: itemHeight }]}
           data={feedEvents}
           keyExtractor={(item) => item.id}
           renderItem={({ item, index }) => (
@@ -109,7 +120,7 @@ export default function FypScreen() {
               width={width}
               height={itemHeight}
               topInset={insets.top}
-              bottomInset={insets.bottom}
+              bottomInset={slideBottomInset}
               isActive={item.id === activeEventId}
               shouldPreload={Math.abs(index - activeIndex) <= 2}
               onToggleLike={onToggleLike}
@@ -141,12 +152,13 @@ export default function FypScreen() {
       )}
 
       {selectedEvent ? (
-        <EventDetailSheet
+        <FypEventDetailsSheet
           event={selectedEvent}
           locale={locale}
           topInset={insets.top}
-          bottomInset={insets.bottom}
+          bottomInset={detailBottomInset}
           onClose={() => setSelectedEvent(null)}
+          onOpenShare={setShareEvent}
         />
       ) : null}
 
@@ -158,6 +170,9 @@ export default function FypScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
+  },
+  feedList: {
+    flexGrow: 0,
   },
   emptyWrap: {
     flex: 1,

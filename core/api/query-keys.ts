@@ -12,6 +12,7 @@ export const queryKeys = {
   eventParticipants: (eventId: string) => ['event-participants', eventId] as const,
   profileActivity: ['profile-activity'] as const,
   transactions: ['transactions'] as const,
+  notificationPreferences: ['notification-preferences'] as const,
   friends: ['friends'] as const,
   conversations: ['conversations'] as const,
   chatRoomsRoot: ['chat-rooms'] as const,

@@ -52,6 +52,8 @@ export type LocationSource = 'default' | 'device' | 'capital' | 'ip';
 export type AppEvent = {
   id: string;
   creatorUserId?: string;
+  creatorName?: string;
+  creatorAvatarUrl?: string;
   title: LocalizedText;
   where: LocalizedText;
   address: string;
@@ -175,6 +177,7 @@ export type ChatRoom = {
   memberCount: number;
   myRole?: ChatMemberRole;
   adminOnly: boolean;
+  mutedByMe: boolean;
   eventId?: string;
   members?: ChatMember[];
 };
@@ -282,6 +285,11 @@ export type AppNotification = {
   eventId?: string;
   createdAt?: string;
   readAt?: string;
+};
+
+export type NotificationPreferences = {
+  directMessagesEnabled: boolean;
+  groupMessagesEnabled: boolean;
 };
 
 export type TicketCheckout = {

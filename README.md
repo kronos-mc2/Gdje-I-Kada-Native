@@ -1,6 +1,6 @@
 # Gdje i Kada - projektna dokumentacija
 
-Status dokumenta: 2026-05-11
+Status dokumenta: 2026-05-16
 Projekt se ne radi ispocetka. Postojeci React Native/Expo frontend i Spring Boot backend ostaju baza, a nove funkcionalnosti se nadograduju na vec postojece klase, rute, storeove, hookove i dizajn sustav.
 
 Radimo mobilnu event aplikaciju "Gdje i Kada" za iOS i Android. Frontend je React Native kroz Expo Router, backend je Spring Boot s PostgreSQL bazom. Nemoj kretati ispocetka. Prvo procitaj postojeci kod i nadogradi ga prema lokalnim patternima.
@@ -53,6 +53,8 @@ Postojece frontend tehnologije i patterni:
 - Theme: `AppThemeProvider`, `createAppTheme`, `palette`, `tokens`, `ThemeToggle`. Centralna paleta je ogranicena na Rich Black `#111114`, Off White `#F0F0F0`, Gunmetal Gray `#2A2D33`, Charcoal Gray `#3A3C40`, Graphite `#191B1E`, Cool Gray `#6F7072`, uz postojeci purple accent za map/app akcente.
 - Kalendar grid: `react-native-calendars` za cross-platform mjesecni prikaz bez dodatnog native linkinga.
 - iOS glass: `expo-glass-effect` i `expo-blur` se vec koriste u `EventDetailSheet` i `MapSearchBar.ios.tsx`; shared `GlassSurface` daje `GlassView` kad je Liquid Glass API dostupan, a `BlurView` + themed tint fallback inace. `AppCard`, `AppButton`, `AppHeader` i `AppIconButton` koriste taj shared surface da iOS ne povuce defaultnu sistemsku sivu.
+- Push obavijesti: `expo-notifications` registrira Expo push token za autentificiranog korisnika kad je permission vec odobren ili kad korisnik to rucno zatrazi u `Preferences > Notifications`. Android koristi `messages` notification channel s purple accent bojom, a tap na push otvara odgovarajuci chat.
+- Expo push `projectId` cita se iz env varijable `EXPO_PUBLIC_EAS_PROJECT_ID` i izlozen je u app configu kao `extra.eas.projectId`. Placeholder vrijednosti tipa `your-eas-project-id` se ignoriraju, a `test` build bez stvarnog projectId-a namjerno faila config provjeru.
 - Karte:
   - iOS: `components/map/event-map-surface.ios.tsx` koristi `react-native-maps` / MapKit.
   - Android: `components/map/event-map-surface.android.tsx` koristi `@maplibre/maplibre-react-native` i prikazuje pojedinacne event pinove bez clusteriranja.
@@ -82,6 +84,7 @@ Postojece backend tehnologije i patterni:
   - `EventController`
   - `SocialController`
   - `MessageController`
+  - `NotificationController`
 - Chat realtime koristi WebSocket endpoint `/ws/messages`; JWT se validira u handshakeu, a REST endpointi i dalje ostaju canonical write path za slanje poruka, event share, pollove i room update.
 - Backend unit testovi: JUnit 5 + Mockito, trenutno pokrivaju `EventService`, `PasswordPolicy` i `JwtService`.
 
@@ -116,6 +119,10 @@ Backend trenutno ima:
 - `PATCH /api/users/me/profile`
 - `GET /api/users/me/activity`
 - `GET /api/users/me/transactions`
+- `GET /api/users/me/notifications/preferences`
+- `PATCH /api/users/me/notifications/preferences`
+- `POST /api/users/me/notifications/push-tokens`
+- `DELETE /api/users/me/notifications/push-tokens?token=`
 - `GET /api/feed?cursor=&limit=`
 - `GET /api/social/friends`
 - `GET /api/messages/chat-rooms?query=`
@@ -123,6 +130,7 @@ Backend trenutno ima:
 - `POST /api/messages/events/{eventId}/chat-room`
 - `GET /api/messages/chat-rooms/{id}`
 - `PATCH /api/messages/chat-rooms/{id}`
+- `PATCH /api/messages/chat-rooms/{id}/notification-settings`
 - `GET /api/messages/chat-rooms/{id}/messages`
 - `POST /api/messages/chat-rooms/{id}/messages`
 - `POST /api/messages/chat-rooms/{id}/share-event`
@@ -169,6 +177,9 @@ Trenutna baza:
 - `chat_members` iz `V5__chat_rooms_messages_polls.sql`
 - `messages` iz `V5__chat_rooms_messages_polls.sql`
 - `message_reads` iz `V5__chat_rooms_messages_polls.sql`
+- `user_notification_preferences` iz `V11__message_push_notifications.sql`
+- `user_push_tokens` iz `V11__message_push_notifications.sql`
+- `chat_notification_mutes` iz `V11__message_push_notifications.sql`
 - `polls` iz `V5__chat_rooms_messages_polls.sql`
 - `poll_options` iz `V5__chat_rooms_messages_polls.sql`
 - `poll_votes` iz `V5__chat_rooms_messages_polls.sql`
@@ -195,7 +206,7 @@ Trenutni event model:
 - Service: `EventService`.
 - Mapper: `EventMapper` i `EventMapper.xml`.
 
-Event trenutno podrzava naslov, lokaciju, adresu, opis, start/end datum, coordinates, entrance coordinates, entry instructions, creator user id, visibility `public/friends`, attendance mode `open/waitlist/paid`, cijenu za paid evente, capacity, status, event i organizer rating agregate, `likeCount`, `likedByMe`, participant count, `waitlistCount`, `joinedByMe`, `attendanceStatus` i `canJoin`. Create flow u frontendu koristi jedan naziv/lokaciju/opis bez odvojenih HR/EN polja, a backend `CreateEventRequest` prihvaca canonical `title`, `where`, `about` i `entryInstructions` te ih mirror-a u postojece HR/EN stupce radi kompatibilnosti. Adresa u create flowu bira se kroz backend `GET /api/locations/search` autocomplete; odabrani rezultat postaje canonical event coordinate, a entrance pin je opcionalna zasebna koordinata. Vlasnik eventa kroz profil ima Created Events ekran i manage ekran za izmjenu osnovnih detalja, dodavanje/brisanje image media URL-ova, pregled/prihvacanje waitliste, micanje sudionika i blokiranje korisnika s neplacenih eventova. Backend za to koristi owner-only endpointove `PATCH/DELETE /api/events/{id}`, media endpointove, participant endpointove, `event_blocks` i in-app `app_notifications`. Join/leave i like/unlike rade kroz backend, a feed i detail endpointi vracaju `event_media` za reels/detail prikaz. Rating nakon zavrsenog eventa salje odvojene ocjene eventa i organizatora kroz `POST /api/events/{id}/ratings/full`. Paid join ide kroz Stripe-named provider stub: `POST /api/events/{eventId}/ticket-checkout` kreira order/payment, `POST /api/ticket-orders/{orderId}/confirm` potvrdjuje stub payment, zapisuje transaction i tek tada join-a event. Real Stripe React Native SDK/PaymentSheet nije dodan jer ova promjena ne pokrece native build.
+Event trenutno podrzava naslov, lokaciju, adresu, opis, start/end datum, coordinates, entrance coordinates, entry instructions, creator user id, creator name/avatar za organizer prikaz, visibility `public/friends`, attendance mode `open/waitlist/paid`, cijenu za paid evente, capacity, status, event i organizer rating agregate, `likeCount`, `likedByMe`, participant count, `waitlistCount`, `joinedByMe`, `attendanceStatus` i `canJoin`. Create flow u frontendu koristi jedan naziv/lokaciju/opis bez odvojenih HR/EN polja, a backend `CreateEventRequest` prihvaca canonical `title`, `where`, `about` i `entryInstructions` te ih mirror-a u postojece HR/EN stupce radi kompatibilnosti. Adresa u create flowu bira se kroz backend `GET /api/locations/search` autocomplete; odabrani rezultat postaje canonical event coordinate, a entrance pin je opcionalna zasebna koordinata. Vlasnik eventa kroz profil ima Created Events ekran i manage ekran za izmjenu osnovnih detalja, dodavanje/brisanje image media URL-ova, pregled/prihvacanje waitliste, micanje sudionika i blokiranje korisnika s neplacenih eventova. Backend za to koristi owner-only endpointove `PATCH/DELETE /api/events/{id}`, media endpointove, participant endpointove, `event_blocks` i in-app `app_notifications`. Join/leave i like/unlike rade kroz backend, a feed i detail endpointi vracaju `event_media` za reels/detail prikaz. Rating nakon zavrsenog eventa salje odvojene ocjene eventa i organizatora kroz `POST /api/events/{id}/ratings/full`. Paid join ide kroz Stripe-named provider stub: `POST /api/events/{eventId}/ticket-checkout` kreira order/payment, `POST /api/ticket-orders/{orderId}/confirm` potvrdjuje stub payment, zapisuje transaction i tek tada join-a event. Real Stripe React Native SDK/PaymentSheet nije dodan jer ova promjena ne pokrece native build.
 
 Kad implementiras nove stvari, nadogradi postojece:
 
@@ -214,9 +225,9 @@ FYP dio aplikacije sluzi za brz discovery kroz vertikalni Reels-style feed. Svak
 
 Kalendar prikazuje samo evente na koje se korisnik pridruzio. Rijesen je kao native mjesecni grid s oznakama eventova po danima, searchom prijavljenih eventova i listom eventova za odabrani dan.
 
-Poruke podrzavaju privatne razgovore, grupe, event-specific grupe, pollove i admin-only chat mod gdje samo admini pisu, a ostali mogu glasati na pollu.
+Poruke podrzavaju privatne razgovore, grupe, event-specific grupe, pollove i admin-only chat mod gdje samo admini pisu, a ostali mogu glasati na pollu. Slanje poruke sada nakon spremanja na backendu salje Expo push notifikaciju svim ostalim clanovima sobe ako korisnik ima registriran push token, ukljucene preference za taj tip chata i nije muteao tu sobu.
 
-Profil prikazuje korisnikovu aktivnost: joined eventove, liked reels/evente, transaction history i rating flow za zavrsene evente. Profil ima editiranje imena, bio teksta i avatar URL-a. Postavke su odvojeni ekran otvoren iz profila; tamo su jezik, tema i odjava.
+Profil prikazuje korisnikovu aktivnost: joined eventove, liked reels/evente, transaction history i rating flow za zavrsene evente. Profil ima editiranje imena, bio teksta i avatar URL-a. Postavke su odvojeni ekran otvoren iz profila; tamo su jezik, tema, `Preferences` ulaz i odjava. `Preferences > Notifications` trenutno sadrzi push permission/registration CTA te odvojene togglove za privatne poruke i grupne/event chatove.
 
 ## Frontend dokumentacija
 
@@ -314,7 +325,8 @@ Postoji:
 - Screen: `app/(tabs)/fyp.tsx`.
 - Query: `useFeedInfiniteQuery()` prema `GET /api/feed?cursor=&limit=`.
 - Media helpers: `core/events/event-cover.ts`.
-- Reels slide UI: `features/events/components/fyp-reel-slide.tsx`.
+- Reels slide UI: public compatibility export `features/events/components/fyp-reel-slide.tsx`, stvarna implementacija u `features/events/components/fyp/` (`fyp-reel-slide`, summary card, action rail, video layer, layout helpers).
+- FYP details sheet: `features/events/components/fyp/fyp-event-details-sheet.tsx`.
 - Share modal: `features/events/components/event-share-modal.tsx`.
 - Video playback: `expo-video` (`VideoView`, `useVideoPlayer`) s preload prozorom oko aktivnog itema; ako trenutni native build nema `ExpoVideo` modul, FYP ostaje na poster fallbacku bez crasha dok se ne rebuilda app.
 
@@ -323,9 +335,12 @@ Trenutno ponasanje:
 - Vertikalni `FlatList` s `pagingEnabled`, `snapToInterval`, `onViewableItemsChanged` i `fetchNextPage()`.
 - Feed je server-side paginiran cursorom i vraca `items`, `nextCursor`, `hasMore`.
 - Svaki event koristi `event_media` kao primarni poster/video izvor, uz fallback na helper cover image ako media nedostaje.
+- Android FYP viewport oduzima stvarnu native tab bar visinu iz `BottomTabBarHeightContext`, ali media blago podvuce ispod ruba da ne ostane crni razmak iznad toolbara; sam card/action rail ostaju dignuti iznad taba. iOS zadrzava full-bleed media i podize overlay iznad translucent taba.
+- FYP media se prikazuje bez globalnog tamnog scrim overlaya; top badge prikazuje samo datum i joined status kad postoji.
+- Donji FYP overlay je kompaktan: organizer avatar/name, title, lokacija, kratak opis i kratki datum/vrijeme/sudionici; like i share su odvojeni u desnom action railu.
 - Like je server-side preko `POST/DELETE /api/events/{id}/like`; React Query optimisticno patcha feed/detail/profile cache.
 - Bookmark/save UI je uklonjen.
-- Details iz FYP-a otvaraju isti `EventDetailSheet` kao mapa.
+- Details iz FYP-a otvaraju FYP-specific bottom sheet unutar native modala, s handle barom i scrollable `EventDetailsContent`; modal ide preko native tab bara, a Android modal root je wrapan u `GestureHandlerRootView` radi stabilnog drag-down gesturea. Summary card je tappable i ima chevron-up indikator. Map screen i dalje koristi map `EventDetailSheet`.
 - Share otvara modal koji nudi chat roomove kroz `POST /api/messages/chat-rooms/{id}/share-event`, a native share ostaje fallback.
 - Profil prikazuje liked history preko `GET /api/users/me/liked-events`.
 
@@ -765,6 +780,7 @@ Messages:
 - `POST /api/messages/events/{eventId}/chat-room`
 - `GET /api/messages/chat-rooms/{id}`
 - `PATCH /api/messages/chat-rooms/{id}`
+- `PATCH /api/messages/chat-rooms/{id}/notification-settings`
 - `GET /api/messages/chat-rooms/{id}/messages`
 - `POST /api/messages/chat-rooms/{id}/messages`
 - `POST /api/messages/chat-rooms/{id}/share-event`
@@ -780,6 +796,10 @@ Profile:
 - `PATCH /api/users/me/profile`
 - `GET /api/users/me/activity`
 - `GET /api/users/me/transactions`
+- `GET /api/users/me/notifications/preferences`
+- `PATCH /api/users/me/notifications/preferences`
+- `POST /api/users/me/notifications/push-tokens`
+- `DELETE /api/users/me/notifications/push-tokens?token=`
 
 ## Testiranje i verifikacija
 

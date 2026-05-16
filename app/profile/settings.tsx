@@ -5,8 +5,10 @@ import { AppButton, AppCard, AppIconButton, AppScreen, AppText, SectionHeader, T
 import { useI18n } from '@/core/i18n/use-i18n';
 import { useAppStore } from '@/core/store/app-store';
 import { useAuthStore } from '@/core/store/auth-store';
+import { unregisterCurrentPushTokenAsync } from '@/core/notifications/push-notifications';
 import { useAppTheme } from '@/core/theme';
 import { Locale } from '@/core/types/domain';
+import { ProfileMenuRow } from '@/features/profile/components/profile-menu-row';
 
 const LANGUAGES: Locale[] = ['hr', 'en'];
 
@@ -20,6 +22,7 @@ export default function ProfileSettingsScreen() {
   const setLocale = useAppStore((state) => state.setLocale);
 
   const handleSignOut = async () => {
+    await unregisterCurrentPushTokenAsync();
     await clearAuth();
     router.replace('/(auth)');
   };
@@ -48,6 +51,16 @@ export default function ProfileSettingsScreen() {
       <SectionHeader title={t('theme')} subtitle={preference === 'system' ? t('themeSystem') : undefined} />
       <ThemeToggle value={themePreference} onChange={setThemePreference} />
 
+      <SectionHeader title={t('preferences')} subtitle={t('preferencesSubtitle')} />
+      <View style={styles.menuGroup}>
+        <ProfileMenuRow
+          icon="options-outline"
+          title={t('preferences')}
+          subtitle={t('preferencesMenuSubtitle')}
+          onPress={() => router.push('/profile/preferences')}
+        />
+      </View>
+
       <AppCard variant="glass" style={styles.accountCard}>
         <AppText variant="bodyStrong">{t('account')}</AppText>
         <AppButton title={t('signOut')} variant="glass" style={styles.authButton} onPress={() => void handleSignOut()} />
@@ -74,6 +87,9 @@ const styles = StyleSheet.create({
   },
   languageButton: {
     flex: 1,
+  },
+  menuGroup: {
+    marginBottom: 8,
   },
   accountCard: {
     marginTop: 24,

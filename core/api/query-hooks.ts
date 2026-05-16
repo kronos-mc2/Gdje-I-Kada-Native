@@ -24,6 +24,7 @@ import {
   fetchLikedEvents,
   fetchFriends,
   fetchMyEvents,
+  fetchNotificationPreferences,
   fetchProfileActivity,
   fetchTransactions,
   fetchUserUpcomingEvents,
@@ -34,11 +35,14 @@ import {
   rateOrganizer,
   rateEvent,
   removeEventParticipant,
+  registerPushToken,
   sendChatMessage,
   shareEventToConversation,
   unlikeEvent,
+  updateNotificationPreferences,
   updateProfile,
   updateEvent,
+  updateChatNotificationSettings,
   updateChatRoom,
   votePoll,
 } from '@/core/api/services';
@@ -97,6 +101,28 @@ export const useTransactionsQuery = () =>
   useQuery({
     queryKey: queryKeys.transactions,
     queryFn: fetchTransactions,
+  });
+
+export const useNotificationPreferencesQuery = () =>
+  useQuery({
+    queryKey: queryKeys.notificationPreferences,
+    queryFn: fetchNotificationPreferences,
+  });
+
+export const useUpdateNotificationPreferencesMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: updateNotificationPreferences,
+    onSuccess: (preferences) => {
+      queryClient.setQueryData(queryKeys.notificationPreferences, preferences);
+    },
+  });
+};
+
+export const useRegisterPushTokenMutation = () =>
+  useMutation({
+    mutationFn: registerPushToken,
   });
 
 export const useFeedInfiniteQuery = (limit = 5) =>
@@ -185,6 +211,20 @@ export const useUpdateChatRoomMutation = () => {
     onSuccess: (room) => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.chatRoomsRoot });
       void queryClient.invalidateQueries({ queryKey: queryKeys.chatRoom(room.id) });
+    },
+  });
+};
+
+export const useUpdateChatNotificationSettingsMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: updateChatNotificationSettings,
+    onSuccess: (room) => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.chatRoomsRoot });
+      queryClient.setQueryData<ChatRoomDetail | undefined>(queryKeys.chatRoom(room.id), (current) =>
+        current ? { ...current, room } : current,
+      );
     },
   });
 };

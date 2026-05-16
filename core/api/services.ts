@@ -17,6 +17,7 @@ import {
   FeedQueryParams,
   Friend,
   MyEventsFilter,
+  NotificationPreferences,
   OrganizerRatingPayload,
   Poll,
   ProfileActivity,
@@ -125,6 +126,34 @@ export const fetchTransactions = async (): Promise<Transaction[]> => {
   return response.data;
 };
 
+export const fetchNotificationPreferences = async (): Promise<NotificationPreferences> => {
+  const response = await apiClient.get<NotificationPreferences>('/users/me/notifications/preferences');
+  return response.data;
+};
+
+export const updateNotificationPreferences = async (
+  payload: Partial<NotificationPreferences>,
+): Promise<NotificationPreferences> => {
+  const response = await apiClient.patch<NotificationPreferences>('/users/me/notifications/preferences', payload);
+  return response.data;
+};
+
+export const registerPushToken = async ({
+  token,
+  platform,
+  deviceId,
+}: {
+  token: string;
+  platform: string;
+  deviceId?: string;
+}): Promise<void> => {
+  await apiClient.post('/users/me/notifications/push-tokens', { token, platform, deviceId });
+};
+
+export const deletePushToken = async (token: string): Promise<void> => {
+  await apiClient.delete('/users/me/notifications/push-tokens', { params: { token } });
+};
+
 export const rateOrganizer = async ({ eventId, rating, comment }: OrganizerRatingPayload): Promise<AppEvent> => {
   const response = await apiClient.post<AppEvent>(`/events/${eventId}/ratings`, { rating, comment });
   return response.data;
@@ -209,6 +238,17 @@ export const getOrCreateEventChatRoom = async (eventId: string): Promise<ChatRoo
 
 export const updateChatRoom = async ({ roomId, adminOnly }: { roomId: string; adminOnly: boolean }): Promise<ChatRoom> => {
   const response = await apiClient.patch<ChatRoom>(`/messages/chat-rooms/${roomId}`, { adminOnly });
+  return response.data;
+};
+
+export const updateChatNotificationSettings = async ({
+  roomId,
+  muted,
+}: {
+  roomId: string;
+  muted: boolean;
+}): Promise<ChatRoom> => {
+  const response = await apiClient.patch<ChatRoom>(`/messages/chat-rooms/${roomId}/notification-settings`, { muted });
   return response.data;
 };
 
