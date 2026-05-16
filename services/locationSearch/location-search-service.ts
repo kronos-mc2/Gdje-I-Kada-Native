@@ -24,8 +24,8 @@ const normalizeText = (value: string) =>
     .trim()
     .toLowerCase()
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/\s+/g, ' ');
+    .replaceAll(/[\u0300-\u036f]/g, '')
+    .replaceAll(/\s+/g, ' ');
 
 const getDedupeKey = (result: LocationSearchResult) => {
   const subtitleParts = result.subtitle

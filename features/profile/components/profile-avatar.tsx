@@ -4,11 +4,11 @@ import { StyleSheet, View } from 'react-native';
 import { AppText } from '@/components/primitives';
 import { useAppTheme } from '@/core/theme';
 
-type ProfileAvatarProps = {
+type ProfileAvatarProps = Readonly<{
   name?: string;
   avatarUrl?: string;
   size?: number;
-};
+}>;
 
 export function ProfileAvatar({ name, avatarUrl, size = 96 }: ProfileAvatarProps) {
   const { theme } = useAppTheme();

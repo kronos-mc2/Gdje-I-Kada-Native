@@ -11,14 +11,14 @@ import { useAppTheme } from '@/core/theme';
 import { Locale } from '@/core/types/domain';
 import { formatEventDate } from '@/core/utils/date';
 
-type AppDateTimeFieldProps = {
+type AppDateTimeFieldProps = Readonly<{
   label: string;
   locale: Locale;
   valueISO: string;
   onChangeISO: (nextISO: string) => void;
   onClear?: () => void;
   clearAccessibilityLabel?: string;
-};
+}>;
 
 type DateTimePickerEvent = {
   type: 'set' | 'dismissed' | 'neutralButtonPressed';

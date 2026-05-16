@@ -14,13 +14,13 @@ import { useI18n } from '@/core/i18n/use-i18n';
 import { useAppTheme } from '@/core/theme';
 import { AppEvent, Locale } from '@/core/types/domain';
 
-type EventDetailSheetProps = {
+type EventDetailSheetProps = Readonly<{
   event: AppEvent;
   locale: Locale;
   onClose: () => void;
   topInset?: number;
   bottomInset?: number;
-};
+}>;
 
 type SheetController = {
   snapToIndex: (index: number) => void;

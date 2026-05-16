@@ -3,37 +3,22 @@ import { Platform, Pressable, PressableProps, StyleProp, StyleSheet, ViewStyle }
 
 import { GlassSurface } from '@/components/primitives/glass-surface';
 import { useAppTheme } from '@/core/theme';
+import type { ThemeColors } from '@/core/theme/types';
 import { AppText } from '@/components/primitives/app-text';
 
-type AppButtonProps = PropsWithChildren<
+type AppButtonProps = Readonly<PropsWithChildren<
   Omit<PressableProps, 'style'> & {
     title?: string;
     variant?: 'primary' | 'secondary' | 'ghost' | 'glass';
     style?: StyleProp<ViewStyle>;
   }
->;
+>>;
 
 export function AppButton({ title, children, variant = 'primary', style, ...props }: AppButtonProps) {
   const { theme } = useAppTheme();
   const isGlass = Platform.OS === 'ios' && variant === 'glass';
-
-  const backgroundColor =
-    variant === 'primary'
-      ? theme.colors.surfaceElevated
-      : variant === 'secondary'
-        ? theme.colors.surface
-        : variant === 'ghost'
-          ? 'transparent'
-          : theme.colors.surface;
-
-  const textColor =
-    variant === 'primary'
-      ? theme.colors.textPrimary
-      : variant === 'secondary'
-        ? theme.colors.textSecondary
-        : variant === 'ghost'
-          ? theme.colors.textSecondary
-          : theme.colors.textPrimary;
+  const backgroundColor = getBackgroundColor(variant, theme.colors);
+  const textColor = getTextColor(variant, theme.colors);
 
   return (
     <Pressable
@@ -74,3 +59,17 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
 });
+
+function getBackgroundColor(variant: NonNullable<AppButtonProps['variant']>, colors: ThemeColors) {
+  if (variant === 'primary') {
+    return colors.surfaceElevated;
+  }
+  if (variant === 'ghost') {
+    return 'transparent';
+  }
+  return colors.surface;
+}
+
+function getTextColor(variant: NonNullable<AppButtonProps['variant']>, colors: ThemeColors) {
+  return variant === 'primary' || variant === 'glass' ? colors.textPrimary : colors.textSecondary;
+}

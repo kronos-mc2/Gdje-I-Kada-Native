@@ -5,12 +5,20 @@ import { AppText } from '@/components/primitives';
 import { useI18n } from '@/core/i18n/use-i18n';
 import { useAppTheme } from '@/core/theme';
 
-type FypReelActionsProps = {
+type FypReelActionsProps = Readonly<{
   liked: boolean;
   likeCount: number;
   onToggleLike: () => void;
   onOpenShare: () => void;
-};
+}>;
+
+type ActionButtonProps = Readonly<{
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  value?: string;
+  active?: boolean;
+  onPress: () => void;
+}>;
 
 export function FypReelActions({ liked, likeCount, onToggleLike, onOpenShare }: FypReelActionsProps) {
   const { t } = useI18n();
@@ -35,13 +43,7 @@ function ActionButton({
   value,
   active = false,
   onPress,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-  value?: string;
-  active?: boolean;
-  onPress: () => void;
-}) {
+}: ActionButtonProps) {
   const { theme } = useAppTheme();
 
   return (

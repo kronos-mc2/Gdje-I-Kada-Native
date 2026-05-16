@@ -128,8 +128,8 @@ export const useRegisterPushTokenMutation = () =>
 export const useFeedInfiniteQuery = (limit = 5) =>
   useInfiniteQuery({
     queryKey: queryKeys.feed(limit),
-    queryFn: ({ pageParam }) => fetchFeed({ cursor: pageParam as string | undefined, limit }),
-    initialPageParam: undefined as string | undefined,
+    queryFn: ({ pageParam }) => fetchFeed({ cursor: pageParam, limit }),
+    initialPageParam: undefined,
     getNextPageParam: (page) => (page.hasMore ? page.nextCursor : undefined),
   });
 

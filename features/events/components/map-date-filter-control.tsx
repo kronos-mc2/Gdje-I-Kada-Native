@@ -11,12 +11,12 @@ import { useAppTheme } from '@/core/theme';
 import { Locale } from '@/core/types/domain';
 import { dateKeyToLocalDate, MapDateFilter, toDateKey } from '@/features/events/hooks/use-events-map-screen-model';
 
-type MapDateFilterControlProps = {
+type MapDateFilterControlProps = Readonly<{
   dateFilter: MapDateFilter;
   locale: Locale;
   canUseLiquidGlass: boolean;
   onDateFilterChange: (dateFilter: MapDateFilter) => void;
-};
+}>;
 
 type DraftMode = 'all' | 'day' | 'range';
 
@@ -396,7 +396,13 @@ export function MapDateFilterControl({ dateFilter, locale, canUseLiquidGlass, on
   );
 }
 
-function PickerModeButton({ active, label, onPress }: { active: boolean; label: string; onPress: () => void }) {
+type PickerModeButtonProps = Readonly<{
+  active: boolean;
+  label: string;
+  onPress: () => void;
+}>;
+
+function PickerModeButton({ active, label, onPress }: PickerModeButtonProps) {
   const { theme } = useAppTheme();
 
   return (

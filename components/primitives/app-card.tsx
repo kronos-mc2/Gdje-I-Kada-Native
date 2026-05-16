@@ -3,11 +3,12 @@ import { Platform, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 
 import { GlassSurface } from '@/components/primitives/glass-surface';
 import { useAppTheme } from '@/core/theme';
+import type { ThemeColors } from '@/core/theme/types';
 
-type AppCardProps = PropsWithChildren<{
+type AppCardProps = Readonly<PropsWithChildren<{
   style?: StyleProp<ViewStyle>;
   variant?: 'default' | 'elevated' | 'glass';
-}>;
+}>>;
 
 export function AppCard({ children, style, variant = 'default' }: AppCardProps) {
   const { theme } = useAppTheme();
@@ -21,12 +22,7 @@ export function AppCard({ children, style, variant = 'default' }: AppCardProps) 
           borderRadius: theme.tokens.radius.lg,
           borderColor: theme.colors.border,
           padding: theme.tokens.spacing.md,
-          backgroundColor:
-            variant === 'elevated'
-              ? theme.colors.surfaceElevated
-              : variant === 'glass' && Platform.OS !== 'ios'
-                ? theme.colors.surface
-                : theme.colors.card,
+          backgroundColor: getBackgroundColor(variant, theme.colors),
         },
         variant === 'elevated' ? theme.tokens.shadow.card : undefined,
         style,
@@ -44,3 +40,13 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
 });
+
+function getBackgroundColor(variant: NonNullable<AppCardProps['variant']>, colors: ThemeColors) {
+  if (variant === 'elevated') {
+    return colors.surfaceElevated;
+  }
+  if (variant === 'glass' && Platform.OS !== 'ios') {
+    return colors.surface;
+  }
+  return colors.card;
+}

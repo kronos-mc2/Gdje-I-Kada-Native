@@ -13,9 +13,9 @@ import { ChatRoom } from '@/core/types/domain';
 import { ProfileAvatar } from '@/features/profile/components/profile-avatar';
 import { ProfileEventRow } from '@/features/profile/components/profile-event-row';
 
-type ChatDetailsPanelProps = {
+type ChatDetailsPanelProps = Readonly<{
   room: ChatRoom;
-};
+}>;
 
 export function ChatDetailsPanel({ room }: ChatDetailsPanelProps) {
   const router = useRouter();
@@ -24,7 +24,6 @@ export function ChatDetailsPanel({ room }: ChatDetailsPanelProps) {
   const updateRoomMutation = useUpdateChatRoomMutation();
   const updateNotificationMutation = useUpdateChatNotificationSettingsMutation();
   const canAdmin = room.myRole === 'owner' || room.myRole === 'admin';
-  const directPeer = room.type === 'direct' ? room.members?.find((member) => member.id === room.directUserId) : null;
   const { data: upcomingEvents = [], isLoading: upcomingLoading } = useUserUpcomingEventsQuery(room.directUserId);
 
   return (
@@ -35,7 +34,7 @@ export function ChatDetailsPanel({ room }: ChatDetailsPanelProps) {
           <View style={styles.identityCopy}>
             <AppText variant="headline" numberOfLines={2}>{room.title}</AppText>
             <AppText variant="body" color="textMuted">
-              {room.type === 'event' ? t('eventChat') : room.type === 'group' ? t('groupChat') : t('directChat')}
+              {getRoomTypeLabel(room.type, t)}
             </AppText>
           </View>
         </View>
@@ -118,13 +117,23 @@ export function ChatDetailsPanel({ room }: ChatDetailsPanelProps) {
             ))
           ) : (
             <AppText variant="body" color="textMuted">
-              {directPeer ? t('noUpcomingUserEvents') : t('noUpcomingUserEvents')}
+              {t('noUpcomingUserEvents')}
             </AppText>
           )}
         </AppCard>
       ) : null}
     </ScrollView>
   );
+}
+
+function getRoomTypeLabel(roomType: ChatRoom['type'], t: ReturnType<typeof useI18n>['t']) {
+  if (roomType === 'event') {
+    return t('eventChat');
+  }
+  if (roomType === 'group') {
+    return t('groupChat');
+  }
+  return t('directChat');
 }
 
 const styles = StyleSheet.create({

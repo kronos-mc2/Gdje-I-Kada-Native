@@ -4,12 +4,12 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { AppText } from '@/components/primitives';
 import { useAppTheme } from '@/core/theme';
 
-type ProfileMenuRowProps = {
+type ProfileMenuRowProps = Readonly<{
   icon: keyof typeof Ionicons.glyphMap;
   title: string;
   subtitle?: string;
   onPress: () => void;
-};
+}>;
 
 export function ProfileMenuRow({ icon, title, subtitle, onPress }: ProfileMenuRowProps) {
   const { theme } = useAppTheme();

@@ -5,13 +5,13 @@ import { AppText } from '@/components/primitives/app-text';
 import { GlassSurface } from '@/components/primitives/glass-surface';
 import { useAppTheme } from '@/core/theme';
 
-type AppHeaderProps = {
+type AppHeaderProps = Readonly<{
   title: string;
   subtitle?: string;
   right?: ReactNode;
   left?: ReactNode;
   floating?: boolean;
-};
+}>;
 
 export function AppHeader({ title, subtitle, right, left, floating = true }: AppHeaderProps) {
   const { theme } = useAppTheme();

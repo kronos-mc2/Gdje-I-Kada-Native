@@ -2,10 +2,10 @@ import type { VideoSource } from 'expo-video';
 import { useEffect, useMemo } from 'react';
 import { StyleSheet } from 'react-native';
 
-type FypReelVideoLayerProps = {
+type FypReelVideoLayerProps = Readonly<{
   videoUri: string;
   isActive: boolean;
-};
+}>;
 
 type ExpoVideoModule = typeof import('expo-video');
 
@@ -29,12 +29,13 @@ export function canRenderFypVideo() {
 }
 
 export function FypReelVideoLayer({ videoUri, isActive }: FypReelVideoLayerProps) {
+  const videoModule = requireExpoVideoModule();
   const videoSource = useMemo<VideoSource>(() => ({ uri: videoUri, useCaching: true }), [videoUri]);
-  const player = expoVideoModule!.useVideoPlayer(videoSource, (videoPlayer) => {
+  const player = videoModule.useVideoPlayer(videoSource, (videoPlayer) => {
     videoPlayer.loop = true;
     videoPlayer.muted = true;
   });
-  const ExpoVideoView = expoVideoModule!.VideoView;
+  const ExpoVideoView = videoModule.VideoView;
 
   useEffect(() => {
     if (isActive) {
@@ -55,4 +56,11 @@ export function FypReelVideoLayer({ videoUri, isActive }: FypReelVideoLayerProps
       useExoShutter={false}
     />
   );
+}
+
+function requireExpoVideoModule() {
+  if (expoVideoModule == null) {
+    throw new Error('expo-video native module is not available.');
+  }
+  return expoVideoModule;
 }

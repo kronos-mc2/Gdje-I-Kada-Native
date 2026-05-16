@@ -5,7 +5,7 @@ import { MapCameraState } from '@/components/map/types';
 import { getEventCoverUri } from '@/core/events/event-cover';
 import { AppEvent, Coordinates, Locale } from '@/core/types/domain';
 
-type EventMapProps = {
+type EventMapProps = Readonly<{
   events: AppEvent[];
   locale: Locale;
   userLocation: Coordinates;
@@ -19,7 +19,7 @@ type EventMapProps = {
   onSelectEvent: (eventId: string) => void;
   onCameraStateChange?: (camera: MapCameraState) => void;
   onUserLocationUpdate?: (coordinates: Coordinates) => void;
-};
+}>;
 
 export function EventMap({
   events,

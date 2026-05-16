@@ -7,9 +7,9 @@ import { useAppTheme } from '@/core/theme';
 import { Transaction } from '@/core/types/domain';
 import { formatEventDate } from '@/core/utils/date';
 
-type TransactionRowProps = {
+type TransactionRowProps = Readonly<{
   transaction: Transaction;
-};
+}>;
 
 export function TransactionRow({ transaction }: TransactionRowProps) {
   const { theme } = useAppTheme();

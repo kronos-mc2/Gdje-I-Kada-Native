@@ -9,11 +9,11 @@ import { ChatMessage, Locale } from '@/core/types/domain';
 import { formatEventDate } from '@/core/utils/date';
 import { ProfileAvatar } from '@/features/profile/components/profile-avatar';
 
-type MessageBubbleProps = {
+type MessageBubbleProps = Readonly<{
   message: ChatMessage;
   locale: Locale;
   onOpenEvent: (eventId: string) => void;
-};
+}>;
 
 export function MessageBubble({ message, locale, onOpenEvent }: MessageBubbleProps) {
   const { t } = useI18n();
@@ -23,11 +23,7 @@ export function MessageBubble({ message, locale, onOpenEvent }: MessageBubblePro
   const bubbleColor = message.mine ? theme.colors.surfaceElevated : theme.colors.surface;
 
   const vote = (pollId: string, optionId: string, allowMultiple: boolean, currentOptionIds: string[]) => {
-    const optionIds = allowMultiple
-      ? currentOptionIds.includes(optionId)
-        ? currentOptionIds.filter((id) => id !== optionId)
-        : [...currentOptionIds, optionId]
-      : [optionId];
+    const optionIds = getNextVoteOptionIds(allowMultiple, currentOptionIds, optionId);
     if (optionIds.length === 0) {
       return;
     }
@@ -111,6 +107,15 @@ export function MessageBubble({ message, locale, onOpenEvent }: MessageBubblePro
       </View>
     </View>
   );
+}
+
+function getNextVoteOptionIds(allowMultiple: boolean, currentOptionIds: string[], optionId: string) {
+  if (!allowMultiple) {
+    return [optionId];
+  }
+  return currentOptionIds.includes(optionId)
+    ? currentOptionIds.filter((currentOptionId) => currentOptionId !== optionId)
+    : [...currentOptionIds, optionId];
 }
 
 const styles = StyleSheet.create({

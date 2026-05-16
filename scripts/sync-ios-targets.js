@@ -102,14 +102,11 @@ function ensureTargetAttributes(project, templateTarget, devTargetUuid) {
   attributes.TargetAttributes ||= {};
 
   if (!attributes.TargetAttributes[devTargetUuid]) {
-    attributes.TargetAttributes[devTargetUuid] = JSON.parse(
-      JSON.stringify(attributes.TargetAttributes[templateTarget.uuid] ?? {}),
-    );
+    attributes.TargetAttributes[devTargetUuid] = structuredClone(attributes.TargetAttributes[templateTarget.uuid] ?? {});
   }
 }
 
 function ensureTargetBuildPhases(project, templateTarget, devTargetUuid) {
-  const target = project.pbxNativeTargetSection()[devTargetUuid];
   const targetGroupKey = ensureTargetGroup(project, devTargetName);
   const podsGroupKey = project.findPBXGroupKey({ name: 'Pods' });
 
@@ -170,11 +167,11 @@ function findAppTargetGroupKey(project, groupName) {
       continue;
     }
 
-    const childComments = (value.children || []).map((child) => child.comment);
+    const childComments = new Set((value.children || []).map((child) => child.comment));
     if (
       stripQuotes(value?.path) === groupName ||
-      childComments.includes('Info.plist') ||
-      childComments.includes('AppDelegate.swift')
+      childComments.has('Info.plist') ||
+      childComments.has('AppDelegate.swift')
     ) {
       return key;
     }
@@ -253,7 +250,7 @@ function ensureBuildPhase(project, targetUuid, buildPhaseType, comment) {
 }
 
 function ensureFileReference(project, absoluteLikePath, groupKey) {
-  const relativePath = absoluteLikePath.replace(/^ios\//, '');
+  const relativePath = absoluteLikePath.replaceAll(/^ios\//g, '');
   if (project.hasFile(relativePath)) {
     return;
   }
@@ -262,7 +259,7 @@ function ensureFileReference(project, absoluteLikePath, groupKey) {
 }
 
 function ensureHeaderReference(project, absoluteLikePath, groupKey) {
-  const relativePath = absoluteLikePath.replace(/^ios\//, '');
+  const relativePath = absoluteLikePath.replaceAll(/^ios\//g, '');
   if (project.hasFile(relativePath)) {
     return;
   }
@@ -271,7 +268,7 @@ function ensureHeaderReference(project, absoluteLikePath, groupKey) {
 }
 
 function ensureSourceReference(project, absoluteLikePath, groupKey, targetUuid) {
-  const relativePath = absoluteLikePath.replace(/^ios\//, '');
+  const relativePath = absoluteLikePath.replaceAll(/^ios\//g, '');
   if (sourcePhaseHasFile(project, targetUuid, relativePath)) {
     return;
   }
@@ -284,7 +281,7 @@ function ensureSourceReference(project, absoluteLikePath, groupKey, targetUuid) 
 }
 
 function ensureResourceReference(project, absoluteLikePath, groupKey, targetUuid) {
-  const relativePath = absoluteLikePath.replace(/^ios\//, '');
+  const relativePath = absoluteLikePath.replaceAll(/^ios\//g, '');
   if (resourcePhaseHasFile(project, targetUuid, relativePath)) {
     return;
   }
@@ -364,7 +361,7 @@ function ensureShellPhase(project, templateTargetUuid, devTargetUuid, comment) {
   const templatePhaseUuid = findBuildPhaseUuid(project, templateTargetUuid, comment);
   const templatePhase = project.hash.project.objects.PBXShellScriptBuildPhase[templatePhaseUuid];
   const newPhaseUuid = project.generateUuid();
-  const clonedPhase = JSON.parse(JSON.stringify(templatePhase));
+  const clonedPhase = structuredClone(templatePhase);
   replaceStrings(clonedPhase, (value) =>
     value.replaceAll(testTargetName, devTargetName).replaceAll(`Pods-${testTargetName}`, `Pods-${devTargetName}`),
   );
@@ -406,7 +403,7 @@ function syncTargetBuildSettings(project, templateTarget, devTargetUuid) {
   for (const [name, configUuid] of Object.entries(devConfigs)) {
     const templateConfig = project.pbxXCBuildConfigurationSection()[templateConfigs[name]];
     const devConfig = project.pbxXCBuildConfigurationSection()[configUuid];
-    devConfig.buildSettings = JSON.parse(JSON.stringify(templateConfig.buildSettings));
+    devConfig.buildSettings = structuredClone(templateConfig.buildSettings);
 
     devConfig.buildSettings.CODE_SIGN_ENTITLEMENTS = `${devTargetName}/${devTargetName}.entitlements`;
     devConfig.buildSettings.INFOPLIST_FILE = `${devTargetName}/Info.plist`;
@@ -552,5 +549,5 @@ function replaceStrings(node, replacer) {
 }
 
 function stripQuotes(value) {
-  return typeof value === 'string' ? value.replace(/^"+|"+$/g, '') : value;
+  return typeof value === 'string' ? value.replaceAll(/^"+|"+$/g, '') : value;
 }

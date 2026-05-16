@@ -6,7 +6,7 @@ import { ActivityIndicator, Pressable, StyleSheet, TextInput, View } from 'react
 
 import { useAppTheme } from '@/core/theme';
 
-type MapSearchBarProps = {
+type MapSearchBarProps = Readonly<{
   value: string;
   placeholder: string;
   loading?: boolean;
@@ -14,11 +14,12 @@ type MapSearchBarProps = {
   onClear: () => void;
   onFocus: () => void;
   onBlur: () => void;
-};
+}>;
 
 export function MapSearchBar({ value, placeholder, loading, onChangeText, onClear, onFocus, onBlur }: MapSearchBarProps) {
   const { theme } = useAppTheme();
   const canUseLiquidGlass = useMemo(() => isLiquidGlassAvailable() && isGlassEffectAPIAvailable(), []);
+  const showClearButton = !loading && Boolean(value);
 
   return (
     <View style={styles.wrapper}>
@@ -65,7 +66,8 @@ export function MapSearchBar({ value, placeholder, loading, onChangeText, onClea
 
         {loading ? (
           <ActivityIndicator size="small" color={theme.colors.mapAccent} />
-        ) : value ? (
+        ) : null}
+        {showClearButton ? (
           <Pressable
             onPress={onClear}
             style={({ pressed }) => [

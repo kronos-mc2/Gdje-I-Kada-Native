@@ -11,7 +11,7 @@ import { FypReelActions } from '@/features/events/components/fyp/fyp-reel-action
 import { FypReelSummaryCard } from '@/features/events/components/fyp/fyp-reel-summary-card';
 import { FypReelVideoLayer, canRenderFypVideo } from '@/features/events/components/fyp/fyp-reel-video-layer';
 
-type FypReelSlideProps = {
+type FypReelSlideProps = Readonly<{
   event: AppEvent;
   locale: Locale;
   width: number;
@@ -23,7 +23,7 @@ type FypReelSlideProps = {
   onToggleLike: (event: AppEvent) => void;
   onOpenDetails: (event: AppEvent) => void;
   onOpenShare: (event: AppEvent) => void;
-};
+}>;
 
 export function FypReelSlide({
   event,

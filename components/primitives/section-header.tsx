@@ -4,11 +4,11 @@ import { StyleSheet, View } from 'react-native';
 import { AppText } from '@/components/primitives/app-text';
 import { useAppTheme } from '@/core/theme';
 
-type SectionHeaderProps = {
+type SectionHeaderProps = Readonly<{
   title: string;
   subtitle?: string;
   right?: ReactNode;
-};
+}>;
 
 export function SectionHeader({ title, subtitle, right }: SectionHeaderProps) {
   const { theme } = useAppTheme();

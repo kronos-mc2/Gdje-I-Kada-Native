@@ -1,10 +1,10 @@
 import { AppListRow, AppText } from '@/components/primitives';
 import { Conversation, Locale } from '@/core/types/domain';
 
-type ConversationRowProps = {
+type ConversationRowProps = Readonly<{
   conversation: Conversation;
   locale: Locale;
-};
+}>;
 
 export function ConversationRow({ conversation, locale }: ConversationRowProps) {
   return (

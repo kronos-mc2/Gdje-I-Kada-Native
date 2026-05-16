@@ -7,10 +7,10 @@ import { useI18n } from '@/core/i18n/use-i18n';
 
 const OPTIONS: ThemePreference[] = ['system', 'dark', 'light'];
 
-type ThemeToggleProps = {
+type ThemeToggleProps = Readonly<{
   value: ThemePreference;
   onChange: (value: ThemePreference) => void;
-};
+}>;
 
 export function ThemeToggle({ value, onChange }: ThemeToggleProps) {
   const { theme } = useAppTheme();
@@ -44,7 +44,7 @@ export function ThemeToggle({ value, onChange }: ThemeToggleProps) {
             ]}
           >
             <AppText variant="label" style={{ color: selected ? theme.colors.textPrimary : theme.colors.textSecondary }}>
-              {option === 'system' ? t('themeSystem') : option === 'dark' ? t('themeDark') : t('themeLight')}
+              {getThemeLabel(option, t)}
             </AppText>
           </Pressable>
         );
@@ -67,3 +67,13 @@ const styles = StyleSheet.create({
     minHeight: 36,
   },
 });
+
+function getThemeLabel(option: ThemePreference, t: ReturnType<typeof useI18n>['t']) {
+  if (option === 'system') {
+    return t('themeSystem');
+  }
+  if (option === 'dark') {
+    return t('themeDark');
+  }
+  return t('themeLight');
+}

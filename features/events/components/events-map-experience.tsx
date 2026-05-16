@@ -2,10 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { GlassView, isGlassEffectAPIAvailable, isLiquidGlassAvailable } from 'expo-glass-effect';
+import { isGlassEffectAPIAvailable, isLiquidGlassAvailable } from 'expo-glass-effect';
 
 import { EventDetailSheet, EventMap } from '@/components/map';
-import { AppText } from '@/components/primitives';
 import { MapSearchBar, MapSearchResults } from '@/components/search';
 import { useI18n } from '@/core/i18n/use-i18n';
 import { MAP_AUTO_USER_ZOOM, MAP_FOCUS_ZOOM } from '@/core/maps/map-config';
@@ -17,7 +16,7 @@ import { MapDateFilterControl } from '@/features/events/components/map-date-filt
 import { MapDateFilter } from '@/features/events/hooks/use-events-map-screen-model';
 import { useMapLocationBootstrap } from '@/features/events/hooks/use-map-location-bootstrap';
 
-type EventsMapExperienceProps = {
+type EventsMapExperienceProps = Readonly<{
   events: AppEvent[];
   locale: Locale;
   userLocation: Coordinates;
@@ -26,8 +25,7 @@ type EventsMapExperienceProps = {
   onDateFilterChange: (dateFilter: MapDateFilter) => void;
   onSearchQueryChange: (query: string) => void;
   onCreateEventPress: () => void;
-  onEventPress?: (eventId: string) => void;
-};
+}>;
 
 export function EventsMapExperience({
   events,

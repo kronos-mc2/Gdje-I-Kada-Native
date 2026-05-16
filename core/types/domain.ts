@@ -295,8 +295,8 @@ export type NotificationPreferences = {
 export type TicketCheckout = {
   orderId?: string;
   eventId: string;
-  provider: 'stripe' | string;
-  providerMode: 'stub' | 'live' | string;
+  provider: string;
+  providerMode: string;
   status: 'pending' | 'succeeded' | 'cancelled' | 'failed' | 'expired';
   amount: number;
   currency: string;

@@ -72,5 +72,9 @@ export const formatEventDuration = (startIso: string, endIso: string | undefined
     parts.push(`${minutes} min`);
   }
 
-  return parts.length > 0 ? parts.join(' ') : locale === 'hr' ? 'manje od minute' : 'less than a minute';
+  if (parts.length > 0) {
+    return parts.join(' ');
+  }
+
+  return locale === 'hr' ? 'manje od minute' : 'less than a minute';
 };

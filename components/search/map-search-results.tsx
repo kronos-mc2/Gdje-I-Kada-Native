@@ -9,7 +9,7 @@ export type MapSearchResultItem = {
   subtitle: string;
 };
 
-type MapSearchResultsProps<T extends MapSearchResultItem> = {
+type MapSearchResultsProps<T extends MapSearchResultItem> = Readonly<{
   visible: boolean;
   loading: boolean;
   query: string;
@@ -19,7 +19,7 @@ type MapSearchResultsProps<T extends MapSearchResultItem> = {
   hintLabel: string;
   providerLabel?: string;
   onSelectResult: (result: T) => void;
-};
+}>;
 
 export function MapSearchResults<T extends MapSearchResultItem>({
   visible,

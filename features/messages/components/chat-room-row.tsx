@@ -6,10 +6,10 @@ import { useAppTheme } from '@/core/theme';
 import { ChatRoom } from '@/core/types/domain';
 import { ProfileAvatar } from '@/features/profile/components/profile-avatar';
 
-type ChatRoomRowProps = {
+type ChatRoomRowProps = Readonly<{
   room: ChatRoom;
   onPress: () => void;
-};
+}>;
 
 export function ChatRoomRow({ room, onPress }: ChatRoomRowProps) {
   const { theme } = useAppTheme();

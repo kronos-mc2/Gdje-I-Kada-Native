@@ -5,12 +5,12 @@ import { useAppTheme } from '@/core/theme';
 import { AppEvent, Locale } from '@/core/types/domain';
 import { formatEventDate } from '@/core/utils/date';
 
-type EventCardProps = {
+type EventCardProps = Readonly<{
   event: AppEvent;
   locale: Locale;
   distanceKm?: number;
   onPress: () => void;
-};
+}>;
 
 export function EventCard({ event, locale, distanceKm, onPress }: EventCardProps) {
   const { theme } = useAppTheme();

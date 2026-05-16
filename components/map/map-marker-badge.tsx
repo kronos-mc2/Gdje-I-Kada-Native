@@ -4,12 +4,12 @@ import { Image, StyleSheet, View } from 'react-native';
 
 import { useAppTheme } from '@/core/theme';
 
-type MapMarkerBadgeProps = {
+type MapMarkerBadgeProps = Readonly<{
   selected?: boolean;
   kind?: 'event' | 'search';
   coverImageUri?: string;
   onImageLoad?: () => void;
-};
+}>;
 
 export function MapMarkerBadge({ selected = false, kind = 'event', coverImageUri, onImageLoad }: MapMarkerBadgeProps) {
   const { theme } = useAppTheme();

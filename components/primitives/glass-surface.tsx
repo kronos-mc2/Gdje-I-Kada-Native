@@ -5,10 +5,10 @@ import { Platform, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 
 import { useAppTheme } from '@/core/theme';
 
-type GlassSurfaceProps = {
+type GlassSurfaceProps = Readonly<{
   interactive?: boolean;
   style?: StyleProp<ViewStyle>;
-};
+}>;
 
 export function GlassSurface({ interactive = false, style }: GlassSurfaceProps) {
   const { theme } = useAppTheme();

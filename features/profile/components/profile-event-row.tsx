@@ -8,11 +8,11 @@ import { useI18n } from '@/core/i18n/use-i18n';
 import { AppEvent } from '@/core/types/domain';
 import { formatEventDate } from '@/core/utils/date';
 
-type ProfileEventRowProps = {
+type ProfileEventRowProps = Readonly<{
   event: AppEvent;
   onPress: () => void;
   right?: ReactNode;
-};
+}>;
 
 export function ProfileEventRow({ event, onPress, right }: ProfileEventRowProps) {
   const { locale, t } = useI18n();

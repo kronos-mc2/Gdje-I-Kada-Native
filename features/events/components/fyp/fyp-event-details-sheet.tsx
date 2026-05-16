@@ -16,14 +16,14 @@ import { EventDetailsContent } from '@/features/events/components/event-details-
 import { useEventJoinActions } from '@/features/events/hooks/use-event-join-actions';
 import { ProfileAvatar } from '@/features/profile/components/profile-avatar';
 
-type FypEventDetailsSheetProps = {
+type FypEventDetailsSheetProps = Readonly<{
   event: AppEvent;
   locale: Locale;
   topInset: number;
   bottomInset: number;
   onClose: () => void;
   onOpenShare: (event: AppEvent) => void;
-};
+}>;
 
 type SheetController = {
   close: () => void;

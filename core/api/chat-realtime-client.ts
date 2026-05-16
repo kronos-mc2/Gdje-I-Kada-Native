@@ -14,7 +14,7 @@ export type ChatRealtimeEvent = {
   };
 };
 
-type ReactNativeWebSocketConstructor = typeof WebSocket & {
+interface ReactNativeWebSocketConstructor {
   new (
     url: string,
     protocols?: string | string[] | null,
@@ -22,7 +22,7 @@ type ReactNativeWebSocketConstructor = typeof WebSocket & {
       headers?: Record<string, string>;
     },
   ): WebSocket;
-};
+}
 
 const CHAT_WEBSOCKET_PATH = '/ws/messages';
 
@@ -46,7 +46,7 @@ export const createChatRealtimeSocket = (accessToken: string) => {
     return new WebSocket(parsedUrl.toString());
   }
 
-  const NativeWebSocket = WebSocket as ReactNativeWebSocketConstructor;
+  const NativeWebSocket = WebSocket as unknown as ReactNativeWebSocketConstructor;
   return new NativeWebSocket(url, undefined, {
     headers: {
       Authorization: `Bearer ${accessToken}`,

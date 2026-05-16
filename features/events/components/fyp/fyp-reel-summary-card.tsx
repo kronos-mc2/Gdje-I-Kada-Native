@@ -8,11 +8,16 @@ import { AppEvent, Locale } from '@/core/types/domain';
 import { formatEventDay, formatEventTime } from '@/core/utils/date';
 import { ProfileAvatar } from '@/features/profile/components/profile-avatar';
 
-type FypReelSummaryCardProps = {
+type FypReelSummaryCardProps = Readonly<{
   event: AppEvent;
   locale: Locale;
   onOpenDetails: () => void;
-};
+}>;
+
+type MetaItemProps = Readonly<{
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+}>;
 
 export function FypReelSummaryCard({ event, locale, onOpenDetails }: FypReelSummaryCardProps) {
   const { t } = useI18n();
@@ -54,7 +59,7 @@ export function FypReelSummaryCard({ event, locale, onOpenDetails }: FypReelSumm
   );
 }
 
-function MetaItem({ icon, label }: { icon: keyof typeof Ionicons.glyphMap; label: string }) {
+function MetaItem({ icon, label }: MetaItemProps) {
   const { theme } = useAppTheme();
 
   return (

@@ -6,7 +6,7 @@ import { Locale, Coordinates } from '@/core/types/domain';
 import { useLocationSearch } from '@/features/events/hooks/use-location-search';
 import { LocationSearchResult } from '@/services/locationSearch';
 
-type CreateEventAddressFieldProps = {
+type CreateEventAddressFieldProps = Readonly<{
   label: string;
   value: string;
   placeholder: string;
@@ -18,14 +18,14 @@ type CreateEventAddressFieldProps = {
   providerLabel: string;
   onChangeText: (value: string) => void;
   onSelectAddress: (result: LocationSearchResult) => void;
-};
+}>;
 
 const toFullAddress = (result: LocationSearchResult) =>
   [result.title, result.subtitle].filter((part) => part.trim().length > 0).join(', ');
 
 const HOUSE_NUMBER_PATTERN = /\b\d+[a-zA-Z]?(?:[/-]\d+[a-zA-Z]?)?\b/;
 
-const getQueryHouseNumber = (query: string) => query.match(HOUSE_NUMBER_PATTERN)?.[0];
+const getQueryHouseNumber = (query: string) => HOUSE_NUMBER_PATTERN.exec(query)?.[0];
 
 const appendQueryHouseNumberIfMissing = (result: LocationSearchResult, query: string) => {
   const houseNumber = getQueryHouseNumber(query);

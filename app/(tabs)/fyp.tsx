@@ -60,11 +60,11 @@ export default function FypScreen() {
 
   const onToggleLike = (event: AppEvent) => {
     if (event.likedByMe) {
-      void unlikeEventMutation.mutateAsync(event.id);
+      unlikeEventMutation.mutate(event.id);
       return;
     }
 
-    void likeEventMutation.mutateAsync(event.id);
+    likeEventMutation.mutate(event.id);
   };
 
   useEffect(() => {
@@ -136,10 +136,12 @@ export default function FypScreen() {
           onEndReachedThreshold={0.55}
           onEndReached={() => {
             if (hasNextPage && !isFetchingNextPage) {
-              void fetchNextPage();
+              fetchNextPage().catch(() => undefined);
             }
           }}
-          onRefresh={() => void refetch()}
+          onRefresh={() => {
+            refetch().catch(() => undefined);
+          }}
           refreshing={isRefetching}
           viewabilityConfig={viewabilityConfig.current}
           onViewableItemsChanged={onViewableItemsChanged.current}
