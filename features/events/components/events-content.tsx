@@ -57,7 +57,6 @@ export function EventsContent({
           onDateFilterChange={setDateFilter}
           onSearchQueryChange={setSearchQuery}
           onCreateEventPress={() => router.push('/create-event')}
-          onEventPress={onEventPress}
         />
       </View>
     );
