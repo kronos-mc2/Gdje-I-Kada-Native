@@ -2,7 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image, Pressable, StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/primitives';
-import { useVotePollMutation } from '@/core/api/query-hooks';
+import { useRespondFriendRequestMutation, useVotePollMutation } from '@/core/api/query-hooks';
 import { useI18n } from '@/core/i18n/use-i18n';
 import { useAppTheme } from '@/core/theme';
 import { ChatMessage, Locale } from '@/core/types/domain';
@@ -19,6 +19,7 @@ export function MessageBubble({ message, locale, onOpenEvent }: MessageBubblePro
   const { t } = useI18n();
   const { theme } = useAppTheme();
   const voteMutation = useVotePollMutation();
+  const respondFriendRequestMutation = useRespondFriendRequestMutation();
   const alignSelf = message.mine ? 'flex-end' : 'flex-start';
   const bubbleColor = message.mine ? theme.colors.surfaceElevated : theme.colors.surface;
 
@@ -101,6 +102,37 @@ export function MessageBubble({ message, locale, onOpenEvent }: MessageBubblePro
           </View>
         ) : null}
 
+        {message.type === 'friend_request' && message.friendRequest ? (
+          <View style={styles.friendRequest}>
+            <AppText variant="bodyStrong">{t('friendRequest')}</AppText>
+            <AppText variant="caption" color="textMuted">
+              {getFriendRequestLabel(message)}
+            </AppText>
+            {message.friendRequest.status === 'pending' && !message.mine ? (
+              <View style={styles.friendRequestActions}>
+                <Pressable
+                  disabled={respondFriendRequestMutation.isPending}
+                  onPress={() => respondFriendRequestMutation.mutate({ requestId: message.friendRequest!.id, status: 'accepted' })}
+                  style={[styles.friendRequestButton, { backgroundColor: theme.colors.mapAccent }]}
+                >
+                  <AppText variant="caption">{t('approve')}</AppText>
+                </Pressable>
+                <Pressable
+                  disabled={respondFriendRequestMutation.isPending}
+                  onPress={() => respondFriendRequestMutation.mutate({ requestId: message.friendRequest!.id, status: 'rejected' })}
+                  style={[styles.friendRequestButton, { backgroundColor: theme.colors.surfaceElevated }]}
+                >
+                  <AppText variant="caption">{t('decline')}</AppText>
+                </Pressable>
+              </View>
+            ) : (
+              <AppText variant="caption" color="textMuted">
+                {getFriendRequestStatusLabel(message.friendRequest.status, t)}
+              </AppText>
+            )}
+          </View>
+        ) : null}
+
         <AppText variant="caption" color="textMuted" style={styles.time}>
           {message.timeLabel}
         </AppText>
@@ -116,6 +148,26 @@ function getNextVoteOptionIds(allowMultiple: boolean, currentOptionIds: string[]
   return currentOptionIds.includes(optionId)
     ? currentOptionIds.filter((currentOptionId) => currentOptionId !== optionId)
     : [...currentOptionIds, optionId];
+}
+
+function getFriendRequestLabel(message: ChatMessage) {
+  const request = message.friendRequest;
+  if (!request) {
+    return '';
+  }
+  return message.mine
+    ? request.recipientName ?? ''
+    : request.requesterName ?? '';
+}
+
+function getFriendRequestStatusLabel(status: NonNullable<ChatMessage['friendRequest']>['status'], t: ReturnType<typeof useI18n>['t']) {
+  if (status === 'accepted') {
+    return t('friendRequestAccepted');
+  }
+  if (status === 'rejected') {
+    return t('friendRequestRejected');
+  }
+  return t('friendRequestPending');
 }
 
 const styles = StyleSheet.create({
@@ -165,6 +217,21 @@ const styles = StyleSheet.create({
   poll: {
     minWidth: 230,
     gap: 8,
+  },
+  friendRequest: {
+    minWidth: 220,
+    gap: 8,
+  },
+  friendRequestActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  friendRequestButton: {
+    minHeight: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 12,
   },
   pollOption: {
     minHeight: 38,

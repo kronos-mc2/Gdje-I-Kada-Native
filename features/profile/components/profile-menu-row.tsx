@@ -43,11 +43,12 @@ export function ProfileMenuRow({ icon, title, subtitle, onPress }: ProfileMenuRo
 
 const styles = StyleSheet.create({
   row: {
-    minHeight: 62,
+    minHeight: 70,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
+    paddingVertical: 10,
   },
   iconFrame: {
     width: 36,
@@ -60,6 +61,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   subtitle: {
-    marginTop: 2,
+    marginTop: 4,
   },
 });

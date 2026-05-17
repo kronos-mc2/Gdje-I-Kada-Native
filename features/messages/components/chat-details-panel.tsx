@@ -5,6 +5,8 @@ import { AppButton, AppCard, AppText } from '@/components/primitives';
 import {
   useUpdateChatNotificationSettingsMutation,
   useUpdateChatRoomMutation,
+  useCreateFriendRequestMutation,
+  useRespondFriendRequestMutation,
   useUserUpcomingEventsQuery,
 } from '@/core/api/query-hooks';
 import { useI18n } from '@/core/i18n/use-i18n';
@@ -23,8 +25,13 @@ export function ChatDetailsPanel({ room }: ChatDetailsPanelProps) {
   const { theme } = useAppTheme();
   const updateRoomMutation = useUpdateChatRoomMutation();
   const updateNotificationMutation = useUpdateChatNotificationSettingsMutation();
+  const createFriendRequestMutation = useCreateFriendRequestMutation();
+  const respondFriendRequestMutation = useRespondFriendRequestMutation();
   const canAdmin = room.myRole === 'owner' || room.myRole === 'admin';
   const { data: upcomingEvents = [], isLoading: upcomingLoading } = useUserUpcomingEventsQuery(room.directUserId);
+  const friendshipStatus = room.friendshipStatus ?? 'none';
+  const pendingFriendRequest = room.pendingFriendRequest;
+  const isFriendActionPending = createFriendRequestMutation.isPending || respondFriendRequestMutation.isPending;
 
   return (
     <ScrollView style={[styles.panel, { backgroundColor: theme.colors.background }]} contentContainerStyle={styles.content}>
@@ -38,7 +45,24 @@ export function ChatDetailsPanel({ room }: ChatDetailsPanelProps) {
             </AppText>
           </View>
         </View>
-        {room.type === 'direct' ? <AppButton title={t('addFriend')} variant="secondary" onPress={() => undefined} /> : null}
+        {room.type === 'direct' && room.directUserId ? (
+          <FriendshipAction
+            room={room}
+            friendshipStatus={friendshipStatus}
+            isPending={isFriendActionPending}
+            onAddFriend={() => createFriendRequestMutation.mutate({ recipientUserId: room.directUserId!, chatRoomId: room.id })}
+            onAccept={() =>
+              pendingFriendRequest
+                ? respondFriendRequestMutation.mutate({ requestId: pendingFriendRequest.id, status: 'accepted' })
+                : undefined
+            }
+            onDecline={() =>
+              pendingFriendRequest
+                ? respondFriendRequestMutation.mutate({ requestId: pendingFriendRequest.id, status: 'rejected' })
+                : undefined
+            }
+          />
+        ) : null}
       </AppCard>
 
       <AppCard variant="glass" style={styles.card}>
@@ -126,6 +150,50 @@ export function ChatDetailsPanel({ room }: ChatDetailsPanelProps) {
   );
 }
 
+function FriendshipAction({
+  room,
+  friendshipStatus,
+  isPending,
+  onAddFriend,
+  onAccept,
+  onDecline,
+}: Readonly<{
+  room: ChatRoom;
+  friendshipStatus: NonNullable<ChatRoom['friendshipStatus']>;
+  isPending: boolean;
+  onAddFriend: () => void;
+  onAccept: () => void;
+  onDecline: () => void;
+}>) {
+  const { t } = useI18n();
+  const hasPendingRequest = Boolean(room.pendingFriendRequest);
+
+  if (friendshipStatus === 'friends') {
+    return <AppButton title={t('alreadyFriends')} variant="secondary" disabled />;
+  }
+
+  if (friendshipStatus === 'pending_sent') {
+    return <AppButton title={t('friendRequestPending')} variant="secondary" disabled />;
+  }
+
+  if (friendshipStatus === 'pending_received' && hasPendingRequest) {
+    return (
+      <View style={styles.friendshipActions}>
+        <AppButton title={isPending ? t('loading') : t('approve')} disabled={isPending} onPress={onAccept} style={styles.friendshipButton} />
+        <AppButton
+          title={t('decline')}
+          variant="secondary"
+          disabled={isPending}
+          onPress={onDecline}
+          style={styles.friendshipButton}
+        />
+      </View>
+    );
+  }
+
+  return <AppButton title={isPending ? t('loading') : t('addFriend')} variant="secondary" disabled={isPending} onPress={onAddFriend} />;
+}
+
 function getRoomTypeLabel(roomType: ChatRoom['type'], t: ReturnType<typeof useI18n>['t']) {
   if (roomType === 'event') {
     return t('eventChat');
@@ -179,6 +247,13 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   memberName: {
+    flex: 1,
+  },
+  friendshipActions: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  friendshipButton: {
     flex: 1,
   },
 });

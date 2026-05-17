@@ -116,7 +116,14 @@ export default function CreateEventScreen() {
 
   const validateCurrentStep = () => {
     if (step === 'basics') {
-      return requireFields(['title', 'about']);
+      if (!requireFields(['title', 'about'])) {
+        return false;
+      }
+      if (parseEventTags(form.tags).length > 5) {
+        Alert.alert(t('validation'), t('eventTagsMax'));
+        return false;
+      }
+      return true;
     }
 
     if (step === 'time') {
@@ -203,6 +210,7 @@ export default function CreateEventScreen() {
     const capacity = parseOptionalPositiveInteger(form.capacity);
     const priceAmount = attendanceMode === 'paid' ? parseOptionalMoneyAmount(form.priceAmount) : undefined;
     const entryInstructions = form.entryInstructions.trim();
+    const tags = parseEventTags(form.tags);
 
     try {
       await createEvent({
@@ -221,6 +229,7 @@ export default function CreateEventScreen() {
         priceAmount: typeof priceAmount === 'number' ? priceAmount : undefined,
         priceCurrency: attendanceMode === 'paid' ? form.priceCurrency.trim().toUpperCase() : undefined,
         capacity: typeof capacity === 'number' ? capacity : undefined,
+        tags,
       });
 
       clearEntranceCoordinates();
@@ -276,6 +285,15 @@ export default function CreateEventScreen() {
               multiline
               style={styles.textArea}
             />
+            <AppInput
+              label={`${t('eventTags')} (${t('optional')})`}
+              value={form.tags}
+              onChangeText={(value) => updateField('tags', value)}
+              placeholder={t('eventTagsPlaceholder')}
+            />
+            <AppText variant="caption" color="textMuted">
+              {t('eventTagsHint')}
+            </AppText>
           </>
         ) : null}
 
@@ -429,6 +447,17 @@ export default function CreateEventScreen() {
         </View>
       </CreateEventStepShell>
     </AppScreen>
+  );
+}
+
+function parseEventTags(value: string) {
+  return Array.from(
+    new Set(
+      value
+        .split(/[,\s]+/)
+        .map((tag) => tag.replace(/^#+/, '').trim())
+        .filter(Boolean),
+    ),
   );
 }
 

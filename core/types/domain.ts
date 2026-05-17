@@ -82,6 +82,7 @@ export type AppEvent = {
   joinedByMe?: boolean;
   attendanceStatus?: EventAttendanceStatus;
   canJoin?: boolean;
+  tags?: string[];
   media?: EventMedia[];
 };
 
@@ -106,7 +107,10 @@ export type Conversation = {
 
 export type ChatRoomType = 'direct' | 'group' | 'event';
 export type ChatMemberRole = 'owner' | 'admin' | 'member';
-export type ChatMessageType = 'text' | 'event_share' | 'poll';
+export type ChatMessageType = 'text' | 'event_share' | 'poll' | 'friend_request';
+export type FeedPreferenceType = 'event' | 'creator' | 'tag';
+export type FriendRequestStatus = 'pending' | 'accepted' | 'rejected';
+export type FriendshipStatus = 'none' | 'pending_sent' | 'pending_received' | 'friends';
 
 export type ChatPerson = {
   id: string;
@@ -161,6 +165,7 @@ export type ChatMessage = {
   mine: boolean;
   event?: EventSharePreview;
   poll?: Poll;
+  friendRequest?: FriendRequest;
 };
 
 export type ChatRoom = {
@@ -179,6 +184,8 @@ export type ChatRoom = {
   adminOnly: boolean;
   mutedByMe: boolean;
   eventId?: string;
+  friendshipStatus?: FriendshipStatus;
+  pendingFriendRequest?: FriendRequest;
   members?: ChatMember[];
 };
 
@@ -292,6 +299,37 @@ export type NotificationPreferences = {
   groupMessagesEnabled: boolean;
 };
 
+export type FeedPreference = {
+  id: string;
+  type: FeedPreferenceType;
+  targetId: string;
+  label: string;
+  createdAt?: string;
+};
+
+export type CreateFeedPreferencePayload = {
+  type: FeedPreferenceType;
+  targetId: string;
+  label: string;
+};
+
+export type FriendRequest = {
+  id: string;
+  requesterUserId: string;
+  requesterName?: string;
+  recipientUserId: string;
+  recipientName?: string;
+  status: FriendRequestStatus;
+  chatRoomId?: string;
+  createdAt?: string;
+  respondedAt?: string;
+};
+
+export type CreateFriendRequestPayload = {
+  recipientUserId: string;
+  chatRoomId: string;
+};
+
 export type TicketCheckout = {
   orderId?: string;
   eventId: string;
@@ -329,6 +367,7 @@ export type UpdateEventPayload = Partial<
     | 'priceAmount'
     | 'priceCurrency'
     | 'capacity'
+    | 'tags'
   >
 > & {
   status?: EventStatus;
@@ -358,4 +397,5 @@ export type CreateEventPayload = {
   priceAmount?: number;
   priceCurrency?: string;
   capacity?: number;
+  tags?: string[];
 };

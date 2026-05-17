@@ -10,10 +10,11 @@ import {
   useChatPeopleQuery,
   useChatRoomsQuery,
   useCreateChatRoomMutation,
+  useFriendsQuery,
 } from '@/core/api/query-hooks';
 import { useI18n } from '@/core/i18n/use-i18n';
 import { useAppTheme } from '@/core/theme';
-import { ChatPerson } from '@/core/types/domain';
+import { ChatPerson, Friend } from '@/core/types/domain';
 import { ChatRoomRow } from '@/features/messages/components/chat-room-row';
 import { useKeyboardState } from '@/features/messages/hooks/use-keyboard-bottom-inset';
 
@@ -25,6 +26,7 @@ export default function MessagesScreen() {
   const { theme } = useAppTheme();
   const [query, setQuery] = useState('');
   const [isNewChatOpen, setNewChatOpen] = useState(false);
+  const [isFriendsOpen, setFriendsOpen] = useState(false);
   const deferredQuery = useDeferredValue(query);
   const { data: rooms = [], isLoading } = useChatRoomsQuery(deferredQuery);
 
@@ -32,12 +34,20 @@ export default function MessagesScreen() {
     <AppScreen scroll={false} contentContainerStyle={styles.screen}>
       <View style={styles.header}>
         <AppText variant="display">{t('messages')}</AppText>
-        <Pressable
-          onPress={() => setNewChatOpen(true)}
-          style={({ pressed }) => [styles.plusButton, { opacity: pressed ? 0.72 : 1 }]}
-        >
-          <Ionicons name="add" size={30} color={theme.colors.textPrimary} />
-        </Pressable>
+        <View style={styles.headerActions}>
+          <Pressable
+            onPress={() => setFriendsOpen(true)}
+            style={({ pressed }) => [styles.headerIconButton, { opacity: pressed ? 0.72 : 1 }]}
+          >
+            <Ionicons name="people-outline" size={26} color={theme.colors.textPrimary} />
+          </Pressable>
+          <Pressable
+            onPress={() => setNewChatOpen(true)}
+            style={({ pressed }) => [styles.headerIconButton, { opacity: pressed ? 0.72 : 1 }]}
+          >
+            <Ionicons name="add" size={30} color={theme.colors.textPrimary} />
+          </Pressable>
+        </View>
       </View>
 
       <View style={[styles.search, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
@@ -74,7 +84,84 @@ export default function MessagesScreen() {
       />
 
       <NewChatModal visible={isNewChatOpen} onClose={() => setNewChatOpen(false)} />
+      <FriendsModal visible={isFriendsOpen} onClose={() => setFriendsOpen(false)} />
     </AppScreen>
+  );
+}
+
+function FriendsModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const router = useRouter();
+  const { t, locale } = useI18n();
+  const { theme } = useAppTheme();
+  const insets = useSafeAreaInsets();
+  const { data: friends = [], isLoading } = useFriendsQuery();
+  const createRoomMutation = useCreateChatRoomMutation();
+  const panelBottomPadding = Math.max(insets.bottom, 10) + 8;
+
+  const startChat = async (friend: Friend) => {
+    const room = await createRoomMutation.mutateAsync({ type: 'direct', memberUserId: friend.id });
+    onClose();
+    router.push(`/chat/${room.id}`);
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <Pressable style={[styles.modalOverlay, { backgroundColor: theme.colors.overlay }]} onPress={onClose}>
+        <Pressable
+          style={[
+            styles.modalPanel,
+            {
+              backgroundColor: theme.colors.card,
+              borderColor: theme.colors.border,
+              paddingBottom: panelBottomPadding,
+            },
+          ]}
+          onPress={() => {}}
+        >
+          <View style={styles.modalHeader}>
+            <View>
+              <AppText variant="headline">{t('friends')}</AppText>
+              <AppText variant="body" color="textMuted">
+                {t('choosePerson')}
+              </AppText>
+            </View>
+            <Pressable onPress={onClose} style={styles.closeButton}>
+              <Ionicons name="close" size={22} color={theme.colors.textSecondary} />
+            </Pressable>
+          </View>
+
+          <FlatList
+            data={friends}
+            keyExtractor={(friend) => friend.id}
+            keyboardShouldPersistTaps="handled"
+            renderItem={({ item }) => (
+              <Pressable
+                onPress={() => void startChat(item)}
+                disabled={createRoomMutation.isPending}
+                style={({ pressed }) => [styles.personRow, { opacity: pressed || createRoomMutation.isPending ? 0.7 : 1 }]}
+              >
+                <View style={[styles.personAvatar, { backgroundColor: theme.colors.mapAccentSoft }]}>
+                  <AppText variant="label">{item.name.slice(0, 1).toUpperCase()}</AppText>
+                </View>
+                <View style={styles.personCopy}>
+                  <AppText variant="bodyStrong">{item.name}</AppText>
+                  <AppText variant="caption" color="textMuted">
+                    {item.status[locale]}
+                  </AppText>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={theme.colors.textMuted} />
+              </Pressable>
+            )}
+            ListEmptyComponent={
+              <AppText variant="body" color="textMuted" style={styles.loading}>
+                {isLoading ? t('loading') : t('noFriends')}
+              </AppText>
+            }
+            style={styles.peopleList}
+          />
+        </Pressable>
+      </Pressable>
+    </Modal>
   );
 }
 
@@ -192,7 +279,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 14,
   },
-  plusButton: {
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  headerIconButton: {
     width: 44,
     height: 44,
     alignItems: 'center',

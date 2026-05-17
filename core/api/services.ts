@@ -8,6 +8,8 @@ import {
   Conversation,
   CreateChatRoomPayload,
   CreateEventPayload,
+  CreateFeedPreferencePayload,
+  CreateFriendRequestPayload,
   EventMediaPayload,
   EventParticipant,
   CreatePollPayload,
@@ -15,7 +17,9 @@ import {
   EventRatingPayload,
   FeedPage,
   FeedQueryParams,
+  FeedPreference,
   Friend,
+  FriendRequest,
   MyEventsFilter,
   NotificationPreferences,
   OrganizerRatingPayload,
@@ -47,6 +51,20 @@ export const fetchMyEvents = async (filter: MyEventsFilter = 'all'): Promise<App
 export const fetchLikedEvents = async (): Promise<AppEvent[]> => {
   const response = await apiClient.get<AppEvent[]>('/users/me/liked-events');
   return response.data;
+};
+
+export const fetchFeedPreferences = async (): Promise<FeedPreference[]> => {
+  const response = await apiClient.get<FeedPreference[]>('/users/me/feed-preferences');
+  return response.data;
+};
+
+export const createFeedPreference = async (payload: CreateFeedPreferencePayload): Promise<FeedPreference> => {
+  const response = await apiClient.post<FeedPreference>('/users/me/feed-preferences', payload);
+  return response.data;
+};
+
+export const deleteFeedPreference = async (preferenceId: string): Promise<void> => {
+  await apiClient.delete(`/users/me/feed-preferences/${preferenceId}`);
 };
 
 export const fetchUserUpcomingEvents = async (userId: string): Promise<AppEvent[]> => {
@@ -198,6 +216,22 @@ export const fetchFeed = async (params?: FeedQueryParams): Promise<FeedPage> => 
 
 export const fetchFriends = async (): Promise<Friend[]> => {
   const response = await apiClient.get<Friend[]>('/social/friends');
+  return response.data;
+};
+
+export const createFriendRequest = async (payload: CreateFriendRequestPayload): Promise<FriendRequest> => {
+  const response = await apiClient.post<FriendRequest>('/social/friend-requests', payload);
+  return response.data;
+};
+
+export const respondToFriendRequest = async ({
+  requestId,
+  status,
+}: {
+  requestId: string;
+  status: 'accepted' | 'rejected';
+}): Promise<FriendRequest> => {
+  const response = await apiClient.patch<FriendRequest>(`/social/friend-requests/${requestId}`, { status });
   return response.data;
 };
 

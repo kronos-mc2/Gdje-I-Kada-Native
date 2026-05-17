@@ -48,6 +48,17 @@ export function EventDetailsContent({
           <AppText variant="caption" color="textSecondary">
             {getAttendanceModeLabel(event, t)}
           </AppText>
+          {event.tags?.length ? (
+            <View style={styles.tagRow}>
+              {event.tags.slice(0, 3).map((tag) => (
+                <View key={tag} style={styles.tagPill}>
+                  <AppText variant="caption" color="textSecondary">
+                    #{tag}
+                  </AppText>
+                </View>
+              ))}
+            </View>
+          ) : null}
         </View>
       </View>
 
@@ -80,6 +91,7 @@ export function EventDetailsContent({
             <DetailRow label={t('eventVisibility')} value={getVisibilityLabel(event, t)} />
             {priceLabel ? <DetailRow label={t('priceAmountLabel')} value={priceLabel} /> : null}
             {event.capacity ? <DetailRow label={t('capacityLabel')} value={String(event.capacity)} /> : null}
+            {event.tags?.length ? <DetailRow label={t('eventTags')} value={event.tags.map((tag) => `#${tag}`).join(', ')} /> : null}
             <DetailRow
               label={t('eventRating')}
               value={
@@ -127,6 +139,18 @@ const styles = StyleSheet.create({
   coverMeta: {
     flex: 1,
     gap: 2,
+  },
+  tagRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 4,
+  },
+  tagPill: {
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    backgroundColor: 'rgba(139, 92, 246, 0.18)',
   },
   aboutText: {
     marginTop: 12,

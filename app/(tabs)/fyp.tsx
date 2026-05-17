@@ -1,11 +1,13 @@
 import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
-import { ActivityIndicator, FlatList, StyleSheet, View, ViewToken, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, StyleSheet, View, ViewToken, useWindowDimensions } from 'react-native';
+import type { AlertButton } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppText } from '@/components/primitives';
 import {
   useFeedInfiniteQuery,
+  useCreateFeedPreferenceMutation,
   useLikeEventMutation,
   useUnlikeEventMutation,
 } from '@/core/api/query-hooks';
@@ -33,6 +35,7 @@ export default function FypScreen() {
   const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage, refetch, isRefetching } = useFeedInfiniteQuery();
   const likeEventMutation = useLikeEventMutation();
   const unlikeEventMutation = useUnlikeEventMutation();
+  const createFeedPreferenceMutation = useCreateFeedPreferenceMutation();
   const [selectedEvent, setSelectedEvent] = useState<AppEvent | null>(null);
   const [shareEvent, setShareEvent] = useState<AppEvent | null>(null);
   const [activeEventId, setActiveEventId] = useState<string | null>(null);
@@ -65,6 +68,39 @@ export default function FypScreen() {
     }
 
     likeEventMutation.mutate(event.id);
+  };
+
+  const blockFeedPreference = (event: AppEvent, type: 'event' | 'creator' | 'tag', targetId: string, label: string) => {
+    createFeedPreferenceMutation.mutate({ type, targetId, label });
+  };
+
+  const onNotInterested = (event: AppEvent) => {
+    const buttons: AlertButton[] = [
+      {
+        text: t('notInterestedThisEvent'),
+        onPress: () => blockFeedPreference(event, 'event', event.id, event.title[locale]),
+      },
+    ];
+
+    if (event.creatorUserId) {
+      buttons.push({
+        text: t('notInterestedCreator'),
+        onPress: () =>
+          blockFeedPreference(event, 'creator', event.creatorUserId!, event.creatorName ?? t('organizerFallback')),
+      });
+    }
+
+    for (const tag of event.tags?.slice(0, 4) ?? []) {
+      buttons.push({
+        text: `#${tag}`,
+        onPress: () => blockFeedPreference(event, 'tag', tag.toLowerCase(), tag),
+      });
+    }
+
+    Alert.alert(t('notInterested'), t('notInterestedPrompt'), [
+      ...buttons,
+      { text: t('cancel'), style: 'cancel' },
+    ]);
   };
 
   useEffect(() => {
@@ -126,6 +162,7 @@ export default function FypScreen() {
               onToggleLike={onToggleLike}
               onOpenDetails={setSelectedEvent}
               onOpenShare={setShareEvent}
+              onNotInterested={onNotInterested}
             />
           )}
           pagingEnabled

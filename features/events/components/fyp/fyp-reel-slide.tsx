@@ -23,6 +23,7 @@ type FypReelSlideProps = Readonly<{
   onToggleLike: (event: AppEvent) => void;
   onOpenDetails: (event: AppEvent) => void;
   onOpenShare: (event: AppEvent) => void;
+  onNotInterested: (event: AppEvent) => void;
 }>;
 
 export function FypReelSlide({
@@ -37,6 +38,7 @@ export function FypReelSlide({
   onToggleLike,
   onOpenDetails,
   onOpenShare,
+  onNotInterested,
 }: FypReelSlideProps) {
   const { t } = useI18n();
   const { theme } = useAppTheme();
@@ -75,6 +77,7 @@ export function FypReelSlide({
           likeCount={event.likeCount}
           onToggleLike={() => onToggleLike(event)}
           onOpenShare={() => onOpenShare(event)}
+          onNotInterested={() => onNotInterested(event)}
         />
       </View>
     </View>

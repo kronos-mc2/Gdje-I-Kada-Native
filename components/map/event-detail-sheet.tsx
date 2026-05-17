@@ -67,7 +67,7 @@ export function EventDetailSheet({ event, locale, onClose, topInset = 0, bottomI
   const [sheetIndex, setSheetIndex] = useState(0);
   const [isShareOpen, setIsShareOpen] = useState(false);
   const canUseLiquidGlass = useMemo(() => Platform.OS === 'ios' && isLiquidGlassAvailable() && isGlassEffectAPIAvailable(), []);
-  const snapPoints = useMemo(() => ['34%', '72%'], []);
+  const snapPoints = useMemo(() => ['22%', '76%'], []);
   const { data: resolvedEvent } = useEventQuery(event.id, event);
   const detailEvent = resolvedEvent ?? event;
   const { isJoined, isJoinDisabled, joinButtonTitle, onToggleJoin } = useEventJoinActions(detailEvent);

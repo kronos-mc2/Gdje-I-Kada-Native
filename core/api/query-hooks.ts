@@ -9,7 +9,10 @@ import {
   createChatPoll,
   createChatRoom,
   createEvent,
+  createFeedPreference,
+  createFriendRequest,
   createTicketCheckout,
+  deleteFeedPreference,
   deleteEvent,
   deleteEventMedia,
   fetchChatMessages,
@@ -21,6 +24,7 @@ import {
   fetchConversations,
   fetchEvents,
   fetchFeed,
+  fetchFeedPreferences,
   fetchLikedEvents,
   fetchFriends,
   fetchMyEvents,
@@ -34,6 +38,7 @@ import {
   leaveEvent,
   rateOrganizer,
   rateEvent,
+  respondToFriendRequest,
   removeEventParticipant,
   registerPushToken,
   sendChatMessage,
@@ -75,6 +80,12 @@ export const useLikedEventsQuery = () =>
   useQuery({
     queryKey: queryKeys.likedEvents,
     queryFn: fetchLikedEvents,
+  });
+
+export const useFeedPreferencesQuery = () =>
+  useQuery({
+    queryKey: queryKeys.feedPreferences,
+    queryFn: fetchFeedPreferences,
   });
 
 export const useUserUpcomingEventsQuery = (userId?: string | null) =>
@@ -191,6 +202,37 @@ export const useCreateChatRoomMutation = () => {
       queryClient.setQueryData<ChatRoomDetail | undefined>(queryKeys.chatRoom(room.id), (current) =>
         current ? { ...current, room } : current,
       );
+    },
+  });
+};
+
+export const useCreateFriendRequestMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: createFriendRequest,
+    onSuccess: (request) => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.chatRoomsRoot });
+      if (request.chatRoomId) {
+        void queryClient.invalidateQueries({ queryKey: queryKeys.chatRoom(request.chatRoomId) });
+        void queryClient.invalidateQueries({ queryKey: queryKeys.chatMessages(request.chatRoomId) });
+      }
+    },
+  });
+};
+
+export const useRespondFriendRequestMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: respondToFriendRequest,
+    onSuccess: (request) => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.chatRoomsRoot });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.friends });
+      if (request.chatRoomId) {
+        void queryClient.invalidateQueries({ queryKey: queryKeys.chatRoom(request.chatRoomId) });
+        void queryClient.invalidateQueries({ queryKey: queryKeys.chatMessages(request.chatRoomId) });
+      }
     },
   });
 };
@@ -403,6 +445,32 @@ export const useLikeEventMutation = () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.feedRoot });
       void queryClient.invalidateQueries({ queryKey: queryKeys.likedEventsRoot });
       void queryClient.invalidateQueries({ queryKey: queryKeys.profileActivity });
+    },
+  });
+};
+
+export const useCreateFeedPreferenceMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: createFeedPreference,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.feedPreferences });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.feedRoot });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.eventsRoot });
+    },
+  });
+};
+
+export const useDeleteFeedPreferenceMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: deleteFeedPreference,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.feedPreferences });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.feedRoot });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.eventsRoot });
     },
   });
 };

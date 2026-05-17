@@ -8,6 +8,7 @@ export const queryKeys = {
   feed: (limit: number) => ['feed', { limit }] as const,
   likedEventsRoot: ['liked-events'] as const,
   likedEvents: ['liked-events'] as const,
+  feedPreferences: ['feed-preferences'] as const,
   userUpcomingEvents: (userId: string) => ['user-upcoming-events', userId] as const,
   eventParticipants: (eventId: string) => ['event-participants', eventId] as const,
   profileActivity: ['profile-activity'] as const,

@@ -1,6 +1,6 @@
 # Gdje i Kada - fazni plan rada
 
-Status dokumenta: 2026-05-11
+Status dokumenta: 2026-05-17
 Lokacija master dokumentacije: `README.md`
 
 ## Pravilo rada po fazama
@@ -30,6 +30,7 @@ Dokumentacija je dio zadatka, ne naknadni posao. Ako kod i dokumentacija nisu us
 | 7 | Poruke i event chat | Rijeseno | Poruke imaju chat roomove, event grupe, event share card i pollove. |
 | 8 | Profil i postavke | Rijeseno | Profil ima edit, history, liked history, transactions i settings screen. |
 | 9 | Placanja, rating i polish | U tijeku | Paid eventi, transaction history, organizer rating i zavrsni UX polish. |
+| 10 | FYP preference, tags, friends i message security | Rijeseno | Not interested preference, event tagovi, friend request flow, encryption-at-rest i map details sheet dorada. |
 
 ## Faza 0 - Dokumentacija i smjer
 
@@ -462,6 +463,36 @@ Biljeska:
 2026-05-16 - Dopuna push notifikacija za poruke: dodan je Expo Notifications dependency/config, globalni push registrar, tap-to-open-chat handler, settings flow `Preferences > Notifications`, preference za privatne i grupne/event chatove te per-chat mute u `ChatDetailsPanel`. Backend je dobio `V11__message_push_notifications.sql`, `NotificationController`, `NotificationService`, notification mapper/DTO-e, `user_notification_preferences`, `user_push_tokens`, `chat_notification_mutes`, `mutedByMe` u `ChatRoomDto` i asinkrono slanje Expo push notifikacija nakon REST slanja text/event-share/poll poruke uz server-side filtriranje prema preferencama i mute stanju. Datoteke: frontend `app/_layout.tsx`, `app.config.ts`, `app/profile/settings.tsx`, `app/profile/preferences.tsx`, `app/profile/preferences/notifications.tsx`, `core/notifications/*`, `core/api/*`, `core/types/domain.ts`, `core/i18n/translations.ts`, `features/messages/components/chat-details-panel.tsx`, `package.json`, `package-lock.json`; backend `V11__message_push_notifications.sql`, `NotificationController`, `NotificationService`, notification DTO/mapper files, `MessageController`, `MessageService`, `MessageMapper.xml`, `ChatRoomDto`, `ChatRoomRow`, `BackendApplication`, `application.properties`, `README.md`; dokumentacija `README.md`, `FAZE.md`, `backend/README.md`. Testirano: nisu pokretani testovi, typecheck ni build po dogovoru; pokrenut je samo `git diff --check` u frontend i backend repou.
 
 2026-05-16 - Dopuna push konfiguracije: `app.config.ts` sada cita Expo `extra.eas.projectId` iz `EXPO_PUBLIC_EAS_PROJECT_ID`, a `.env`, `.env.test`, `.env.example` i `.env.test.example` imaju odgovarajucu varijablu za lokalni/test setup bez hardcodanog UUID-a u kodu. Placeholder vrijednosti se ignoriraju, a test build bez stvarnog projectId-a faila rano. Testirano: nije pokretan test/typecheck/build po dogovoru.
+
+## Faza 10 - FYP preference, tags, friends i message security
+
+Status: Rijeseno
+
+Cilj:
+
+- Korisnik moze s FYP-a oznaciti event, kreatora ili tag kao `Not interested` i kasnije to maknuti u preferencama.
+- Eventi imaju do 5 tagova koji se spremaju na backend i prikazuju u feed/detail ekranima.
+- Direct chat Add friend flow salje friend request poruku s prihvati/odbij akcijama.
+- Text poruke se za nove zapise spremaju encrypted-at-rest na backendu.
+- Mapa koristi shared event details bottom sheet u kompaktnijem Apple Maps smjeru s drag za vise detalja.
+
+Zadaci:
+
+- [x] Dodati backend tablice `event_tags`, `user_feed_blocks`, `friend_requests` i encrypted message stupce.
+- [x] Prosiriti event DTO/request/row/mapper/service s tagovima i FYP preference filtriranjem.
+- [x] Dodati `GET/POST/DELETE /api/users/me/feed-preferences`.
+- [x] Dodati tag input u create event basics korak i prikaz tagova u shared details komponenti.
+- [x] Dodati FYP `Not interested` akciju za event, kreatora i tagove.
+- [x] Dodati `Preferences > FYP preferences` ekran grupiran po eventima, kreatorima i tagovima s remove akcijom.
+- [x] Dodati friend request backend endpointove i posebnu chat poruku s accept/reject gumbima.
+- [x] Dodati AES-GCM encryption-at-rest za nove text poruke, s kljucem iz `MESSAGES_ENCRYPTION_SECRET` ili postojeceg JWT secreta kao fallbackom.
+- [x] Kompaktnije podesiti map detail sheet snap pointove da se prvo otvara kao donji preview, a draganjem gore prikazuje cijele detalje.
+
+Zavrsna biljeska:
+
+2026-05-17 - Napravljeno: FYP sada ima `Not interested` akciju koja sprema preference za event, kreatora ili tag i backend ih filtrira iz feeda/mape; preference su dostupne u `Profile > Settings > Preferences > FYP preferences` po kategorijama i mogu se ukloniti. Event create prima do 5 tagova, backend ih sprema u `event_tags`, a details ih prikazuje. Direct chat `Add friend` sada kreira friend request i ubacuje posebnu poruku s `Prihvati/Odbij` akcijama. Backend sprema nove text poruke AES-GCM encrypted-at-rest kroz `MESSAGES_ENCRYPTION_SECRET` konfiguraciju, uz kompatibilno citanje starih plaintext poruka. Map detail sheet je spusten na kompaktni prvi snap point i i dalje koristi shared `EventDetailsContent`. Datoteke: backend `V12__fyp_tags_friend_requests_message_encryption.sql`, event/social/message DTO/mapper/service/controller files, `application.properties`; frontend FYP, create event, event details, chat details/message bubble, preferences feed screen, API hooks/services/types, i18n; dokumentacija `README.md`, `FAZE.md`, `backend/README.md`. Testirano: nisu pokretani testovi, typecheck ni build po dogovoru.
+
+2026-05-17 - Dopuna friend request realtime UX-a: chat room DTO sada vraca `friendshipStatus` i pending friend request za direct chat, backend emitira `room.updated` nakon prihvacanja/odbijanja, a frontend preko postojeceg WebSocket listenera osvjezava chat i friends queryje. Chat details vise ne prikazuje `Add friend` kad je zahtjev vec poslan, kad je dosao pending zahtjev prikazuje `Prihvati/Odbij`, a nakon prihvacanja prikazuje da su korisnici vec prijatelji. Messages header je dobio friends list gumb s ikonom ljudi koji otvara prihvacene prijatelje i starta direct chat. Profile/settings redovi imaju veci vertikalni padding da tekst nije zalijepljen uz separatore. Datoteke: backend `MessageMapper.xml`, `MessageService`, `SocialService`; frontend messages screen, chat realtime listener, chat details/message bubble, profile menu row, API hooks/types, i18n. Testirano: samo `git diff --check` u backend i frontend repou; nisu pokretani testovi, typecheck ni build po dogovoru.
 
 ## Kako updateati ovaj dokument
 

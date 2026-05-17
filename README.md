@@ -1,6 +1,6 @@
 # Gdje i Kada - projektna dokumentacija
 
-Status dokumenta: 2026-05-16
+Status dokumenta: 2026-05-17
 Projekt se ne radi ispocetka. Postojeci React Native/Expo frontend i Spring Boot backend ostaju baza, a nove funkcionalnosti se nadograduju na vec postojece klase, rute, storeove, hookove i dizajn sustav.
 
 Radimo mobilnu event aplikaciju "Gdje i Kada" za iOS i Android. Frontend je React Native kroz Expo Router, backend je Spring Boot s PostgreSQL bazom. Nemoj kretati ispocetka. Prvo procitaj postojeci kod i nadogradi ga prema lokalnim patternima.
@@ -115,6 +115,9 @@ Backend trenutno ima:
 - `DELETE /api/events/{id}/like`
 - `GET /api/users/me/events?filter=all|joined|created`
 - `GET /api/users/me/liked-events`
+- `GET /api/users/me/feed-preferences`
+- `POST /api/users/me/feed-preferences`
+- `DELETE /api/users/me/feed-preferences/{preferenceId}`
 - `GET /api/users/{userId}/events/upcoming`
 - `PATCH /api/users/me/profile`
 - `GET /api/users/me/activity`
@@ -125,6 +128,8 @@ Backend trenutno ima:
 - `DELETE /api/users/me/notifications/push-tokens?token=`
 - `GET /api/feed?cursor=&limit=`
 - `GET /api/social/friends`
+- `POST /api/social/friend-requests`
+- `PATCH /api/social/friend-requests/{id}`
 - `GET /api/messages/chat-rooms?query=`
 - `POST /api/messages/chat-rooms`
 - `POST /api/messages/events/{eventId}/chat-room`
@@ -170,12 +175,14 @@ Trenutna baza:
 - `event_likes` iz `V4__expand_event_domain.sql`
 - `event_organizer_ratings` iz `V4__expand_event_domain.sql`
 - `event_blocks` iz `V9__event_owner_management.sql`
+- `event_tags` iz `V12__fyp_tags_friend_requests_message_encryption.sql`
+- `user_feed_blocks` iz `V12__fyp_tags_friend_requests_message_encryption.sql`
 - `event_ratings` i `app_notifications` iz `V10__event_attendance_notifications_ratings.sql`
 - `friends` iz `V1__init_schema.sql`
 - `conversations` iz `V1__init_schema.sql` ostaje legacy adapter/prototip
 - `chat_rooms` iz `V5__chat_rooms_messages_polls.sql`
 - `chat_members` iz `V5__chat_rooms_messages_polls.sql`
-- `messages` iz `V5__chat_rooms_messages_polls.sql`
+- `messages` iz `V5__chat_rooms_messages_polls.sql`, prosiren u `V12__fyp_tags_friend_requests_message_encryption.sql` s encrypted text message stupcima i `friend_request_id`
 - `message_reads` iz `V5__chat_rooms_messages_polls.sql`
 - `user_notification_preferences` iz `V11__message_push_notifications.sql`
 - `user_push_tokens` iz `V11__message_push_notifications.sql`
@@ -196,6 +203,7 @@ Trenutna baza:
 - `ticket_orders` iz `V8__tickets_payments.sql`
 - `payments` iz `V8__tickets_payments.sql`
 - `transactions` iz `V7__profile_activity.sql`, prosiren s `order_id`, `payment_provider` i `provider_reference` u `V8__tickets_payments.sql`
+- `friend_requests` iz `V12__fyp_tags_friend_requests_message_encryption.sql`
 
 Trenutni event model:
 
@@ -206,7 +214,7 @@ Trenutni event model:
 - Service: `EventService`.
 - Mapper: `EventMapper` i `EventMapper.xml`.
 
-Event trenutno podrzava naslov, lokaciju, adresu, opis, start/end datum, coordinates, entrance coordinates, entry instructions, creator user id, creator name/avatar za organizer prikaz, visibility `public/friends`, attendance mode `open/waitlist/paid`, cijenu za paid evente, capacity, status, event i organizer rating agregate, `likeCount`, `likedByMe`, participant count, `waitlistCount`, `joinedByMe`, `attendanceStatus` i `canJoin`. Create flow u frontendu koristi jedan naziv/lokaciju/opis bez odvojenih HR/EN polja, a backend `CreateEventRequest` prihvaca canonical `title`, `where`, `about` i `entryInstructions` te ih mirror-a u postojece HR/EN stupce radi kompatibilnosti. Adresa u create flowu bira se kroz backend `GET /api/locations/search` autocomplete; odabrani rezultat postaje canonical event coordinate, a entrance pin je opcionalna zasebna koordinata. Vlasnik eventa kroz profil ima Created Events ekran i manage ekran za izmjenu osnovnih detalja, dodavanje/brisanje image media URL-ova, pregled/prihvacanje waitliste, micanje sudionika i blokiranje korisnika s neplacenih eventova. Backend za to koristi owner-only endpointove `PATCH/DELETE /api/events/{id}`, media endpointove, participant endpointove, `event_blocks` i in-app `app_notifications`. Join/leave i like/unlike rade kroz backend, a feed i detail endpointi vracaju `event_media` za reels/detail prikaz. Rating nakon zavrsenog eventa salje odvojene ocjene eventa i organizatora kroz `POST /api/events/{id}/ratings/full`. Paid join ide kroz Stripe-named provider stub: `POST /api/events/{eventId}/ticket-checkout` kreira order/payment, `POST /api/ticket-orders/{orderId}/confirm` potvrdjuje stub payment, zapisuje transaction i tek tada join-a event. Real Stripe React Native SDK/PaymentSheet nije dodan jer ova promjena ne pokrece native build.
+Event trenutno podrzava naslov, lokaciju, adresu, opis, start/end datum, coordinates, entrance coordinates, entry instructions, do 5 tagova, creator user id, creator name/avatar za organizer prikaz, visibility `public/friends`, attendance mode `open/waitlist/paid`, cijenu za paid evente, capacity, status, event i organizer rating agregate, `likeCount`, `likedByMe`, participant count, `waitlistCount`, `joinedByMe`, `attendanceStatus` i `canJoin`. Create flow u frontendu koristi jedan naziv/lokaciju/opis bez odvojenih HR/EN polja, a backend `CreateEventRequest` prihvaca canonical `title`, `where`, `about`, `entryInstructions` i `tags` te ih mirror-a u postojece HR/EN stupce radi kompatibilnosti. Adresa u create flowu bira se kroz backend `GET /api/locations/search` autocomplete; odabrani rezultat postaje canonical event coordinate, a entrance pin je opcionalna zasebna koordinata. Vlasnik eventa kroz profil ima Created Events ekran i manage ekran za izmjenu osnovnih detalja, dodavanje/brisanje image media URL-ova, pregled/prihvacanje waitliste, micanje sudionika i blokiranje korisnika s neplacenih eventova. Backend za to koristi owner-only endpointove `PATCH/DELETE /api/events/{id}`, media endpointove, participant endpointove, `event_blocks` i in-app `app_notifications`. Join/leave i like/unlike rade kroz backend, a feed i detail endpointi vracaju `event_media` za reels/detail prikaz. FYP `Not interested` preference spremaju se server-side po eventu, kreatoru ili tagu i filtriraju discovery za tog korisnika. Rating nakon zavrsenog eventa salje odvojene ocjene eventa i organizatora kroz `POST /api/events/{id}/ratings/full`. Paid join ide kroz Stripe-named provider stub: `POST /api/events/{eventId}/ticket-checkout` kreira order/payment, `POST /api/ticket-orders/{orderId}/confirm` potvrdjuje stub payment, zapisuje transaction i tek tada join-a event. Real Stripe React Native SDK/PaymentSheet nije dodan jer ova promjena ne pokrece native build.
 
 Kad implementiras nove stvari, nadogradi postojece:
 
@@ -225,9 +233,9 @@ FYP dio aplikacije sluzi za brz discovery kroz vertikalni Reels-style feed. Svak
 
 Kalendar prikazuje samo evente na koje se korisnik pridruzio. Rijesen je kao native mjesecni grid s oznakama eventova po danima, searchom prijavljenih eventova i listom eventova za odabrani dan.
 
-Poruke podrzavaju privatne razgovore, grupe, event-specific grupe, pollove i admin-only chat mod gdje samo admini pisu, a ostali mogu glasati na pollu. Slanje poruke sada nakon spremanja na backendu salje Expo push notifikaciju svim ostalim clanovima sobe ako korisnik ima registriran push token, ukljucene preference za taj tip chata i nije muteao tu sobu.
+Poruke podrzavaju privatne razgovore, grupe, event-specific grupe, pollove, friend request poruke u direct chatu i admin-only chat mod gdje samo admini pisu, a ostali mogu glasati na pollu. Nove text poruke se na backendu spremaju encrypted-at-rest AES-GCM-om; `MESSAGES_ENCRYPTION_SECRET` je preporuceni env secret, a lokalni fallback je postojeci JWT secret radi kompatibilnosti. Slanje poruke sada nakon spremanja na backendu salje Expo push notifikaciju svim ostalim clanovima sobe ako korisnik ima registriran push token, ukljucene preference za taj tip chata i nije muteao tu sobu.
 
-Profil prikazuje korisnikovu aktivnost: joined eventove, liked reels/evente, transaction history i rating flow za zavrsene evente. Profil ima editiranje imena, bio teksta i avatar URL-a. Postavke su odvojeni ekran otvoren iz profila; tamo su jezik, tema, `Preferences` ulaz i odjava. `Preferences > Notifications` trenutno sadrzi push permission/registration CTA te odvojene togglove za privatne poruke i grupne/event chatove.
+Profil prikazuje korisnikovu aktivnost: joined eventove, liked reels/evente, transaction history i rating flow za zavrsene evente. Profil ima editiranje imena, bio teksta i avatar URL-a. Postavke su odvojeni ekran otvoren iz profila; tamo su jezik, tema, `Preferences` ulaz i odjava. `Preferences > Notifications` trenutno sadrzi push permission/registration CTA te odvojene togglove za privatne poruke i grupne/event chatove. `Preferences > FYP preferences` prikazuje `Not interested` stavke grupirane po eventima, kreatorima i tagovima.
 
 ## Frontend dokumentacija
 

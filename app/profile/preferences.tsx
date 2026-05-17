@@ -24,6 +24,12 @@ export default function PreferencesScreen() {
         subtitle={t('notificationPreferencesSubtitle')}
         onPress={() => router.push('/profile/preferences/notifications')}
       />
+      <ProfileMenuRow
+        icon="remove-circle-outline"
+        title={t('feedPreferences')}
+        subtitle={t('feedPreferencesSubtitle')}
+        onPress={() => router.push('/profile/preferences/feed')}
+      />
     </AppScreen>
   );
 }

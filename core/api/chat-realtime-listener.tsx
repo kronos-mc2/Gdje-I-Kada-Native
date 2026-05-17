@@ -11,6 +11,7 @@ const MAX_RECONNECT_DELAY_MS = 30000;
 
 const refreshChatQueries = (roomId?: string) => {
   void queryClient.invalidateQueries({ queryKey: queryKeys.chatRoomsRoot, refetchType: 'active' });
+  void queryClient.invalidateQueries({ queryKey: queryKeys.friends, refetchType: 'active' });
 
   if (!roomId) {
     void queryClient.invalidateQueries({ queryKey: queryKeys.chatRoomRoot, refetchType: 'active' });

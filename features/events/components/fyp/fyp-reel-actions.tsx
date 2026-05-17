@@ -10,6 +10,7 @@ type FypReelActionsProps = Readonly<{
   likeCount: number;
   onToggleLike: () => void;
   onOpenShare: () => void;
+  onNotInterested: () => void;
 }>;
 
 type ActionButtonProps = Readonly<{
@@ -20,7 +21,7 @@ type ActionButtonProps = Readonly<{
   onPress: () => void;
 }>;
 
-export function FypReelActions({ liked, likeCount, onToggleLike, onOpenShare }: FypReelActionsProps) {
+export function FypReelActions({ liked, likeCount, onToggleLike, onOpenShare, onNotInterested }: FypReelActionsProps) {
   const { t } = useI18n();
 
   return (
@@ -33,6 +34,7 @@ export function FypReelActions({ liked, likeCount, onToggleLike, onOpenShare }: 
         onPress={onToggleLike}
       />
       <ActionButton icon="paper-plane-outline" label={t('shareEvent')} onPress={onOpenShare} />
+      <ActionButton icon="remove-circle-outline" label={t('notInterested')} onPress={onNotInterested} />
     </View>
   );
 }
