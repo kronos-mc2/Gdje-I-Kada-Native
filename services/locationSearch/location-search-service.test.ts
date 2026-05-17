@@ -45,8 +45,8 @@ describe('LocationSearchService', () => {
       },
     });
 
-    expect(first).toBe(results);
-    expect(second).toBe(results);
+    expect(first).toStrictEqual(results);
+    expect(second).toBe(first);
     expect(provider.search).toHaveBeenCalledTimes(1);
   });
 
