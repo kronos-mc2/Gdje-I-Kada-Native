@@ -7,7 +7,7 @@
     "start:test": "node ./scripts/with-env.js test npx expo start --clear",
     "reset-project": "node ./scripts/reset-project.js",
     "postinstall": "node ./scripts/patch-react-native-maps-airmap.js",
-    "android": "expo run:android --variant prodDebug",
+    "android": "node ./scripts/run-android.js",
     "android:test": "node ./scripts/with-env.js test npx expo run:android --variant qaDebug",
     "build:android:test": "node ./scripts/with-env.js test ./android/gradlew -p android :app:assembleQaRelease",
     "build:android:test:eas": "npx eas-cli build --platform android --profile test",
