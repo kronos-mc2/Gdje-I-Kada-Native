@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import { existsSync } from 'node:fs';
 import { ExpoConfig } from 'expo/config';
 import { ConfigPlugin, withEntitlementsPlist } from 'expo/config-plugins';
 
@@ -13,22 +14,24 @@ const requireEnvForTest = (name: string) => {
 
   return value;
 };
-const normalizeEasProjectId = (value?: string) => {
-  const normalized = value?.trim();
-  if (!normalized || normalized.startsWith('your-')) {
-    return undefined;
-  }
-
-  return normalized;
-};
+const easProjectId = "132bf46c-0ba1-4050-8844-fdf9c7683518"
 const apiBaseUrl = (requireEnvForTest('EXPO_PUBLIC_API_BASE_URL') ?? localApiBaseUrl).trim();
 const androidApiBaseUrl = (
   requireEnvForTest('EXPO_PUBLIC_ANDROID_API_BASE_URL') ?? (isTestVariant ? apiBaseUrl : 'http://10.0.2.2:8080/api')
 ).trim();
-const easProjectId = normalizeEasProjectId(process.env.EXPO_PUBLIC_EAS_PROJECT_ID);
 if (isTestVariant && !easProjectId) {
   throw new Error('EXPO_PUBLIC_EAS_PROJECT_ID must be configured for test builds. Use .env.test locally or EAS environment variables.');
 }
+const googleServicesFile = process.env.GOOGLE_SERVICES_JSON_PATH?.trim() || (existsSync('./google-services.json') ? './google-services.json' : undefined);
+const googleIosUrlScheme = resolveGoogleIosUrlScheme(process.env.GOOGLE_IOS_URL_SCHEME ?? process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID);
+const googleSignInPlugin = googleIosUrlScheme
+  ? [
+      '@react-native-google-signin/google-signin',
+      {
+        iosUrlScheme: googleIosUrlScheme,
+      },
+    ]
+  : '@react-native-google-signin/google-signin';
 const usesAppleSignIn =
   process.env.IOS_USES_APPLE_SIGN_IN === 'true' || (!isTestVariant && process.env.IOS_USES_APPLE_SIGN_IN !== 'false');
 
@@ -40,7 +43,7 @@ const withoutAppleSignInEntitlement: ConfigPlugin = (config) =>
 
 const config: ExpoConfig = {
   name: isTestVariant ? 'GIK Test' : 'Gdje-I-Kada-Native',
-  slug: isTestVariant ? 'Gdje-I-Kada-Native-Test' : 'Gdje-I-Kada-Native',
+  slug: 'Gdje-I-Kada-Native',
   version: '1.0.0',
   orientation: 'portrait',
   icon: './assets/images/icon.png',
@@ -55,9 +58,9 @@ const config: ExpoConfig = {
     usesAppleSignIn,
     supportsTablet: true,
     infoPlist: {
-      NSLocationWhenInUseUsageDescription: 'Precizna lokacija se koristi za centriranje mape i prikaz dogadaja u tvojoj blizini.',
-      NSLocationAlwaysAndWhenInUseUsageDescription: 'Lokacija se koristi za precizno centriranje mape i prikaz dogadaja u blizini.',
-      NSLocationAlwaysUsageDescription: 'Lokacija se koristi za precizno centriranje mape i prikaz dogadaja u blizini.',
+      NSLocationWhenInUseUsageDescription: 'Precizna lokacija se koristi za centriranje mape i prikaz događaja u tvojoj blizini.',
+      NSLocationAlwaysAndWhenInUseUsageDescription: 'Lokacija se koristi za precizno centriranje mape i prikaz događaja u blizini.',
+      NSLocationAlwaysUsageDescription: 'Lokacija se koristi za precizno centriranje mape i prikaz događaja u blizini.',
     },
   },
   androidNavigationBar: {
@@ -67,6 +70,7 @@ const config: ExpoConfig = {
   },
   android: {
     package: isTestVariant ? 'com.anonymous.GdjeIKadaNative.test' : 'com.anonymous.GdjeIKadaNative',
+    ...(googleServicesFile ? { googleServicesFile } : {}),
     permissions: ['ACCESS_COARSE_LOCATION', 'ACCESS_FINE_LOCATION', 'POST_NOTIFICATIONS'],
     adaptiveIcon: {
       backgroundColor: '#F0F0F0',
@@ -106,6 +110,7 @@ const config: ExpoConfig = {
     ],
     '@maplibre/maplibre-react-native',
     '@react-native-community/datetimepicker',
+    googleSignInPlugin,
     ...(usesAppleSignIn ? [] : [withoutAppleSignInEntitlement]),
     [
       'expo-splash-screen',
@@ -128,6 +133,7 @@ const config: ExpoConfig = {
     appVariant,
     apiBaseUrl,
     androidApiBaseUrl,
+    appleSignInEnabled: usesAppleSignIn,
     eas: easProjectId
       ? {
           projectId: easProjectId,
@@ -137,3 +143,21 @@ const config: ExpoConfig = {
 };
 
 export default config;
+
+function resolveGoogleIosUrlScheme(value?: string) {
+  const normalized = value?.trim();
+  if (!normalized || normalized.startsWith('your-')) {
+    return undefined;
+  }
+
+  if (normalized.startsWith('com.googleusercontent.apps.')) {
+    return normalized;
+  }
+
+  const clientIdSuffix = '.apps.googleusercontent.com';
+  if (normalized.endsWith(clientIdSuffix)) {
+    return `com.googleusercontent.apps.${normalized.slice(0, -clientIdSuffix.length)}`;
+  }
+
+  return undefined;
+}

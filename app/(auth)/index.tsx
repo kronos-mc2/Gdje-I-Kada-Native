@@ -1,30 +1,39 @@
 import * as AppleAuthentication from 'expo-apple-authentication';
-import * as AuthSession from 'expo-auth-session';
-import * as Google from 'expo-auth-session/providers/google';
 import Constants from 'expo-constants';
-import * as WebBrowser from 'expo-web-browser';
 import { Link, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Alert, Platform, StyleSheet, View } from 'react-native';
 
-import { AppButton, AppCard, AppHeader, AppInput, AppScreen, AppText } from '@/components/primitives';
+import { AppButton, AppHeader, AppInput, AppScreen, AppText } from '@/components/primitives';
 import { loginWithApple, loginWithEmail, loginWithGoogle } from '@/core/api/auth-services';
 import { getApiBaseUrl, getApiErrorMessage, isApiNetworkError } from '@/core/api/http-client';
+import { signInWithNativeGoogle } from '@/core/auth/google-sign-in';
 import { useI18n } from '@/core/i18n/use-i18n';
 import { useAuthStore } from '@/core/store/auth-store';
-
-WebBrowser.maybeCompleteAuthSession();
+import { SocialAuthButton } from '@/features/auth/components/social-auth-button';
 
 const EMAIL_PATTERN = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
 
-const isTestVariant =
-  Constants.expoConfig?.extra?.appVariant === 'test' ||
-  Constants.expoConfig?.slug === 'Gdje-I-Kada-Native-Test' ||
-  Constants.expoConfig?.name === 'GIK Test' ||
-  Constants.expoConfig?.android?.package?.endsWith('.test') ||
-  Constants.expoConfig?.ios?.bundleIdentifier?.endsWith('.test');
+type AuthConfigExtra = {
+  appleSignInEnabled?: boolean;
+};
 
-const authRedirectScheme = isTestVariant ? 'gdjeikadanative-test' : 'gdjeikadanative';
+const getAuthConfigExtra = (): AuthConfigExtra => {
+  const extra = Constants.expoConfig?.extra;
+  return extra && typeof extra === 'object' ? (extra as AuthConfigExtra) : {};
+};
+
+const isGoogleNativeConfigurationError = (code?: string) =>
+  code === '10' || code === 'DEVELOPER_ERROR' || code === 'SIGN_IN_ERROR';
+
+const getNativeAuthErrorCode = (error: unknown) => {
+  if (typeof error === 'object' && error !== null && 'code' in error) {
+    const code = (error as { code?: unknown }).code;
+    return typeof code === 'string' || typeof code === 'number' ? String(code) : undefined;
+  }
+
+  return undefined;
+};
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -35,17 +44,7 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const redirectUri = AuthSession.makeRedirectUri({
-    scheme: authRedirectScheme,
-  });
-
-  const [googleRequest, googleResponse, promptGoogleAsync] = Google.useIdTokenAuthRequest({
-    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
-    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-    redirectUri,
-    scopes: ['openid', 'profile', 'email'],
-  });
+  const [isAppleSignInAvailable, setIsAppleSignInAvailable] = useState(false);
 
   useEffect(() => {
     const restoreMessage = consumeAuthRestoreMessage();
@@ -53,6 +52,30 @@ export default function LoginScreen() {
       Alert.alert(t('authError'), restoreMessage);
     }
   }, [consumeAuthRestoreMessage, t]);
+
+  useEffect(() => {
+    let active = true;
+    if (Platform.OS !== 'ios' || getAuthConfigExtra().appleSignInEnabled !== true) {
+      setIsAppleSignInAvailable(false);
+      return;
+    }
+
+    void AppleAuthentication.isAvailableAsync()
+      .then((available) => {
+        if (active) {
+          setIsAppleSignInAvailable(available);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setIsAppleSignInAvailable(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const persistSession = useCallback(
     async (response: Awaited<ReturnType<typeof loginWithEmail>>) => {
@@ -68,30 +91,46 @@ export default function LoginScreen() {
     [setAuth, t],
   );
 
-  useEffect(() => {
-    if (Platform.OS !== 'android') {
-      return;
-    }
-
-    void WebBrowser.warmUpAsync();
-
-    return () => {
-      void WebBrowser.coolDownAsync();
-    };
-  }, []);
-
-  const onGoogleLogin = useCallback(
-    async (idToken: string) => {
+  const handleGoogleSignIn = useCallback(
+    async () => {
       setIsSubmitting(true);
       try {
-        const response = await loginWithGoogle(idToken);
+        const googleResult = await signInWithNativeGoogle();
+        if (googleResult.type === 'cancelled') {
+          return;
+        }
+
+        if (googleResult.type === 'missing-web-client-id') {
+          Alert.alert(t('authError'), t('googleWebClientMissing'));
+          return;
+        }
+
+        if (googleResult.type === 'native-module-unavailable') {
+          Alert.alert(t('authError'), t('googleNativeModuleUnavailable'));
+          return;
+        }
+
+        if (googleResult.type !== 'success') {
+          const details = googleResult.code
+            ? `\n${isGoogleNativeConfigurationError(googleResult.code) ? t('googleNativeConfigurationFailed') : googleResult.code}`
+            : '';
+          Alert.alert(t('authError'), `${t('googleLoginFailed')}${details}`);
+          return;
+        }
+
+        const response = await loginWithGoogle(googleResult.idToken);
         const didPersistSession = await persistSession(response);
         if (!didPersistSession) {
           return;
         }
         router.replace('/(tabs)');
-      } catch {
-        Alert.alert(t('authError'), t('googleLoginFailed'));
+      } catch (error: unknown) {
+        if (isApiNetworkError(error)) {
+          Alert.alert(t('authError'), `${t('apiConnectionFailed')}\n${getApiBaseUrl()}`);
+        } else {
+          const details = getApiErrorMessage(error);
+          Alert.alert(t('authError'), details ? `${t('googleLoginFailed')}\n${details}` : t('googleLoginFailed'));
+        }
       } finally {
         setIsSubmitting(false);
       }
@@ -109,8 +148,13 @@ export default function LoginScreen() {
           return;
         }
         router.replace('/(tabs)');
-      } catch {
-        Alert.alert(t('authError'), t('appleLoginFailed'));
+      } catch (error: unknown) {
+        if (isApiNetworkError(error)) {
+          Alert.alert(t('authError'), `${t('apiConnectionFailed')}\n${getApiBaseUrl()}`);
+        } else {
+          const details = getApiErrorMessage(error);
+          Alert.alert(t('authError'), details ? `${t('appleLoginFailed')}\n${details}` : t('appleLoginFailed'));
+        }
       } finally {
         setIsSubmitting(false);
       }
@@ -118,23 +162,14 @@ export default function LoginScreen() {
     [persistSession, router, t],
   );
 
-  useEffect(() => {
-    if (googleResponse?.type !== 'success') {
-      return;
-    }
-
-    const idToken = googleResponse.params.id_token;
-    if (!idToken) {
-      Alert.alert(t('authError'), t('googleIdTokenMissing'));
-      return;
-    }
-
-    void onGoogleLogin(idToken);
-  }, [googleResponse, onGoogleLogin, t]);
-
   const handleAppleSignIn = useCallback(async () => {
     if (Platform.OS !== 'ios') {
       Alert.alert(t('authError'), t('appleOnlyOnIos'));
+      return;
+    }
+
+    if (getAuthConfigExtra().appleSignInEnabled !== true) {
+      Alert.alert(t('authError'), t('appleNotConfigured'));
       return;
     }
 
@@ -168,7 +203,8 @@ export default function LoginScreen() {
         return;
       }
 
-      Alert.alert(t('authError'), t('appleLoginFailed'));
+      const details = getNativeAuthErrorCode(error);
+      Alert.alert(t('authError'), details ? `${t('appleLoginFailed')}\n${details}` : t('appleLoginFailed'));
     } finally {
       setIsSubmitting(false);
     }
@@ -212,29 +248,23 @@ export default function LoginScreen() {
     <AppScreen scroll>
       <AppHeader title={t('authWelcome')} subtitle={t('authLoginToContinue')} />
 
-      <AppCard variant="glass" style={styles.card}>
-        <AppButton
+      <View style={styles.socialGroup}>
+        <SocialAuthButton
+          provider="google"
           title={t('signInGoogle')}
-          variant="secondary"
-          disabled={!googleRequest || isSubmitting}
-          onPress={() =>
-            void promptGoogleAsync(
-              Platform.OS === 'android'
-                ? {
-                    showInRecents: true,
-                  }
-                : undefined,
-            )
-          }
+          disabled={isSubmitting}
+          onPress={() => void handleGoogleSignIn()}
         />
-        <AppButton
-          title={t('signInApple')}
-          variant="secondary"
-          disabled={isSubmitting || Platform.OS !== 'ios'}
-          onPress={() => void handleAppleSignIn()}
-          style={{ marginTop: 8 }}
-        />
-      </AppCard>
+        {isAppleSignInAvailable ? (
+          <SocialAuthButton
+            provider="apple"
+            title={t('signInApple')}
+            disabled={isSubmitting}
+            onPress={() => void handleAppleSignIn()}
+            style={{ marginTop: 8 }}
+          />
+        ) : null}
+      </View>
 
       <View style={styles.separator}>
         <AppText variant="caption" color="textMuted">
@@ -273,8 +303,9 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  card: {
+  socialGroup: {
     marginBottom: 16,
+    gap: 8,
   },
   separator: {
     alignItems: 'center',

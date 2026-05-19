@@ -31,6 +31,7 @@ import {
   UpdateEventPayload,
   UpdateProfilePayload,
   UserProfile,
+  Locale,
 } from '@/core/types/domain';
 
 export const fetchEvents = async (params?: EventQueryParams): Promise<AppEvent[]> => {
@@ -164,8 +165,9 @@ export const registerPushToken = async ({
   token: string;
   platform: string;
   deviceId?: string;
+  locale?: Locale;
 }): Promise<void> => {
-  await apiClient.post('/users/me/notifications/push-tokens', { token, platform, deviceId });
+  await apiClient.post('/users/me/notifications/push-tokens', { token, platform, deviceId, locale });
 };
 
 export const deletePushToken = async (token: string): Promise<void> => {

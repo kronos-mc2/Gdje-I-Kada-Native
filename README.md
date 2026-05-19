@@ -1,6 +1,6 @@
 # Gdje i Kada - projektna dokumentacija
 
-Status dokumenta: 2026-05-17
+Status dokumenta: 2026-05-19
 Projekt se ne radi ispocetka. Postojeci React Native/Expo frontend i Spring Boot backend ostaju baza, a nove funkcionalnosti se nadograduju na vec postojece klase, rute, storeove, hookove i dizajn sustav.
 
 Radimo mobilnu event aplikaciju "Gdje i Kada" za iOS i Android. Frontend je React Native kroz Expo Router, backend je Spring Boot s PostgreSQL bazom. Nemoj kretati ispocetka. Prvo procitaj postojeci kod i nadogradi ga prema lokalnim patternima.
@@ -53,8 +53,8 @@ Postojece frontend tehnologije i patterni:
 - Theme: `AppThemeProvider`, `createAppTheme`, `palette`, `tokens`, `ThemeToggle`. Centralna paleta je ogranicena na Rich Black `#111114`, Off White `#F0F0F0`, Gunmetal Gray `#2A2D33`, Charcoal Gray `#3A3C40`, Graphite `#191B1E`, Cool Gray `#6F7072`, uz postojeci purple accent za map/app akcente.
 - Kalendar grid: `react-native-calendars` za cross-platform mjesecni prikaz bez dodatnog native linkinga.
 - iOS glass: `expo-glass-effect` i `expo-blur` se vec koriste u `EventDetailSheet` i `MapSearchBar.ios.tsx`; shared `GlassSurface` daje `GlassView` kad je Liquid Glass API dostupan, a `BlurView` + themed tint fallback inace. `AppCard`, `AppButton`, `AppHeader` i `AppIconButton` koriste taj shared surface da iOS ne povuce defaultnu sistemsku sivu.
-- Push obavijesti: `expo-notifications` registrira Expo push token za autentificiranog korisnika kad je permission vec odobren ili kad korisnik to rucno zatrazi u `Preferences > Notifications`. Android koristi `messages` notification channel s purple accent bojom, a tap na push otvara odgovarajuci chat.
-- Expo push `projectId` cita se iz env varijable `EXPO_PUBLIC_EAS_PROJECT_ID` i izlozen je u app configu kao `extra.eas.projectId`. Placeholder vrijednosti tipa `your-eas-project-id` se ignoriraju, a `test` build bez stvarnog projectId-a namjerno faila config provjeru.
+- Push obavijesti: `expo-notifications` registrira Expo push token za autentificiranog korisnika kad je permission vec odobren ili kad korisnik to rucno zatrazi u `Preferences > Notifications`. Frontend salje i trenutni HR/EN locale uz token, backend lokalizira fallback body za poruke/pollove/event share, Android koristi `messages` notification channel s purple accent bojom, a tap na push otvara odgovarajuci chat.
+- Expo push `projectId` dolazi iz `EXPO_PUBLIC_EAS_PROJECT_ID` i izlozen je u app configu kao `extra.eas.projectId`; placeholder vrijednosti tipa `your-eas-project-id` se ignoriraju, a `test` build bez stvarnog projectId-a faila config provjeru. Android FCM registracija moze se spojiti kroz `GOOGLE_SERVICES_JSON_PATH` ili lokalni `google-services.json`; Firebase private key/service account JSON ostaje ignoriran i ne commita se.
 - Karte:
   - iOS: `components/map/event-map-surface.ios.tsx` koristi `react-native-maps` / MapKit.
   - Android: `components/map/event-map-surface.android.tsx` koristi `@maplibre/maplibre-react-native` i prikazuje pojedinacne event pinove bez clusteriranja.
@@ -78,6 +78,7 @@ Postojece backend tehnologije i patterni:
 - Google i Apple login id token verifikacija kroz:
   - `GoogleIdTokenVerifierService`
   - `AppleIdTokenVerifierService`
+- Backend sprema provider `sub` u `user_social_identities`, pa se social account dugorocno veze na provider identitet, a email sluzi za prvo spajanje samo nakon verificiranog id tokena.
   - `AudienceValidator`
 - REST endpointi kroz controllere:
   - `AuthController`
@@ -444,8 +445,9 @@ Postoji:
 - `app/(auth)/index.tsx` login.
 - `app/(auth)/register.tsx` registracija.
 - Email/password login i register.
-- Google id token auth preko `expo-auth-session`.
+- Google id token auth preko native `@react-native-google-signin/google-signin`; browser `expo-auth-session` tok je uklonjen jer custom redirect URI nije potreban za Android native login.
 - Apple sign in preko `expo-apple-authentication`.
+- Login screen koristi `features/auth/components/social-auth-button.tsx` za isti app-styled social button na Googleu i Appleu; tekst dolazi iz app i18n-a, pa ne ovisi o sistemskom jeziku native gumba.
 - Token se sprema u SecureStore.
 
 Backend:
@@ -501,7 +503,8 @@ Frontend API URL:
 
 - iOS simulator: `EXPO_PUBLIC_API_BASE_URL=http://localhost:8080/api`
 - Android emulator automatski mijenja localhost u `10.0.2.2` u `core/api/http-client.ts`, ali moze se koristiti `EXPO_PUBLIC_ANDROID_API_BASE_URL`.
-- Test/prod API URL i Google OAuth client ID-jeve drzi u `.env.test` lokalno ili EAS environment variables/secrets, ne u `eas.json`.
+- Test API URL je `https://gik.nerizz.com/api`; test/prod API URL, Google OAuth client ID-jeve i `GOOGLE_SERVICES_JSON_PATH` drzi u `.env.test` lokalno ili EAS environment variables/secrets, ne u `eas.json`.
+- Native Google login na Androidu treba `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` u app envu, Android OAuth client u Google Cloud/Firebase projektu s package nameom i SHA-1 certifikatom, te novi development/test build nakon dependency promjene. Browser redirect/localhost URL vise nije dio Google login toka. Backend mora imati `AUTH_GOOGLE_CLIENT_IDS` s Google Web client ID-em koji je audience `idToken`-a; ako se kasnije ukljuci i iOS, dodaj i iOS client ID. Za Apple native iOS login `AUTH_APPLE_CLIENT_ID` treba biti iOS bundle identifier.
 
 ### Event backend trenutno
 
@@ -638,10 +641,10 @@ Payment provider odluka:
 
 Push notification strategija:
 
-- Short term: zadrzati WebSocket za aktivni chat i dodati Expo Notifications samo za background/offline evente.
-- Token model: `push_tokens` po korisniku, uredaju, platformi i app variantu; token se obnavlja na loginu i invalidira na logoutu ili provider erroru.
-- Kanali: event reminders, payment receipt, new event chat message, poll update i post-event organizer rating prompt.
-- Backend write path: notification se queue-a nakon canonical REST promjene, ne iz WebSocket listenera.
+- WebSocket ostaje za aktivni chat, a Expo Notifications se koriste za background/offline chat evente.
+- Token model: `user_push_tokens` po korisniku, Expo push tokenu, platformi, opcionalnom deviceId-u i HR/EN localeu; token se obnavlja na loginu/manual enableu i invalidira na logoutu ili Expo `DeviceNotRegistered` odgovoru.
+- Kanali: trenutno `messages` za direct/group/event chat; kasnije se mogu dodati event reminders, payment receipt i post-event organizer rating prompt.
+- Backend write path: push se salje nakon canonical REST slanja chat poruke/event sharea/polla, ne iz WebSocket listenera.
 
 Messages:
 

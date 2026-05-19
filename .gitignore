@@ -20,7 +20,10 @@ expo-env.d.ts
 *.keystore
 google-services.json
 GoogleService-Info.plist
+android/credentials.json
 credentials*.json
+*Firebase Admin SDK*.json
+firebase-admin*.json
 service-account*.json
 secrets*.json
 

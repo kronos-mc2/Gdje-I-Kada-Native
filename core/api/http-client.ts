@@ -22,7 +22,6 @@ const getAppConfigExtra = (): AppConfigExtra => {
 
 const isTestVariant = (extra: AppConfigExtra) =>
   extra.appVariant === 'test' ||
-  Constants.expoConfig?.slug === 'Gdje-I-Kada-Native-Test' ||
   Constants.expoConfig?.name === 'GIK Test' ||
   Constants.expoConfig?.android?.package?.endsWith('.test') ||
   Constants.expoConfig?.ios?.bundleIdentifier?.endsWith('.test');

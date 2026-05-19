@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import { Platform } from 'react-native';
 
 import { deletePushToken, registerPushToken } from '@/core/api/services';
+import { useAppStore } from '@/core/store/app-store';
 
 const ANDROID_MESSAGE_CHANNEL_ID = 'messages';
 
@@ -47,7 +48,7 @@ export const registerForPushNotificationsAsync = async ({
     }
 
     const token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
-    await registerPushToken({ token, platform: Platform.OS });
+    await registerPushToken({ token, platform: Platform.OS, locale: useAppStore.getState().locale });
 
     return { status: 'registered', token };
   } catch {
@@ -83,6 +84,11 @@ export const addChatNotificationResponseListener = () => {
     const roomId = notification.request.content.data?.roomId;
     if (typeof roomId === 'string' && roomId.trim()) {
       router.push(`/chat/${roomId}`);
+      try {
+        Notifications.clearLastNotificationResponse();
+      } catch {
+        // Some notification runtimes do not expose response clearing.
+      }
     }
   };
 
