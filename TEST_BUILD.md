@@ -10,6 +10,11 @@ cp .env.test.example .env.test
 
 U `.env.test` postavi stvarni test API URL i Google OAuth client ID-jeve. Ta datoteka je ignorirana i ne ide u git.
 
+Google auth koristi dva razlicita ID-a:
+
+- `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` je obavezan u app envu i mora biti isti ID koji backend ima u `AUTH_GOOGLE_CLIENT_IDS`.
+- `EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID` sluzi kao referenca za Android OAuth client u Google Cloud/Firebase projektu, package name i SHA-1 certifikat. Taj ID se ne salje backendu u trenutnom native Google Sign-In toku.
+
 Lokalni debug install na uredaj/emulator:
 
 ```bash
@@ -42,7 +47,7 @@ EAS internal APK build:
 npm run build:android:test:eas
 ```
 
-EAS `test` profile u `eas.json` vec postavlja javni test API URL i Expo projectId za standalone APK build. Google OAuth client ID-jeve drzi kao EAS environment variables/secrets ako zelis testirati native Google login u tom buildu.
+EAS `test` profile u `eas.json` vec postavlja javni test API URL i Expo projectId za standalone APK build. `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` drzi kao EAS environment variable/secret za test build; app config ce za test variant failati rano ako taj Web client ID nije postavljen.
 
 Local iPhone development build:
 

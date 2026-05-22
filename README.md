@@ -1,6 +1,6 @@
 # Gdje i Kada - projektna dokumentacija
 
-Status dokumenta: 2026-05-19
+Status dokumenta: 2026-05-22
 Projekt se ne radi ispocetka. Postojeci React Native/Expo frontend i Spring Boot backend ostaju baza, a nove funkcionalnosti se nadograduju na vec postojece klase, rute, storeove, hookove i dizajn sustav.
 
 Radimo mobilnu event aplikaciju "Gdje i Kada" za iOS i Android. Frontend je React Native kroz Expo Router, backend je Spring Boot s PostgreSQL bazom. Nemoj kretati ispocetka. Prvo procitaj postojeci kod i nadogradi ga prema lokalnim patternima.
@@ -505,7 +505,7 @@ Frontend API URL:
 - iOS simulator: `EXPO_PUBLIC_API_BASE_URL=http://localhost:8080/api`
 - Android emulator automatski mijenja localhost u `10.0.2.2` u `core/api/http-client.ts`, ali moze se koristiti `EXPO_PUBLIC_ANDROID_API_BASE_URL`.
 - Test API URL je `https://gik.nerizz.com/api`; test/prod API URL, Google OAuth client ID-jeve i `GOOGLE_SERVICES_JSON_PATH` drzi u `.env.test` lokalno ili EAS environment variables/secrets, ne u `eas.json`.
-- Native Google login na Androidu treba `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` u app envu, Android OAuth client u Google Cloud/Firebase projektu s package nameom i SHA-1 certifikatom, te novi development/test build nakon dependency promjene. Browser redirect/localhost URL vise nije dio Google login toka. Backend mora imati `AUTH_GOOGLE_CLIENT_IDS` s Google Web client ID-em koji je audience `idToken`-a; ako se kasnije ukljuci i iOS, dodaj i iOS client ID. Za Apple native iOS login `AUTH_APPLE_CLIENT_ID` treba biti iOS bundle identifier.
+- Native Google login na Androidu treba `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` u app envu, Android OAuth client u Google Cloud/Firebase projektu s package nameom i SHA-1 certifikatom, te novi development/test build nakon dependency promjene. Android client ID ostaje Google Cloud/Firebase konfiguracija i ne ide u backend audience listu za trenutni native tok. Browser redirect/localhost URL vise nije dio Google login toka. Backend mora imati `AUTH_GOOGLE_CLIENT_IDS` s Google Web client ID-em koji je audience `idToken`-a; ako se kasnije ukljuci i iOS i Google pocne izdavati iOS-audience id tokene, dodaj i iOS client ID. Za Apple native iOS login `AUTH_APPLE_CLIENT_ID` treba biti iOS bundle identifier.
 
 ### Event backend trenutno
 

@@ -1,6 +1,6 @@
 # Gdje i Kada - fazni plan rada
 
-Status dokumenta: 2026-05-19
+Status dokumenta: 2026-05-22
 Lokacija master dokumentacije: `README.md`
 
 ## Pravilo rada po fazama
@@ -467,6 +467,8 @@ Biljeska:
 2026-05-19 - Dopuna notifikacija i social login polish: push token registracija sada salje HR/EN locale, backend sprema `user_push_tokens.locale` kroz `V13__push_token_locale.sql`, lokalizira fallback tekst push poruka i eksplicitno salje `channelId=messages`/high priority za Expo payload. `app.config.ts` podrzava `GOOGLE_SERVICES_JSON_PATH` za Android `google-services.json`, a `.gitignore` ponovno cuva Firebase private key/service account JSON od commita. Google login je prebacen s browser `expo-auth-session` toka na native `@react-native-google-signin/google-signin` i `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`; Google i Apple prikazuju isti app-styled social button s app i18n tekstom, tako da native sistemski jezik gumba ne mijesa HR/EN. Datoteke: frontend `.gitignore`, `.env.example`, `.env.test.example`, `app.config.ts`, `app/(auth)/index.tsx`, `features/auth/components/social-auth-button.tsx`, `core/auth/google-sign-in.ts`, `core/api/services.ts`, `core/notifications/push-notifications.ts`, `core/i18n/translations.ts`, `package.json`, `package-lock.json`; backend `V13__push_token_locale.sql`, `RegisterPushTokenRequest`, `NotificationService`, notification mapper/row/xml; dokumentacija `README.md`, `FAZE.md`, `backend/README.md`. Testirano: nisu pokretani testovi, typecheck ni build po dogovoru; napravljena je samo staticka diff/provjera citanjem.
 
 2026-05-20 - Dopuna EAS Android test builda: Expo config je prebacen iz `app.config.ts` u plain CommonJS `app.config.js` jer remote EAS `expo config` job pada na TypeScript type annotacijama prije Android builda. `test` EAS profile sada eksplicitno nosi javni test API URL i `EXPO_PUBLIC_EAS_PROJECT_ID` za standalone APK bez localhost/Metro servera, a push token registracija u frontend API sloju stvarno prosljeduje HR/EN `locale`. Datoteke: `app.config.js`, uklonjen `app.config.ts`, `eas.json`, `core/api/services.ts`, `README.md`, `TEST_BUILD.md`, `FAZE.md`. Testirano: samo `npx expo config --json --full --type public`; nisu pokretani buildovi ni testovi po dogovoru.
+
+2026-05-22 - Dopuna Google auth env konfiguracije: test Expo config sada rano trazi `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`, frontend env primjeri eksplicitno razlikuju Android/iOS/Web OAuth client ID-jeve, a backend test deploy primjer i dokumentacija jasno navode da `AUTH_GOOGLE_CLIENT_IDS` za trenutni native Google Sign-In treba Web client ID iz frontenda, ne Android client ID. Datoteke: `app.config.js`, `.env.example`, `.env.test.example`, `TEST_BUILD.md`, `README.md`, backend `README.md`, `deploy/test/backend.env.example`, `FAZE.md`. Testirano: nisu pokretani testovi, typecheck ni build po dogovoru; napravljena je staticka provjera citanjem.
 
 ## Faza 10 - FYP preference, tags, friends i message security
 

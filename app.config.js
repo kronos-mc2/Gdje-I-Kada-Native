@@ -23,9 +23,16 @@ const apiBaseUrl = (requireEnvForTest('EXPO_PUBLIC_API_BASE_URL') ?? localApiBas
 const androidApiBaseUrl = (
   requireEnvForTest('EXPO_PUBLIC_ANDROID_API_BASE_URL') ?? (isTestVariant ? apiBaseUrl : 'http://10.0.2.2:8080/api')
 ).trim();
+const googleWebClientId = normalizeConfigValue(process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID);
 
 if (isTestVariant && !easProjectId) {
   throw new Error('EXPO_PUBLIC_EAS_PROJECT_ID must be configured for test builds. Use .env.test locally or EAS environment variables.');
+}
+
+if (isTestVariant && !googleWebClientId) {
+  throw new Error(
+    'EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID must be configured for test builds. Use .env.test locally or EAS environment variables.',
+  );
 }
 
 const googleServicesFile =
