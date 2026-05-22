@@ -161,6 +161,7 @@ export const registerPushToken = async ({
   token,
   platform,
   deviceId,
+  locale,
 }: {
   token: string;
   platform: string;

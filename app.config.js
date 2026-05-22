@@ -1,12 +1,13 @@
-import 'dotenv/config';
-import { existsSync } from 'node:fs';
-import { ExpoConfig } from 'expo/config';
-import { ConfigPlugin, withEntitlementsPlist } from 'expo/config-plugins';
+require('dotenv/config');
+
+const { existsSync } = require('node:fs');
+const { withEntitlementsPlist } = require('expo/config-plugins');
 
 const appVariant = process.env.APP_VARIANT === 'test' ? 'test' : 'prod';
 const isTestVariant = appVariant === 'test';
 const localApiBaseUrl = 'http://localhost:8080/api';
-const requireEnvForTest = (name: string) => {
+
+const requireEnvForTest = (name) => {
   const value = process.env[name]?.trim();
   if (isTestVariant && !value) {
     throw new Error(`${name} must be configured for test builds. Use .env.test locally or EAS environment variables.`);
@@ -14,15 +15,21 @@ const requireEnvForTest = (name: string) => {
 
   return value;
 };
-const easProjectId = "132bf46c-0ba1-4050-8844-fdf9c7683518"
+
+// EAS needs this available even for commands that do not load a build profile env,
+// for example `eas build:run`. The project id is public metadata, not a secret.
+const easProjectId = normalizeConfigValue(process.env.EXPO_PUBLIC_EAS_PROJECT_ID) || '132bf46c-0ba1-4050-8844-fdf9c7683518';
 const apiBaseUrl = (requireEnvForTest('EXPO_PUBLIC_API_BASE_URL') ?? localApiBaseUrl).trim();
 const androidApiBaseUrl = (
   requireEnvForTest('EXPO_PUBLIC_ANDROID_API_BASE_URL') ?? (isTestVariant ? apiBaseUrl : 'http://10.0.2.2:8080/api')
 ).trim();
+
 if (isTestVariant && !easProjectId) {
   throw new Error('EXPO_PUBLIC_EAS_PROJECT_ID must be configured for test builds. Use .env.test locally or EAS environment variables.');
 }
-const googleServicesFile = process.env.GOOGLE_SERVICES_JSON_PATH?.trim() || (existsSync('./google-services.json') ? './google-services.json' : undefined);
+
+const googleServicesFile =
+  process.env.GOOGLE_SERVICES_JSON_PATH?.trim() || (existsSync('./google-services.json') ? './google-services.json' : undefined);
 const googleIosUrlScheme = resolveGoogleIosUrlScheme(process.env.GOOGLE_IOS_URL_SCHEME ?? process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID);
 const googleSignInPlugin = googleIosUrlScheme
   ? [
@@ -35,13 +42,13 @@ const googleSignInPlugin = googleIosUrlScheme
 const usesAppleSignIn =
   process.env.IOS_USES_APPLE_SIGN_IN === 'true' || (!isTestVariant && process.env.IOS_USES_APPLE_SIGN_IN !== 'false');
 
-const withoutAppleSignInEntitlement: ConfigPlugin = (config) =>
+const withoutAppleSignInEntitlement = (config) =>
   withEntitlementsPlist(config, (configWithEntitlements) => {
     delete configWithEntitlements.modResults['com.apple.developer.applesignin'];
     return configWithEntitlements;
   });
 
-const config: ExpoConfig = {
+const config = {
   name: isTestVariant ? 'GIK Test' : 'Gdje-I-Kada-Native',
   slug: 'Gdje-I-Kada-Native',
   version: '1.0.0',
@@ -124,7 +131,7 @@ const config: ExpoConfig = {
         },
       },
     ],
-  ] as unknown as ExpoConfig['plugins'],
+  ],
   experiments: {
     typedRoutes: true,
     reactCompiler: true,
@@ -142,11 +149,11 @@ const config: ExpoConfig = {
   },
 };
 
-export default config;
+module.exports = config;
 
-function resolveGoogleIosUrlScheme(value?: string) {
-  const normalized = value?.trim();
-  if (!normalized || normalized.startsWith('your-')) {
+function resolveGoogleIosUrlScheme(value) {
+  const normalized = normalizeConfigValue(value);
+  if (!normalized) {
     return undefined;
   }
 
@@ -160,4 +167,13 @@ function resolveGoogleIosUrlScheme(value?: string) {
   }
 
   return undefined;
+}
+
+function normalizeConfigValue(value) {
+  const normalized = value?.trim();
+  if (!normalized || normalized.startsWith('your-')) {
+    return undefined;
+  }
+
+  return normalized;
 }

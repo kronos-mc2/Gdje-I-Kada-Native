@@ -42,7 +42,7 @@ EAS internal APK build:
 npm run build:android:test:eas
 ```
 
-Za EAS build postavi `EXPO_PUBLIC_API_BASE_URL`, `EXPO_PUBLIC_ANDROID_API_BASE_URL` i Google OAuth client ID-jeve kao EAS environment variables/secrets. `eas.json` namjerno ne sadrzi te vrijednosti.
+EAS `test` profile u `eas.json` vec postavlja javni test API URL i Expo projectId za standalone APK build. Google OAuth client ID-jeve drzi kao EAS environment variables/secrets ako zelis testirati native Google login u tom buildu.
 
 Local iPhone development build:
 

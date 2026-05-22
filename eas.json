@@ -16,7 +16,10 @@
         "buildType": "apk"
       },
       "env": {
-        "APP_VARIANT": "test"
+        "APP_VARIANT": "test",
+        "EXPO_PUBLIC_API_BASE_URL": "https://test-api-gik.nerizz.com/api",
+        "EXPO_PUBLIC_ANDROID_API_BASE_URL": "https://test-api-gik.nerizz.com/api",
+        "EXPO_PUBLIC_EAS_PROJECT_ID": "132bf46c-0ba1-4050-8844-fdf9c7683518"
       }
     }
   }

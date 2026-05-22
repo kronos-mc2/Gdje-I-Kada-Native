@@ -40,6 +40,7 @@ Trenutno stanje tabova:
 Postojece frontend tehnologije i patterni:
 
 - Expo SDK 54, React 19, React Native 0.81, TypeScript.
+- Expo config je u `app.config.js` da ga EAS Build cita bez TypeScript parser regresija; runtime/public build vrijednosti dolaze iz `.env*` lokalno ili `eas.json`/EAS env za remote build.
 - Android i iOS trenutno koriste `newArchEnabled=true` jer `react-native-reanimated` i `react-native-worklets` to zahtijevaju pri buildu. Android edge-to-edge nije eksplicitno ukljucen u Expo configu jer three-button navigation bar mora pratiti app theme boju; ostaje `softwareKeyboardLayoutMode: resize`, a chat inputi dodatno koriste shared keyboard/safe-area hook samo za inset koji native resize nije vec pokrio. Za iOS je ostao i pojacani `react-native-maps` (`AIRMap`) patch u `scripts/patch-react-native-maps-airmap.js`.
 - iOS workspace sada ima dva native targeta/schemea: `GIKDev` i `GIKTest`. `npm run ios` / `npm run ios:dev` prije builda automatski pripremaju `ios/.xcode.env.local` za lokalni `prod`/dev variant (`localhost` backend) i pokrecu `GIKDev`, a `npm run ios:test` / `npm run ios:test:release` pripremaju test env i pokrecu `GIKTest`.
 - Navigacija: `expo-router` i `expo-router/unstable-native-tabs` u `app/(tabs)/_layout.tsx`.
@@ -54,7 +55,7 @@ Postojece frontend tehnologije i patterni:
 - Kalendar grid: `react-native-calendars` za cross-platform mjesecni prikaz bez dodatnog native linkinga.
 - iOS glass: `expo-glass-effect` i `expo-blur` se vec koriste u `EventDetailSheet` i `MapSearchBar.ios.tsx`; shared `GlassSurface` daje `GlassView` kad je Liquid Glass API dostupan, a `BlurView` + themed tint fallback inace. `AppCard`, `AppButton`, `AppHeader` i `AppIconButton` koriste taj shared surface da iOS ne povuce defaultnu sistemsku sivu.
 - Push obavijesti: `expo-notifications` registrira Expo push token za autentificiranog korisnika kad je permission vec odobren ili kad korisnik to rucno zatrazi u `Preferences > Notifications`. Frontend salje i trenutni HR/EN locale uz token, backend lokalizira fallback body za poruke/pollove/event share, Android koristi `messages` notification channel s purple accent bojom, a tap na push otvara odgovarajuci chat.
-- Expo push `projectId` dolazi iz `EXPO_PUBLIC_EAS_PROJECT_ID` i izlozen je u app configu kao `extra.eas.projectId`; placeholder vrijednosti tipa `your-eas-project-id` se ignoriraju, a `test` build bez stvarnog projectId-a faila config provjeru. Android FCM registracija moze se spojiti kroz `GOOGLE_SERVICES_JSON_PATH` ili lokalni `google-services.json`; Firebase private key/service account JSON ostaje ignoriran i ne commita se.
+- Expo push `projectId` dolazi iz `EXPO_PUBLIC_EAS_PROJECT_ID` i izlozen je u app configu kao `extra.eas.projectId`; `test` EAS profile ga postavlja kroz `eas.json`, a test build bez stvarnog projectId-a faila config provjeru. Android FCM registracija moze se spojiti kroz `GOOGLE_SERVICES_JSON_PATH` ili lokalni `google-services.json`; Firebase private key/service account JSON ostaje ignoriran i ne commita se.
 - Karte:
   - iOS: `components/map/event-map-surface.ios.tsx` koristi `react-native-maps` / MapKit.
   - Android: `components/map/event-map-surface.android.tsx` koristi `@maplibre/maplibre-react-native` i prikazuje pojedinacne event pinove bez clusteriranja.
