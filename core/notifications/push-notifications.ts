@@ -1,4 +1,4 @@
-import Constants from 'expo-constants';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import * as Notifications from 'expo-notifications';
 import { router } from 'expo-router';
 import { Platform } from 'react-native';
@@ -8,12 +8,19 @@ import { useAppStore } from '@/core/store/app-store';
 
 const ANDROID_MESSAGE_CHANNEL_ID = 'messages';
 
-type PushRegistrationStatus = 'registered' | 'permission-denied' | 'project-id-missing' | 'unavailable' | 'error';
+type PushRegistrationStatus =
+  | 'registered'
+  | 'permission-denied'
+  | 'project-id-missing'
+  | 'unsupported-platform'
+  | 'unsupported-runtime'
+  | 'error';
 type NotificationPermissionStatus = Awaited<ReturnType<typeof Notifications.getPermissionsAsync>>;
 
 export type PushRegistrationResult = {
   status: PushRegistrationStatus;
   token?: string;
+  debugMessage?: string;
 };
 
 Notifications.setNotificationHandler({
@@ -30,8 +37,12 @@ export const registerForPushNotificationsAsync = async ({
 }: {
   requestPermission: boolean;
 }): Promise<PushRegistrationResult> => {
-  if (Platform.OS === 'web' || !Constants.isDevice) {
-    return { status: 'unavailable' };
+  if (Platform.OS === 'web') {
+    return { status: 'unsupported-platform' };
+  }
+
+  if (Platform.OS === 'android' && Constants.executionEnvironment === ExecutionEnvironment.StoreClient) {
+    return { status: 'unsupported-runtime' };
   }
 
   try {
@@ -51,13 +62,16 @@ export const registerForPushNotificationsAsync = async ({
     await registerPushToken({ token, platform: Platform.OS, locale: useAppStore.getState().locale });
 
     return { status: 'registered', token };
-  } catch {
-    return { status: 'error' };
+  } catch (error) {
+    return { status: 'error', debugMessage: getErrorMessage(error) };
   }
 };
 
 export const unregisterCurrentPushTokenAsync = async () => {
-  if (Platform.OS === 'web' || !Constants.isDevice) {
+  if (
+    Platform.OS === 'web' ||
+    (Platform.OS === 'android' && Constants.executionEnvironment === ExecutionEnvironment.StoreClient)
+  ) {
     return;
   }
 
@@ -146,4 +160,16 @@ const isPermissionGranted = (permission: NotificationPermissionStatus) => {
     iosStatus === Notifications.IosAuthorizationStatus.PROVISIONAL ||
     iosStatus === Notifications.IosAuthorizationStatus.EPHEMERAL
   );
+};
+
+const getErrorMessage = (error: unknown) => {
+  if (error instanceof Error && error.message.trim()) {
+    return error.message.trim();
+  }
+
+  if (typeof error === 'string' && error.trim()) {
+    return error.trim();
+  }
+
+  return undefined;
 };

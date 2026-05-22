@@ -42,10 +42,12 @@ export default function NotificationPreferencesScreen() {
         ? 'notificationPermissionDenied'
         : result.status === 'project-id-missing'
           ? 'notificationProjectMissing'
-          : result.status === 'unavailable'
-            ? 'notificationUnavailable'
-            : 'notificationRegistrationFailed';
-    const message = t(messageKey);
+          : result.status === 'unsupported-platform'
+            ? 'notificationUnsupportedPlatform'
+            : result.status === 'unsupported-runtime'
+              ? 'notificationUnsupportedRuntime'
+              : 'notificationRegistrationFailed';
+    const message = result.debugMessage ? `${t(messageKey)} ${result.debugMessage}` : t(messageKey);
     setRegistrationStatus(message);
     Alert.alert(t('notifications'), message);
   };

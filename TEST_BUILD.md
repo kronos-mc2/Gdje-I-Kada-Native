@@ -89,6 +89,15 @@ Test variant koristi:
 
 To omogucava da test APK bude instaliran paralelno s normalnim buildom.
 
+Android push/Firebase za test build:
+
+- Firebase Android app mora imati package `com.anonymous.GdjeIKadaNative.test`.
+- Iz Firebase Project settings > Your apps skini `google-services.json` za taj Android app.
+- Za privatni EAS test build dodaj ga kao EAS file environment variable `GOOGLE_SERVICES_JSON` u `preview` environmentu. `test` build profile eksplicitno koristi `environment: "preview"`.
+- Za lokalni build mozes imati ignorirani `./google-services.json`, postaviti `GOOGLE_SERVICES_JSON_PATH` na lokalni path ili, za lokalni checked-in native Android flavor, staviti file u `android/app/src/qa/google-services.json`.
+- EAS FCM V1 service account key koji se upload-a u EAS credentials nije isti file. Taj admin/service-account JSON sluzi Expo serveru za slanje push poruka; `google-services.json` sluzi APK-u da inicijalizira Firebase/FCM na uredaju.
+- Nakon dodavanja ili promjene `google-services.json` treba napraviti novi Android test build.
+
 
 
 ## IOS

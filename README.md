@@ -54,8 +54,8 @@ Postojece frontend tehnologije i patterni:
 - Theme: `AppThemeProvider`, `createAppTheme`, `palette`, `tokens`, `ThemeToggle`. Centralna paleta je ogranicena na Rich Black `#111114`, Off White `#F0F0F0`, Gunmetal Gray `#2A2D33`, Charcoal Gray `#3A3C40`, Graphite `#191B1E`, Cool Gray `#6F7072`, uz postojeci purple accent za map/app akcente.
 - Kalendar grid: `react-native-calendars` za cross-platform mjesecni prikaz bez dodatnog native linkinga.
 - iOS glass: `expo-glass-effect` i `expo-blur` se vec koriste u `EventDetailSheet` i `MapSearchBar.ios.tsx`; shared `GlassSurface` daje `GlassView` kad je Liquid Glass API dostupan, a `BlurView` + themed tint fallback inace. `AppCard`, `AppButton`, `AppHeader` i `AppIconButton` koriste taj shared surface da iOS ne povuce defaultnu sistemsku sivu.
-- Push obavijesti: `expo-notifications` registrira Expo push token za autentificiranog korisnika kad je permission vec odobren ili kad korisnik to rucno zatrazi u `Preferences > Notifications`. Frontend salje i trenutni HR/EN locale uz token, backend lokalizira fallback body za poruke/pollove/event share, Android koristi `messages` notification channel s purple accent bojom, a tap na push otvara odgovarajuci chat.
-- Expo push `projectId` dolazi iz `EXPO_PUBLIC_EAS_PROJECT_ID` i izlozen je u app configu kao `extra.eas.projectId`; `test` EAS profile ga postavlja kroz `eas.json`, a test build bez stvarnog projectId-a faila config provjeru. Android FCM registracija moze se spojiti kroz `GOOGLE_SERVICES_JSON_PATH` ili lokalni `google-services.json`; Firebase private key/service account JSON ostaje ignoriran i ne commita se.
+- Push obavijesti: `expo-notifications` registrira Expo push token za autentificiranog korisnika kad je permission vec odobren ili kad korisnik to rucno zatrazi u `Preferences > Notifications`. Frontend salje i trenutni HR/EN locale uz token, backend lokalizira fallback body za poruke/pollove/event share, Android koristi `messages` notification channel s purple accent bojom, a tap na push otvara odgovarajuci chat. Android Expo Go runtime se eksplicitno odbija jer ne podrzava push u SDK 54; EAS development, test/internal i production buildovi idu kroz isti token registration flow.
+- Expo push `projectId` dolazi iz `EXPO_PUBLIC_EAS_PROJECT_ID` i izlozen je u app configu kao `extra.eas.projectId`; `test` EAS profile ga postavlja kroz `eas.json`, a test build bez stvarnog projectId-a faila config provjeru. Android FCM ima dva filea: EAS FCM V1 service account key sluzi Expo serveru za slanje push poruka, a `google-services.json` mora biti ugradjen u Android app da se Firebase inicializira na uredaju. Test Firebase app config za package `com.anonymous.GdjeIKadaNative.test` moze biti EAS file env var `GOOGLE_SERVICES_JSON`, lokalni ignorirani `./google-services.json`, `GOOGLE_SERVICES_JSON_PATH` ili, za lokalni checked-in native Android flavor, `android/app/src/qa/google-services.json`; produkcijski config kasnije ide u odgovarajuci prod file. Firebase private key/service account JSON ostaje ignoriran i ne commita se.
 - Karte:
   - iOS: `components/map/event-map-surface.ios.tsx` koristi `react-native-maps` / MapKit.
   - Android: `components/map/event-map-surface.android.tsx` koristi `@maplibre/maplibre-react-native` i prikazuje pojedinacne event pinove bez clusteriranja.
@@ -646,6 +646,8 @@ Push notification strategija:
 - Token model: `user_push_tokens` po korisniku, Expo push tokenu, platformi, opcionalnom deviceId-u i HR/EN localeu; token se obnavlja na loginu/manual enableu i invalidira na logoutu ili Expo `DeviceNotRegistered` odgovoru.
 - Kanali: trenutno `messages` za direct/group/event chat; kasnije se mogu dodati event reminders, payment receipt i post-event organizer rating prompt.
 - Backend write path: push se salje nakon canonical REST slanja chat poruke/event sharea/polla, ne iz WebSocket listenera.
+- Android testiranje: push se moze testirati na pravom Android uredaju u instaliranom EAS test/internal APK-u nakon sto `Preferences > Notifications` vrati Expo push token i backend spremi token. Ako registracija padne, ekran prikazuje konkretan native/FCM error uz lokaliziranu poruku umjesto genericke "wrong device/build" poruke.
+- Android Firebase config: `Default FirebaseApp is not initialized` znaci da APK nije dobio ispravan `google-services.json` ili Google Services Gradle plugin nije obradio taj file. Test build koristi package `com.anonymous.GdjeIKadaNative.test`, zato Firebase file mora biti od tog Android appa, a EAS build treba biti napravljen ponovno nakon dodavanja filea.
 
 Messages:
 
@@ -711,7 +713,7 @@ Detaljni operativni plan i status svake faze vodi se u `FAZE.md`. README drzi sa
 - Faza 6 - Kalendar.
 - Faza 7 - Poruke i event chat.
 - Faza 8 - Profil i postavke.
-- Faza 9 - Placanja, rating i polish: u tijeku, Stripe stub paid join flow dodan 2026-05-11; create event lokacija/iOS polish dopunjen 2026-05-14.
+- Faza 9 - Placanja, rating i polish: u tijeku, Stripe stub paid join flow dodan 2026-05-11; create event lokacija/iOS polish dopunjen 2026-05-14; Android push runtime provjera popravljena 2026-05-22.
 
 Kad se status faze promijeni, prvo azuriraj `FAZE.md`, a zatim ovaj sazetak ako je potrebno.
 

@@ -36,7 +36,17 @@ if (isTestVariant && !googleWebClientId) {
 }
 
 const googleServicesFile =
-  process.env.GOOGLE_SERVICES_JSON_PATH?.trim() || (existsSync('./google-services.json') ? './google-services.json' : undefined);
+  process.env.GOOGLE_SERVICES_JSON?.trim() ||
+  process.env.GOOGLE_SERVICES_JSON_PATH?.trim() ||
+  (existsSync('./google-services.json') ? './google-services.json' : undefined) ||
+  (isTestVariant && existsSync('./android/app/src/qa/google-services.json') ? './android/app/src/qa/google-services.json' : undefined) ||
+  (!isTestVariant && existsSync('./android/app/src/prod/google-services.json') ? './android/app/src/prod/google-services.json' : undefined);
+if (isTestVariant && !googleServicesFile) {
+  throw new Error(
+    'GOOGLE_SERVICES_JSON, GOOGLE_SERVICES_JSON_PATH, or ./google-services.json must be configured for Android FCM test builds. Download google-services.json from the Firebase Android app with package com.anonymous.GdjeIKadaNative.test.',
+  );
+}
+
 const googleIosUrlScheme = resolveGoogleIosUrlScheme(process.env.GOOGLE_IOS_URL_SCHEME ?? process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID);
 const googleSignInPlugin = googleIosUrlScheme
   ? [
