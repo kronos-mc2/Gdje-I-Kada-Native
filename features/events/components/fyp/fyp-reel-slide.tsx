@@ -1,8 +1,9 @@
 import { Image } from 'expo-image';
-import { StyleSheet, View } from 'react-native';
+import { NativeScrollEvent, NativeSyntheticEvent, ScrollView, StyleSheet, View } from 'react-native';
+import { useMemo, useState } from 'react';
 
 import { AppCard, AppText } from '@/components/primitives';
-import { getEventPosterUri, getEventVideoUri } from '@/core/events/event-cover';
+import { getEventImageUris, getEventPosterUri, getEventVideoUri } from '@/core/events/event-cover';
 import { useI18n } from '@/core/i18n/use-i18n';
 import { useAppTheme } from '@/core/theme';
 import { AppEvent, Locale } from '@/core/types/domain';
@@ -42,13 +43,51 @@ export function FypReelSlide({
 }: FypReelSlideProps) {
   const { t } = useI18n();
   const { theme } = useAppTheme();
-  const posterUri = getEventPosterUri(event, 1200, 1800);
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const imageUris = useMemo(() => getEventImageUris(event), [event]);
+  const posterUri = getEventPosterUri(event);
   const videoUri = getEventVideoUri(event);
   const shouldRenderVideo = Boolean(videoUri) && shouldPreload && canRenderFypVideo();
+  const onImageMomentumEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    setActiveImageIndex(Math.round(event.nativeEvent.contentOffset.x / width));
+  };
 
   return (
     <View style={[styles.slide, { width, height, backgroundColor: theme.colors.background }]}>
-      <Image source={{ uri: posterUri }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" />
+      {imageUris.length > 1 ? (
+        <>
+          <ScrollView
+            horizontal
+            pagingEnabled
+            bounces={false}
+            decelerationRate="fast"
+            scrollEventThrottle={16}
+            showsHorizontalScrollIndicator={false}
+            style={StyleSheet.absoluteFill}
+            onMomentumScrollEnd={onImageMomentumEnd}
+          >
+            {imageUris.map((uri) => (
+              <Image key={uri} source={{ uri }} style={{ width, height }} contentFit="cover" cachePolicy="memory-disk" />
+            ))}
+          </ScrollView>
+          <View style={[styles.imagePageDots, { top: topInset + 86 }]}>
+            {imageUris.map((uri, index) => (
+              <View
+                key={`${uri}-${index}`}
+                style={[
+                  styles.imagePageDot,
+                  {
+                    backgroundColor: index === activeImageIndex ? theme.colors.textPrimary : theme.colors.surfaceElevated,
+                    borderColor: theme.colors.border,
+                  },
+                ]}
+              />
+            ))}
+          </View>
+        </>
+      ) : posterUri ? (
+        <Image source={{ uri: posterUri }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" />
+      ) : null}
       {shouldRenderVideo && videoUri ? <FypReelVideoLayer videoUri={videoUri} isActive={isActive} /> : null}
 
       <View style={[styles.topBadgeWrap, { paddingTop: topInset + 10 }]}>
@@ -112,6 +151,21 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     paddingHorizontal: 9,
     paddingVertical: 4,
+  },
+  imagePageDots: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 6,
+    justifyContent: 'center',
+    left: 0,
+    position: 'absolute',
+    right: 0,
+  },
+  imagePageDot: {
+    borderRadius: 999,
+    borderWidth: StyleSheet.hairlineWidth,
+    height: 6,
+    width: 6,
   },
   bottomContent: {
     position: 'absolute',

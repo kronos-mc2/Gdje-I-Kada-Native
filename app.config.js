@@ -85,6 +85,7 @@ const config = {
       NSLocationWhenInUseUsageDescription: 'Precizna lokacija se koristi za centriranje mape i prikaz događaja u tvojoj blizini.',
       NSLocationAlwaysAndWhenInUseUsageDescription: 'Lokacija se koristi za precizno centriranje mape i prikaz događaja u blizini.',
       NSLocationAlwaysUsageDescription: 'Lokacija se koristi za precizno centriranje mape i prikaz događaja u blizini.',
+      NSPhotoLibraryUsageDescription: 'Galerija se koristi za dodavanje slika eventa.',
     },
   },
   androidNavigationBar: {
@@ -95,7 +96,7 @@ const config = {
   android: {
     package: isTestVariant ? 'com.anonymous.GdjeIKadaNative.test' : 'com.anonymous.GdjeIKadaNative',
     ...(googleServicesFile ? { googleServicesFile } : {}),
-    permissions: ['ACCESS_COARSE_LOCATION', 'ACCESS_FINE_LOCATION', 'POST_NOTIFICATIONS'],
+    permissions: ['ACCESS_COARSE_LOCATION', 'ACCESS_FINE_LOCATION', 'POST_NOTIFICATIONS', 'READ_MEDIA_IMAGES'],
     adaptiveIcon: {
       backgroundColor: '#F0F0F0',
       foregroundImage: './assets/images/android-icon-foreground.png',
@@ -113,6 +114,12 @@ const config = {
     'expo-router',
     'expo-secure-store',
     'expo-video',
+    [
+      'expo-image-picker',
+      {
+        photosPermission: 'Galerija se koristi za dodavanje slika eventa.',
+      },
+    ],
     [
       'expo-notifications',
       {

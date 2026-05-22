@@ -1,4 +1,4 @@
-export type CreateEventStep = 'basics' | 'time' | 'location' | 'settings';
+export type CreateEventStep = 'basics' | 'time' | 'location' | 'settings' | 'media';
 
 export type CreateEventFormState = {
   title: string;
@@ -14,7 +14,7 @@ export type CreateEventFormState = {
   capacity: string;
 };
 
-export const CREATE_EVENT_STEPS: CreateEventStep[] = ['basics', 'time', 'location', 'settings'];
+export const CREATE_EVENT_STEPS: CreateEventStep[] = ['basics', 'time', 'location', 'settings', 'media'];
 
 export const INITIAL_CREATE_EVENT_FORM: CreateEventFormState = {
   title: '',

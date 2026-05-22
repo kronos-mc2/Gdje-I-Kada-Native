@@ -44,6 +44,7 @@ import {
   sendChatMessage,
   shareEventToConversation,
   unlikeEvent,
+  uploadEventMedia,
   updateNotificationPreferences,
   updateProfile,
   updateEvent,
@@ -369,6 +370,18 @@ export const useAddEventMediaMutation = () => {
 
   return useMutation({
     mutationFn: addEventMedia,
+    onSuccess: (event) => {
+      syncEventAcrossCaches(queryClient, event);
+      void queryClient.invalidateQueries({ queryKey: queryKeys.myEventsRoot });
+    },
+  });
+};
+
+export const useUploadEventMediaMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: uploadEventMedia,
     onSuccess: (event) => {
       syncEventAcrossCaches(queryClient, event);
       void queryClient.invalidateQueries({ queryKey: queryKeys.myEventsRoot });

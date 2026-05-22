@@ -1,15 +1,25 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { Image } from 'expo-image';
+import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Alert, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 
+import { EventImagePreviewModal } from '@/components/events/event-image-preview-modal';
 import { EventMap } from '@/components/map';
 import { AppButton, AppCard, AppDateTimeField, AppInput, AppScreen, AppText } from '@/components/primitives';
+import { getApiErrorMessage } from '@/core/api/http-client';
 import { useCreateEventMutation } from '@/core/api/query-hooks';
+import {
+  isEventImageResolutionTooSmall,
+  isEventImageTooLarge,
+  MAX_EVENT_IMAGES,
+  normalizePickedEventImage,
+} from '@/core/events/event-image-assets';
 import { useI18n } from '@/core/i18n/use-i18n';
 import { useAppStore } from '@/core/store/app-store';
 import { useAppTheme } from '@/core/theme';
-import { Coordinates, EventAttendanceMode, EventVisibility } from '@/core/types/domain';
+import { Coordinates, EventAttendanceMode, EventVisibility, LocalEventImage } from '@/core/types/domain';
 import {
   CREATE_EVENT_STEPS,
   CreateEventFormState,
@@ -30,6 +40,7 @@ export default function CreateEventScreen() {
   const router = useRouter();
   const { t, locale } = useI18n();
   const { theme } = useAppTheme();
+  const { width: screenWidth } = useWindowDimensions();
   const { mutateAsync: createEvent, isPending: isSubmitting } = useCreateEventMutation();
 
   const setEventFilter = useAppStore((state) => state.setEventFilter);
@@ -43,6 +54,9 @@ export default function CreateEventScreen() {
   const [attendanceMode, setAttendanceMode] = useState<EventAttendanceMode>('open');
   const [eventCoordinates, setEventCoordinates] = useState<Coordinates | null>(null);
   const [createdTitle, setCreatedTitle] = useState<string | null>(null);
+  const [images, setImages] = useState<LocalEventImage[]>([]);
+  const [previewImage, setPreviewImage] = useState<LocalEventImage | null>(null);
+  const imageSlotSize = Math.max(74, Math.floor((Math.min(screenWidth, 430) - 82) / 3));
 
   const stepCopy = useMemo(
     () => ({
@@ -65,6 +79,11 @@ export default function CreateEventScreen() {
         eyebrow: t('createEventStepSettingsEyebrow'),
         title: t('createEventStepSettingsTitle'),
         subtitle: t('createEventStepSettingsSubtitle'),
+      },
+      media: {
+        eyebrow: t('createEventStepMediaEyebrow'),
+        title: t('createEventStepMediaTitle'),
+        subtitle: t('createEventStepMediaSubtitle'),
       },
     }),
     [t],
@@ -179,6 +198,11 @@ export default function CreateEventScreen() {
       }
     }
 
+    if (step === 'media' && images.length === 0) {
+      Alert.alert(t('validation'), t('eventImageRequired'));
+      return false;
+    }
+
     return true;
   };
 
@@ -230,14 +254,66 @@ export default function CreateEventScreen() {
         priceCurrency: attendanceMode === 'paid' ? form.priceCurrency.trim().toUpperCase() : undefined,
         capacity: typeof capacity === 'number' ? capacity : undefined,
         tags,
+        images,
       });
 
       clearEntranceCoordinates();
       setEventFilter('created');
       setCreatedTitle(form.title.trim());
-    } catch {
-      Alert.alert(t('validation'), t('eventCreateFailed'));
+    } catch (error) {
+      Alert.alert(t('validation'), getApiErrorMessage(error) ?? t('eventCreateFailed'));
     }
+  };
+
+  const addImages = async () => {
+    const remainingSlots = MAX_EVENT_IMAGES - images.length;
+    if (remainingSlots <= 0) {
+      Alert.alert(t('validation'), t('eventImagesMax'));
+      return;
+    }
+
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert(t('validation'), t('imagePermissionDenied'));
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      allowsMultipleSelection: true,
+      mediaTypes: 'images',
+      quality: 0.92,
+      selectionLimit: remainingSlots,
+    });
+
+    if (result.canceled) {
+      return;
+    }
+
+    const selectedImages: LocalEventImage[] = [];
+    for (const asset of result.assets) {
+      let image: LocalEventImage;
+      try {
+        image = await normalizePickedEventImage(asset, `event-image-${Date.now()}-${selectedImages.length}.jpg`);
+      } catch {
+        Alert.alert(t('validation'), t('eventImageConversionFailed'));
+        continue;
+      }
+      if (isEventImageTooLarge(image)) {
+        Alert.alert(t('validation'), t('eventImageTooLarge'));
+        continue;
+      }
+      if (isEventImageResolutionTooSmall(image)) {
+        Alert.alert(t('validation'), t('eventImageResolutionTooSmall'));
+        continue;
+      }
+      selectedImages.push(image);
+    }
+
+    setImages((current) => [...current, ...selectedImages].slice(0, MAX_EVENT_IMAGES));
+  };
+
+  const removeImage = (index: number) => {
+    setImages((current) => current.filter((_, currentIndex) => currentIndex !== index));
   };
 
   if (createdTitle) {
@@ -435,10 +511,59 @@ export default function CreateEventScreen() {
           </>
         ) : null}
 
+        {step === 'media' ? (
+          <>
+            <View style={styles.imageGrid}>
+              {Array.from({ length: MAX_EVENT_IMAGES }).map((_, index) => {
+                const image = images[index];
+                return image ? (
+                  <View key={image.uri} style={[styles.imageSlot, { width: imageSlotSize, height: imageSlotSize, borderColor: theme.colors.border }]}>
+                    <Image source={{ uri: image.uri }} style={StyleSheet.absoluteFill} contentFit="cover" />
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={image.name}
+                      onPress={() => setPreviewImage(image)}
+                      style={StyleSheet.absoluteFill}
+                    />
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={t('removeImage')}
+                      onPress={() => removeImage(index)}
+                      style={styles.removeImageButton}
+                    >
+                      <Ionicons name="close" size={18} color="#FFFFFF" />
+                    </Pressable>
+                  </View>
+                ) : (
+                  <Pressable
+                    key={`empty-${index}`}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('addImage')}
+                    onPress={() => void addImages()}
+                    style={[
+                      styles.imageSlot,
+                      styles.emptyImageSlot,
+                      { width: imageSlotSize, height: imageSlotSize, borderColor: theme.colors.border, backgroundColor: theme.colors.surface },
+                    ]}
+                  >
+                    <View style={styles.addImageIconWrap}>
+                      <Ionicons name="add" size={24} color={theme.colors.accent} style={styles.addImageIcon} />
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </View>
+            <AppButton title={t('addImage')} variant="glass" disabled={images.length >= MAX_EVENT_IMAGES} onPress={() => void addImages()} />
+            <AppText variant="caption" color="textMuted">
+              {t('eventImagesHint')}
+            </AppText>
+          </>
+        ) : null}
+
         <View style={styles.actions}>
           <AppButton title={`← ${t('back')}`} variant="ghost" onPress={goBack} />
           <AppButton
-            title={step === 'settings' ? (isSubmitting ? t('loading') : t('finish')) : `${t('next')} →`}
+            title={step === 'media' ? (isSubmitting ? t('loading') : t('finish')) : `${t('next')} →`}
             variant="glass"
             disabled={isSubmitting}
             onPress={onNext}
@@ -446,6 +571,12 @@ export default function CreateEventScreen() {
           />
         </View>
       </CreateEventStepShell>
+      <EventImagePreviewModal
+        visible={previewImage != null}
+        uri={previewImage?.uri}
+        title={previewImage?.name}
+        onClose={() => setPreviewImage(null)}
+      />
     </AppScreen>
   );
 }
@@ -509,6 +640,45 @@ const styles = StyleSheet.create({
   },
   paidFields: {
     gap: 0,
+  },
+  imageGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  imageSlot: {
+    borderRadius: 12,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  emptyImageSlot: {
+    alignItems: 'center',
+    borderStyle: 'dashed',
+    justifyContent: 'center',
+  },
+  addImageIconWrap: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addImageIcon: {
+    height: 24,
+    lineHeight: 24,
+    textAlign: 'center',
+    width: 24,
+  },
+  removeImageButton: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(17, 17, 20, 0.82)',
+    borderColor: 'rgba(255, 255, 255, 0.78)',
+    borderRadius: 999,
+    borderWidth: StyleSheet.hairlineWidth,
+    height: 30,
+    justifyContent: 'center',
+    position: 'absolute',
+    right: 6,
+    top: 6,
+    width: 30,
   },
   actions: {
     alignItems: 'center',

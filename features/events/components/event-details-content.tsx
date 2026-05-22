@@ -4,6 +4,7 @@ import { StyleSheet, View } from 'react-native';
 import { AppButton, AppText } from '@/components/primitives';
 import { getEventPosterUri } from '@/core/events/event-cover';
 import { useI18n } from '@/core/i18n/use-i18n';
+import { useAppTheme } from '@/core/theme';
 import { AppEvent, Locale } from '@/core/types/domain';
 import { formatEventDate, formatEventDay, formatEventDuration, formatEventTime } from '@/core/utils/date';
 
@@ -27,6 +28,7 @@ export function EventDetailsContent({
   expanded = true,
 }: EventDetailsContentProps) {
   const { t } = useI18n();
+  const { theme } = useAppTheme();
   const coverUri = getEventPosterUri(event);
   const hasOrganizerRating = (event.organizerRatingCount ?? 0) > 0;
   const hasEventRating = (event.eventRatingCount ?? 0) > 0;
@@ -36,7 +38,15 @@ export function EventDetailsContent({
   return (
     <>
       <View style={styles.coverRow}>
-        <Image source={{ uri: coverUri }} style={styles.cover} contentFit="cover" />
+        {coverUri ? (
+          <Image source={{ uri: coverUri }} style={styles.cover} contentFit="cover" />
+        ) : (
+          <View style={[styles.cover, styles.coverPlaceholder, { backgroundColor: theme.colors.surfaceElevated }]}>
+            <AppText variant="caption" color="textMuted">
+              {t('media')}
+            </AppText>
+          </View>
+        )}
         <View style={styles.coverMeta}>
           <AppText variant="bodyStrong">{event.where[locale]}</AppText>
           <AppText variant="caption" color="textMuted">
@@ -135,6 +145,10 @@ const styles = StyleSheet.create({
     height: 72,
     borderRadius: 16,
     overflow: 'hidden',
+  },
+  coverPlaceholder: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   coverMeta: {
     flex: 1,

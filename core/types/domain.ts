@@ -21,6 +21,10 @@ export type EventMedia = {
   mediaType: 'image' | 'video';
   url: string;
   thumbnailUrl?: string;
+  fileName?: string;
+  byteSize?: number;
+  width?: number;
+  height?: number;
   sortOrder: number;
 };
 
@@ -28,6 +32,7 @@ export type EventMediaPayload = {
   mediaType?: 'image' | 'video';
   url: string;
   thumbnailUrl?: string;
+  fileName?: string;
 };
 
 export type EventQueryParams = {
@@ -398,4 +403,14 @@ export type CreateEventPayload = {
   priceCurrency?: string;
   capacity?: number;
   tags?: string[];
+  images?: LocalEventImage[];
+};
+
+export type LocalEventImage = {
+  uri: string;
+  name: string;
+  type: string;
+  size?: number;
+  width?: number;
+  height?: number;
 };

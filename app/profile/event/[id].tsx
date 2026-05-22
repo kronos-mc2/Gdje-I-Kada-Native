@@ -1,12 +1,14 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
+import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
 
+import { EventImagePreviewModal } from '@/components/events/event-image-preview-modal';
 import { AppButton, AppCard, AppIconButton, AppInput, AppScreen, AppText, SectionHeader } from '@/components/primitives';
+import { getApiErrorMessage } from '@/core/api/http-client';
 import {
-  useAddEventMediaMutation,
   useApproveEventParticipantMutation,
   useBlockEventParticipantMutation,
   useDeleteEventMediaMutation,
@@ -15,10 +17,17 @@ import {
   useEventQuery,
   useRemoveEventParticipantMutation,
   useUpdateEventMutation,
+  useUploadEventMediaMutation,
 } from '@/core/api/query-hooks';
 import { useI18n } from '@/core/i18n/use-i18n';
+import { normalizeEventMediaUri } from '@/core/events/event-cover';
+import {
+  isEventImageResolutionTooSmall,
+  isEventImageTooLarge,
+  normalizePickedEventImage,
+} from '@/core/events/event-image-assets';
 import { useAppTheme } from '@/core/theme';
-import { EventParticipant } from '@/core/types/domain';
+import { EventMedia, EventParticipant, LocalEventImage } from '@/core/types/domain';
 import { ProfileAvatar } from '@/features/profile/components/profile-avatar';
 
 export default function ManageCreatedEventScreen() {
@@ -31,12 +40,12 @@ export default function ManageCreatedEventScreen() {
   const { data: participants = [] } = useEventParticipantsQuery(eventId);
   const updateEventMutation = useUpdateEventMutation();
   const deleteEventMutation = useDeleteEventMutation();
-  const addMediaMutation = useAddEventMediaMutation();
+  const uploadMediaMutation = useUploadEventMediaMutation();
   const deleteMediaMutation = useDeleteEventMediaMutation();
   const [title, setTitle] = useState('');
   const [where, setWhere] = useState('');
   const [about, setAbout] = useState('');
-  const [imageUrl, setImageUrl] = useState('');
+  const [previewMedia, setPreviewMedia] = useState<EventMedia | null>(null);
 
   useEffect(() => {
     if (!event) {
@@ -80,14 +89,60 @@ export default function ManageCreatedEventScreen() {
   };
 
   const addImage = async () => {
-    if (!eventId || !imageUrl.trim()) {
+    if (!eventId || !event) {
+      return;
+    }
+    if ((event.media?.length ?? 0) >= 5) {
+      Alert.alert(t('validation'), t('eventImagesMax'));
+      return;
+    }
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert(t('validation'), t('imagePermissionDenied'));
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: 'images',
+      quality: 0.92,
+      allowsMultipleSelection: false,
+    });
+    if (result.canceled || !result.assets[0]) {
+      return;
+    }
+    let image: LocalEventImage;
+    try {
+      image = await normalizePickedEventImage(result.assets[0], `event-image-${Date.now()}.jpg`);
+    } catch {
+      Alert.alert(t('validation'), t('eventImageConversionFailed'));
+      return;
+    }
+    if (isEventImageTooLarge(image)) {
+      Alert.alert(t('validation'), t('eventImageTooLarge'));
+      return;
+    }
+    if (isEventImageResolutionTooSmall(image)) {
+      Alert.alert(t('validation'), t('eventImageResolutionTooSmall'));
       return;
     }
     try {
-      await addMediaMutation.mutateAsync({ eventId, payload: { mediaType: 'image', url: imageUrl.trim() } });
-      setImageUrl('');
-    } catch {
-      Alert.alert(t('actionFailed'));
+      await uploadMediaMutation.mutateAsync({ eventId, image });
+    } catch (error) {
+      Alert.alert(t('actionFailed'), getApiErrorMessage(error) ?? undefined);
+    }
+  };
+
+  const deleteImage = async (mediaId: string) => {
+    if (!eventId || !event) {
+      return;
+    }
+    if ((event.media?.length ?? 0) <= 1) {
+      Alert.alert(t('validation'), t('eventImageMustRemain'));
+      return;
+    }
+    try {
+      await deleteMediaMutation.mutateAsync({ eventId: event.id, mediaId });
+    } catch (error) {
+      Alert.alert(t('actionFailed'), getApiErrorMessage(error) ?? undefined);
     }
   };
 
@@ -140,20 +195,55 @@ export default function ManageCreatedEventScreen() {
 
           <SectionHeader title={t('media')} subtitle={t('addImage')} />
           <AppCard variant="glass" style={styles.card}>
-            {event.media?.map((media) => (
-              <View key={media.id} style={styles.mediaRow}>
-                <Image source={{ uri: media.thumbnailUrl ?? media.url }} style={styles.mediaImage} contentFit="cover" />
-                <AppText variant="caption" color="textMuted" numberOfLines={1} style={styles.mediaUrl}>
-                  {media.url}
-                </AppText>
-                <Pressable onPress={() => deleteMediaMutation.mutate({ eventId: event.id, mediaId: media.id })} hitSlop={8}>
-                  <Ionicons name="trash-outline" size={20} color={theme.colors.textSecondary} />
-                </Pressable>
-              </View>
-            ))}
-            <AppInput label={t('imageUrlLabel')} value={imageUrl} onChangeText={setImageUrl} autoCapitalize="none" />
-            <AppButton title={t('addImage')} variant="secondary" disabled={!imageUrl.trim()} onPress={() => void addImage()} />
+            {event.media?.map((media) => {
+              const canDeleteImage = (event.media?.length ?? 0) > 1 && !deleteMediaMutation.isPending;
+              return (
+                <View key={media.id} style={styles.mediaRow}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={media.fileName ?? t('media')}
+                    onPress={() => setPreviewMedia(media)}
+                    style={({ pressed }) => [styles.mediaPreviewButton, { opacity: pressed ? 0.74 : 1 }]}
+                  >
+                    <Image source={{ uri: normalizeEventMediaUri(media.thumbnailUrl ?? media.url) }} style={styles.mediaImage} contentFit="cover" />
+                  </Pressable>
+                  <View style={styles.mediaCopy}>
+                    <AppText variant="caption" color="textSecondary" numberOfLines={1}>
+                      {getMediaDisplayName(media, t('imageFallbackName'))}
+                    </AppText>
+                    {media.width && media.height ? (
+                      <AppText variant="caption" color="textMuted" numberOfLines={1}>
+                        {media.width}x{media.height}
+                      </AppText>
+                    ) : null}
+                  </View>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={t('removeImage')}
+                    accessibilityState={{ disabled: !canDeleteImage }}
+                    disabled={!canDeleteImage}
+                    onPress={() => void deleteImage(media.id)}
+                    hitSlop={8}
+                    style={({ pressed }) => [styles.mediaDeleteButton, { opacity: !canDeleteImage ? 0.34 : pressed ? 0.68 : 1 }]}
+                  >
+                    <Ionicons name="trash-outline" size={20} color={theme.colors.textSecondary} />
+                  </Pressable>
+                </View>
+              );
+            })}
+            <AppButton
+              title={uploadMediaMutation.isPending ? t('loading') : t('addImage')}
+              variant="secondary"
+              disabled={uploadMediaMutation.isPending || (event.media?.length ?? 0) >= 5}
+              onPress={() => void addImage()}
+            />
           </AppCard>
+          <EventImagePreviewModal
+            visible={previewMedia != null}
+            uri={normalizeEventMediaUri(previewMedia?.url)}
+            title={previewMedia ? getMediaDisplayName(previewMedia, t('imageFallbackName')) : undefined}
+            onClose={() => setPreviewMedia(null)}
+          />
 
           <SectionHeader title={t('waitlist')} subtitle={`${waitlisted.length} ${t('waitlistWaiting')}`} />
           <AppCard variant="glass" style={styles.card}>
@@ -180,6 +270,13 @@ export default function ManageCreatedEventScreen() {
       )}
     </AppScreen>
   );
+}
+
+function getMediaDisplayName(media: EventMedia, fallbackTemplate: string) {
+  if (media.fileName?.trim()) {
+    return media.fileName.trim();
+  }
+  return fallbackTemplate.replace('{index}', String(media.sortOrder + 1));
 }
 
 function ParticipantRow({
@@ -251,13 +348,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
   },
+  mediaPreviewButton: {
+    borderRadius: 10,
+    overflow: 'hidden',
+  },
   mediaImage: {
     width: 54,
     height: 54,
     borderRadius: 10,
   },
-  mediaUrl: {
+  mediaCopy: {
     flex: 1,
+    minWidth: 0,
+  },
+  mediaDeleteButton: {
+    width: 34,
+    height: 34,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   participantRow: {
     flexDirection: 'row',

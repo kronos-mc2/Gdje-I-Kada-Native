@@ -103,11 +103,12 @@ Backend trenutno ima:
 - `POST /api/events`
 - `PATCH /api/events/{id}`
 - `DELETE /api/events/{id}`
+- `POST /api/events` multipart `event` + `images`
 - `GET /api/events/{id}/participants`
 - `POST /api/events/{id}/participants/{userId}/approve`
 - `DELETE /api/events/{id}/participants/{userId}`
 - `POST /api/events/{id}/participants/{userId}/block`
-- `POST /api/events/{id}/media`
+- `POST /api/events/{id}/media` JSON URL ili multipart image upload
 - `DELETE /api/events/{id}/media/{mediaId}`
 - `POST /api/events/{eventId}/ticket-checkout`
 - `POST /api/ticket-orders/{orderId}/confirm`
@@ -216,7 +217,7 @@ Trenutni event model:
 - Service: `EventService`.
 - Mapper: `EventMapper` i `EventMapper.xml`.
 
-Event trenutno podrzava naslov, lokaciju, adresu, opis, start/end datum, coordinates, entrance coordinates, entry instructions, do 5 tagova, creator user id, creator name/avatar za organizer prikaz, visibility `public/friends`, attendance mode `open/waitlist/paid`, cijenu za paid evente, capacity, status, event i organizer rating agregate, `likeCount`, `likedByMe`, participant count, `waitlistCount`, `joinedByMe`, `attendanceStatus` i `canJoin`. Create flow u frontendu koristi jedan naziv/lokaciju/opis bez odvojenih HR/EN polja, a backend `CreateEventRequest` prihvaca canonical `title`, `where`, `about`, `entryInstructions` i `tags` te ih mirror-a u postojece HR/EN stupce radi kompatibilnosti. Adresa u create flowu bira se kroz backend `GET /api/locations/search` autocomplete; odabrani rezultat postaje canonical event coordinate, a entrance pin je opcionalna zasebna koordinata. Vlasnik eventa kroz profil ima Created Events ekran i manage ekran za izmjenu osnovnih detalja, dodavanje/brisanje image media URL-ova, pregled/prihvacanje waitliste, micanje sudionika i blokiranje korisnika s neplacenih eventova. Backend za to koristi owner-only endpointove `PATCH/DELETE /api/events/{id}`, media endpointove, participant endpointove, `event_blocks` i in-app `app_notifications`. Join/leave i like/unlike rade kroz backend, a feed i detail endpointi vracaju `event_media` za reels/detail prikaz. FYP `Not interested` preference spremaju se server-side po eventu, kreatoru ili tagu i filtriraju discovery za tog korisnika. Rating nakon zavrsenog eventa salje odvojene ocjene eventa i organizatora kroz `POST /api/events/{id}/ratings/full`. Paid join ide kroz Stripe-named provider stub: `POST /api/events/{eventId}/ticket-checkout` kreira order/payment, `POST /api/ticket-orders/{orderId}/confirm` potvrdjuje stub payment, zapisuje transaction i tek tada join-a event. Real Stripe React Native SDK/PaymentSheet nije dodan jer ova promjena ne pokrece native build.
+Event trenutno podrzava naslov, lokaciju, adresu, opis, start/end datum, coordinates, entrance coordinates, entry instructions, do 5 tagova, creator user id, creator name/avatar za organizer prikaz, visibility `public/friends`, attendance mode `open/waitlist/paid`, cijenu za paid evente, capacity, status, event i organizer rating agregate, `likeCount`, `likedByMe`, participant count, `waitlistCount`, `joinedByMe`, `attendanceStatus` i `canJoin`. Create flow u frontendu koristi jedan naziv/lokaciju/opis bez odvojenih HR/EN polja, a backend `CreateEventRequest` prihvaca canonical `title`, `where`, `about`, `entryInstructions` i `tags` te ih mirror-a u postojece HR/EN stupce radi kompatibilnosti. Adresa u create flowu bira se kroz backend `GET /api/locations/search` autocomplete; odabrani rezultat postaje canonical event coordinate, a entrance pin je opcionalna zasebna koordinata. Step 5 u create flowu je obavezan media korak: korisnik mora dodati barem jednu JPG/PNG sliku, najvise 5 slika, svaka do 5 MB i barem 640x640 px. Frontend salje create kao multipart `event` JSON + `images`, backend sprema slike kroz S3-compatible storage provider i `event_media` metadata ukljucujuci originalni naziv filea. Create i owner manage screen imaju fullscreen image preview s pinch/double-tap zoomom. Vlasnik eventa kroz profil ima Created Events ekran i manage ekran za izmjenu osnovnih detalja, upload/brisanje slika, pregled/prihvacanje waitliste, micanje sudionika i blokiranje korisnika s neplacenih eventova. Backend za to koristi owner-only endpointove `PATCH/DELETE /api/events/{id}`, media endpointove, participant endpointove, `event_blocks` i in-app `app_notifications`. Join/leave i like/unlike rade kroz backend, a feed i detail endpointi vracaju `event_media` za reels/detail prikaz. FYP `Not interested` preference spremaju se server-side po eventu, kreatoru ili tagu i filtriraju discovery za tog korisnika. Rating nakon zavrsenog eventa salje odvojene ocjene eventa i organizatora kroz `POST /api/events/{id}/ratings/full`. Paid join ide kroz Stripe-named provider stub: `POST /api/events/{eventId}/ticket-checkout` kreira order/payment, `POST /api/ticket-orders/{orderId}/confirm` potvrdjuje stub payment, zapisuje transaction i tek tada join-a event. Real Stripe React Native SDK/PaymentSheet nije dodan jer ova promjena ne pokrece native build.
 
 Kad implementiras nove stvari, nadogradi postojece:
 
@@ -324,8 +325,8 @@ Sto fali za finalni zahtjev:
 
 - Jasna lokalna pretraga adresa ili remote geocoding search za lokacije. Postoji `services/locationSearch`, ali trenutno map search koristi event search.
 - Prikaz posebnog entrance pina direktno na mapi, ne samo u detaljima.
-- Marker badge i dalje koriste helper cover URL, ne stvarni `event_media` render u markeru.
-- Pravi media upload/video playback umjesto cover preview helpera.
+- Marker badge koristi primarnu `event_media` sliku kad postoji.
+- Video playback/upload ostaje odvojena kasnija dorada; trenutni stvarni upload podrzava slike.
 - Razlikovanje `public`, `friends`, `waitlist`, `open/free`, `paid` i drugih attendance pravila.
 
 ### Reels/FYP
@@ -344,7 +345,8 @@ Trenutno ponasanje:
 
 - Vertikalni `FlatList` s `pagingEnabled`, `snapToInterval`, `onViewableItemsChanged` i `fetchNextPage()`.
 - Feed je server-side paginiran cursorom i vraca `items`, `nextCursor`, `hasMore`.
-- Svaki event koristi `event_media` kao primarni poster/video izvor, uz fallback na helper cover image ako media nedostaje.
+- Svaki event koristi prvu `event_media` sliku kao primarni poster izvor na mapi, detaljima, profilu i FYP-u. Random helper cover fallback je uklonjen; event bez media dobiva neutralan placeholder.
+- FYP za evente s vise slika prikazuje horizontalni image pager sa stranicama unutar istog reela; event s jednom slikom ostaje staticki full-bleed poster.
 - Android FYP viewport oduzima stvarnu native tab bar visinu iz `BottomTabBarHeightContext`, ali media blago podvuce ispod ruba da ne ostane crni razmak iznad toolbara; sam card/action rail ostaju dignuti iznad taba. iOS zadrzava full-bleed media i podize overlay iznad translucent taba.
 - FYP media se prikazuje bez globalnog tamnog scrim overlaya; top badge prikazuje samo datum i joined status kad postoji.
 - Donji FYP overlay je kompaktan: organizer avatar/name, title, lokacija, kratak opis i kratki datum/vrijeme/sudionici; like i share su odvojeni u desnom action railu.
@@ -358,7 +360,7 @@ Sto jos fali:
 
 - Feed ranking je i dalje jednostavan (`start_at DESC, id DESC`), bez personalizacije ili impressions modela.
 - Share u razgovor trenutno azurira conversation preview, ali jos nema stvarnu message history/event share card jer je puni chat domain u Fazi 7.
-- Media upload/create flow i dalje nije povezan s `event_media` CRUD-om.
+- Media upload/create flow je povezan s `event_media` CRUD-om za slike.
 
 ### Kalendar
 

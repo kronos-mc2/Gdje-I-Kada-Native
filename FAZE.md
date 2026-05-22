@@ -32,6 +32,10 @@ Dokumentacija je dio zadatka, ne naknadni posao. Ako kod i dokumentacija nisu us
 | 9 | Placanja, rating i polish | U tijeku | Paid eventi, transaction history, organizer rating i zavrsni UX polish. |
 | 10 | FYP preference, tags, friends i message security | Rijeseno | Not interested preference, event tagovi, friend request flow, encryption-at-rest i map details sheet dorada. |
 
+Aktivna dopuna:
+
+2026-05-22 - U tijeku: stvarni event image upload/storage i lokalni test data import. Opseg: S3-compatible storage sloj za MinIO/R2, max 5 slika po eventu, 5 MB po slici, 10 GB backend quota, originalni naziv filea u `event_media`, obavezan Step 5 media korak u create flowu, upload/brisanje slika u owner manage screenu, fullscreen image preview s pinch/double-tap zoomom, uklanjanje random cover fallbacka, prva event slika kao poster na mapi/detaljima/profilu/FYP-u, FYP horizontalni image pager za vise slika i normalizirani lokalni CSV za test evente.
+
 ## Faza 0 - Dokumentacija i smjer
 
 Status: Rijeseno

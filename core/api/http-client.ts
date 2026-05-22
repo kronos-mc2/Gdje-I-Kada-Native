@@ -49,6 +49,10 @@ export const apiClient = axios.create({
 export const getApiBaseUrl = () => apiClient.defaults.baseURL ?? resolveApiBaseUrl();
 
 export const getApiErrorMessage = (error: unknown) => {
+  if (error instanceof Error && error.message.trim()) {
+    return error.message.trim();
+  }
+
   if (!axios.isAxiosError(error)) {
     return null;
   }

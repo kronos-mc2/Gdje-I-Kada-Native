@@ -1,4 +1,5 @@
-import { apiClient } from '@/core/api/http-client';
+import { apiClient, getApiBaseUrl } from '@/core/api/http-client';
+import { useAuthStore } from '@/core/store/auth-store';
 import {
   AppEvent,
   ChatMessage,
@@ -20,6 +21,7 @@ import {
   FeedPreference,
   Friend,
   FriendRequest,
+  LocalEventImage,
   MyEventsFilter,
   NotificationPreferences,
   OrganizerRatingPayload,
@@ -90,6 +92,12 @@ export const fetchEventParticipants = async (eventId: string): Promise<EventPart
 export const addEventMedia = async ({ eventId, payload }: { eventId: string; payload: EventMediaPayload }): Promise<AppEvent> => {
   const response = await apiClient.post<AppEvent>(`/events/${eventId}/media`, payload);
   return response.data;
+};
+
+export const uploadEventMedia = async ({ eventId, image }: { eventId: string; image: LocalEventImage }): Promise<AppEvent> => {
+  const formData = new FormData();
+  formData.append('image', toFormDataFile(image));
+  return postMultipart<AppEvent>(`/events/${eventId}/media`, formData);
 };
 
 export const deleteEventMedia = async ({ eventId, mediaId }: { eventId: string; mediaId: string }): Promise<AppEvent> => {
@@ -305,8 +313,68 @@ export const votePoll = async ({ pollId, optionIds }: { pollId: string; optionId
 };
 
 export const createEvent = async (payload: CreateEventPayload): Promise<AppEvent> => {
+  if (payload.images?.length) {
+    const { images, ...eventPayload } = payload;
+    const formData = new FormData();
+    formData.append('event', JSON.stringify(eventPayload));
+    images.forEach((image) => formData.append('images', toFormDataFile(image)));
+    return postMultipart<AppEvent>('/events', formData);
+  }
+
   const response = await apiClient.post<AppEvent>('/events', payload);
   return response.data;
+};
+
+const toFormDataFile = (image: LocalEventImage) =>
+  ({
+    uri: image.uri,
+    name: image.name,
+    type: image.type,
+  }) as unknown as Blob;
+
+const postMultipart = async <T>(path: string, formData: FormData): Promise<T> => {
+  const token = useAuthStore.getState().accessToken;
+  const response = await fetch(`${getApiBaseUrl()}${path}`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    body: formData,
+  });
+  return readApiResponse<T>(response);
+};
+
+const readApiResponse = async <T>(response: Response): Promise<T> => {
+  const text = await response.text();
+  const data = text ? parseJson(text) : null;
+  if (!response.ok) {
+    throw new Error(resolveApiResponseMessage(data, text, response.status));
+  }
+  return data as T;
+};
+
+const parseJson = (text: string) => {
+  try {
+    return JSON.parse(text) as unknown;
+  } catch {
+    return text;
+  }
+};
+
+const resolveApiResponseMessage = (data: unknown, text: string, status: number) => {
+  if (data && typeof data === 'object') {
+    for (const key of ['message', 'error', 'detail']) {
+      const value = (data as Record<string, unknown>)[key];
+      if (typeof value === 'string' && value.trim()) {
+        return value.trim();
+      }
+    }
+  }
+  if (typeof data === 'string' && data.trim()) {
+    return data.trim();
+  }
+  if (text.trim()) {
+    return text.trim();
+  }
+  return `HTTP ${status}`;
 };
 
 export const joinEvent = async (eventId: string): Promise<AppEvent> => {
