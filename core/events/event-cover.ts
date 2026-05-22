@@ -9,7 +9,7 @@ export const getEventImageMedia = (event?: Pick<AppEvent, 'media'> | null): Even
 export const getEventImageUris = (event?: Pick<AppEvent, 'media'> | null): string[] =>
   getEventImageMedia(event)
     .map((media) => normalizeEventMediaUri(media.thumbnailUrl ?? media.url))
-    .filter(Boolean);
+    .filter((uri): uri is string => Boolean(uri));
 
 export const getEventPosterUri = (event: Pick<AppEvent, 'media'>) => {
   const firstImageUri = getEventImageUris(event)[0];
