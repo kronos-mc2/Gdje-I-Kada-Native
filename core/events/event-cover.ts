@@ -18,7 +18,7 @@ export const getEventImageUris = (event?: Pick<AppEvent, 'media'> | null): strin
     .filter((uri): uri is string => Boolean(uri));
 
 export const getEventImageSources = (event?: Pick<AppEvent, 'media'> | null): AuthenticatedImageSource[] =>
-  getEventImageUris(event).map(getAuthenticatedImageSource);
+  getEventImageUris(event).map((uri) => getAuthenticatedImageSource(uri));
 
 export const getEventPosterUri = (event: Pick<AppEvent, 'media'>) => {
   const firstImageUri = getEventImageUris(event)[0];
