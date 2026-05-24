@@ -20,7 +20,7 @@ import {
   useUploadEventMediaMutation,
 } from '@/core/api/query-hooks';
 import { useI18n } from '@/core/i18n/use-i18n';
-import { normalizeEventMediaUri } from '@/core/events/event-cover';
+import { getAuthenticatedImageSource } from '@/core/events/event-cover';
 import {
   isEventImageResolutionTooSmall,
   isEventImageTooLarge,
@@ -205,7 +205,7 @@ export default function ManageCreatedEventScreen() {
                     onPress={() => setPreviewMedia(media)}
                     style={({ pressed }) => [styles.mediaPreviewButton, { opacity: pressed ? 0.74 : 1 }]}
                   >
-                    <Image source={{ uri: normalizeEventMediaUri(media.thumbnailUrl ?? media.url) }} style={styles.mediaImage} contentFit="cover" />
+                    <Image source={getAuthenticatedImageSource(media.thumbnailUrl ?? media.url)} style={styles.mediaImage} contentFit="cover" />
                   </Pressable>
                   <View style={styles.mediaCopy}>
                     <AppText variant="caption" color="textSecondary" numberOfLines={1}>
@@ -240,7 +240,7 @@ export default function ManageCreatedEventScreen() {
           </AppCard>
           <EventImagePreviewModal
             visible={previewMedia != null}
-            uri={normalizeEventMediaUri(previewMedia?.url)}
+            source={getAuthenticatedImageSource(previewMedia?.url)}
             title={previewMedia ? getMediaDisplayName(previewMedia, t('imageFallbackName')) : undefined}
             onClose={() => setPreviewMedia(null)}
           />

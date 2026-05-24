@@ -36,6 +36,8 @@ Aktivna dopuna:
 
 2026-05-22 - U tijeku: stvarni event image upload/storage i lokalni test data import. Opseg: S3-compatible storage sloj za MinIO/R2, max 5 slika po eventu, 5 MB po slici, 10 GB backend quota, originalni naziv filea u `event_media`, obavezan Step 5 media korak u create flowu, upload/brisanje slika u owner manage screenu, fullscreen image preview s pinch/double-tap zoomom, uklanjanje random cover fallbacka, prva event slika kao poster na mapi/detaljima/profilu/FYP-u, FYP horizontalni image pager za vise slika i normalizirani lokalni CSV za test evente.
 
+2026-05-24 - Dopuna u tijeku: event media privacy. Uploaded media se vise ne oslanja na public MinIO bucket nego se servira kroz authenticated backend endpoint `/api/events/{eventId}/media/{mediaId}/content` s istim access pravilom kao event details. Frontend centralno dodaje Bearer header za API media slike. Friends-only eventi odbijaju external URL media jer se takvi URL-ovi ne mogu privacy-protectati kroz backend.
+
 ## Faza 0 - Dokumentacija i smjer
 
 Status: Rijeseno

@@ -2,7 +2,7 @@ import { Image } from 'expo-image';
 import { StyleSheet, View } from 'react-native';
 
 import { AppButton, AppText } from '@/components/primitives';
-import { getEventPosterUri } from '@/core/events/event-cover';
+import { getEventPosterSource } from '@/core/events/event-cover';
 import { useI18n } from '@/core/i18n/use-i18n';
 import { useAppTheme } from '@/core/theme';
 import { AppEvent, Locale } from '@/core/types/domain';
@@ -29,7 +29,7 @@ export function EventDetailsContent({
 }: EventDetailsContentProps) {
   const { t } = useI18n();
   const { theme } = useAppTheme();
-  const coverUri = getEventPosterUri(event);
+  const coverSource = getEventPosterSource(event);
   const hasOrganizerRating = (event.organizerRatingCount ?? 0) > 0;
   const hasEventRating = (event.eventRatingCount ?? 0) > 0;
   const priceLabel = formatPrice(event);
@@ -38,8 +38,8 @@ export function EventDetailsContent({
   return (
     <>
       <View style={styles.coverRow}>
-        {coverUri ? (
-          <Image source={{ uri: coverUri }} style={styles.cover} contentFit="cover" />
+        {coverSource ? (
+          <Image source={coverSource} style={styles.cover} contentFit="cover" />
         ) : (
           <View style={[styles.cover, styles.coverPlaceholder, { backgroundColor: theme.colors.surfaceElevated }]}>
             <AppText variant="caption" color="textMuted">

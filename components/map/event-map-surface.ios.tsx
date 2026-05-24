@@ -96,7 +96,7 @@ export function EventMapSurface({
             anchor={{ x: 0.5, y: 1 }}
             onPress={() => onMarkerPress(marker.id)}
           >
-            <MapMarkerBadge selected={marker.isSelected} coverImageUri={marker.coverImageUri} />
+            <MapMarkerBadge selected={marker.isSelected} coverImageSource={marker.coverImageSource} />
           </Marker>
         ))}
 

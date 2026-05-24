@@ -2,7 +2,7 @@ import { useMemo, useRef } from 'react';
 
 import { EventMapSurface } from '@/components/map/event-map-surface';
 import { MapCameraState } from '@/components/map/types';
-import { getEventPosterUri } from '@/core/events/event-cover';
+import { getEventPosterSource } from '@/core/events/event-cover';
 import { AppEvent, Coordinates, Locale } from '@/core/types/domain';
 
 type EventMapProps = Readonly<{
@@ -46,7 +46,7 @@ export function EventMap({
         coordinate: event.coordinates,
         title: event.title[locale],
         subtitle: event.where[locale],
-        coverImageUri: getEventPosterUri(event),
+        coverImageSource: getEventPosterSource(event),
         isSelected: selectedEventId === event.id,
       })),
     [events, locale, selectedEventId],

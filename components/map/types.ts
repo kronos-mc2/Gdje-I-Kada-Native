@@ -1,3 +1,4 @@
+import type { AuthenticatedImageSource } from '@/core/events/event-cover';
 import { Coordinates } from '@/core/types/domain';
 
 export type EventMapMarker = {
@@ -5,7 +6,7 @@ export type EventMapMarker = {
   coordinate: Coordinates;
   title: string;
   subtitle?: string;
-  coverImageUri?: string;
+  coverImageSource?: AuthenticatedImageSource;
   isSelected: boolean;
 };
 

@@ -3,6 +3,7 @@ import { Image, Pressable, StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/primitives';
 import { useRespondFriendRequestMutation, useVotePollMutation } from '@/core/api/query-hooks';
+import { getAuthenticatedImageSource } from '@/core/events/event-cover';
 import { useI18n } from '@/core/i18n/use-i18n';
 import { useAppTheme } from '@/core/theme';
 import { ChatMessage, Locale } from '@/core/types/domain';
@@ -48,7 +49,7 @@ export function MessageBubble({ message, locale, onOpenEvent }: MessageBubblePro
 
         {message.type === 'event_share' && message.event ? (
           <Pressable onPress={() => onOpenEvent(message.event!.id)} style={styles.eventCard}>
-            {message.event.coverUrl ? <Image source={{ uri: message.event.coverUrl }} style={styles.eventImage} /> : null}
+            {message.event.coverUrl ? <Image source={getAuthenticatedImageSource(message.event.coverUrl)} style={styles.eventImage} /> : null}
             <View style={styles.eventCopy}>
               <AppText variant="caption" color="textMuted">
                 {t('sharedEvent')}

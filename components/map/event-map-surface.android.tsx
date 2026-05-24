@@ -309,7 +309,7 @@ export function EventMapSurface({
             >
               <MapMarkerBadge
                 selected={marker.isSelected}
-                coverImageUri={marker.coverImageUri}
+                coverImageSource={marker.coverImageSource}
                 onImageLoad={() => {
                   annotationRefs.current[markerKey]?.refresh?.();
                   setTimeout(() => {

@@ -7,11 +7,12 @@ import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-na
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppText } from '@/components/primitives';
+import type { AuthenticatedImageSource } from '@/core/events/event-cover';
 import { useAppTheme } from '@/core/theme';
 
 type EventImagePreviewModalProps = Readonly<{
   visible: boolean;
-  uri?: string;
+  source?: AuthenticatedImageSource;
   title?: string;
   onClose: () => void;
 }>;
@@ -19,7 +20,7 @@ type EventImagePreviewModalProps = Readonly<{
 const MIN_SCALE = 1;
 const MAX_SCALE = 4;
 
-export function EventImagePreviewModal({ visible, uri, title, onClose }: EventImagePreviewModalProps) {
+export function EventImagePreviewModal({ visible, source, title, onClose }: EventImagePreviewModalProps) {
   const { theme } = useAppTheme();
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
@@ -37,7 +38,7 @@ export function EventImagePreviewModal({ visible, uri, title, onClose }: EventIm
     translateY.value = withTiming(0);
     savedTranslateX.value = 0;
     savedTranslateY.value = 0;
-  }, [savedScale, savedTranslateX, savedTranslateY, scale, translateX, translateY, uri, visible]);
+  }, [savedScale, savedTranslateX, savedTranslateY, scale, translateX, translateY, source?.uri, visible]);
 
   const pinchGesture = Gesture.Pinch()
     .onUpdate((event) => {
@@ -87,7 +88,7 @@ export function EventImagePreviewModal({ visible, uri, title, onClose }: EventIm
   const gesture = Gesture.Simultaneous(doubleTapGesture, pinchGesture, panGesture);
 
   return (
-    <Modal visible={visible && Boolean(uri)} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible={visible && Boolean(source)} transparent animationType="fade" onRequestClose={onClose}>
       <View style={[styles.backdrop, { backgroundColor: theme.isDark ? 'rgba(0,0,0,0.94)' : 'rgba(17,17,20,0.92)' }]}>
         <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
           <View style={styles.titleWrap}>
@@ -102,7 +103,7 @@ export function EventImagePreviewModal({ visible, uri, title, onClose }: EventIm
 
         <GestureDetector gesture={gesture}>
           <Animated.View style={[styles.imageWrap, { width, height }, imageStyle]}>
-            {uri ? <Image source={{ uri }} style={styles.image} contentFit="contain" /> : null}
+            {source ? <Image source={source} style={styles.image} contentFit="contain" /> : null}
           </Animated.View>
         </GestureDetector>
       </View>

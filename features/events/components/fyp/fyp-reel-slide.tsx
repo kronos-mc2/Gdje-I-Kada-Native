@@ -3,7 +3,7 @@ import { NativeScrollEvent, NativeSyntheticEvent, ScrollView, StyleSheet, View }
 import { useMemo, useState } from 'react';
 
 import { AppCard, AppText } from '@/components/primitives';
-import { getEventImageUris, getEventPosterUri, getEventVideoUri } from '@/core/events/event-cover';
+import { getEventImageSources, getEventPosterSource, getEventVideoUri, isAuthenticatedImageSource } from '@/core/events/event-cover';
 import { useI18n } from '@/core/i18n/use-i18n';
 import { useAppTheme } from '@/core/theme';
 import { AppEvent, Locale } from '@/core/types/domain';
@@ -44,8 +44,8 @@ export function FypReelSlide({
   const { t } = useI18n();
   const { theme } = useAppTheme();
   const [activeImageIndex, setActiveImageIndex] = useState(0);
-  const imageUris = useMemo(() => getEventImageUris(event), [event]);
-  const posterUri = getEventPosterUri(event);
+  const imageSources = useMemo(() => getEventImageSources(event), [event]);
+  const posterSource = getEventPosterSource(event);
   const videoUri = getEventVideoUri(event);
   const shouldRenderVideo = Boolean(videoUri) && shouldPreload && canRenderFypVideo();
   const onImageMomentumEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -54,7 +54,7 @@ export function FypReelSlide({
 
   return (
     <View style={[styles.slide, { width, height, backgroundColor: theme.colors.background }]}>
-      {imageUris.length > 1 ? (
+      {imageSources.length > 1 ? (
         <>
           <ScrollView
             horizontal
@@ -66,14 +66,20 @@ export function FypReelSlide({
             style={StyleSheet.absoluteFill}
             onMomentumScrollEnd={onImageMomentumEnd}
           >
-            {imageUris.map((uri) => (
-              <Image key={uri} source={{ uri }} style={{ width, height }} contentFit="cover" cachePolicy="memory-disk" />
+            {imageSources.map((source) => (
+              <Image
+                key={source.uri}
+                source={source}
+                style={{ width, height }}
+                contentFit="cover"
+                cachePolicy={isAuthenticatedImageSource(source) ? 'memory' : 'memory-disk'}
+              />
             ))}
           </ScrollView>
           <View style={[styles.imagePageDots, { top: topInset + 86 }]}>
-            {imageUris.map((uri, index) => (
+            {imageSources.map((source, index) => (
               <View
-                key={`${uri}-${index}`}
+                key={`${source.uri}-${index}`}
                 style={[
                   styles.imagePageDot,
                   {
@@ -85,8 +91,13 @@ export function FypReelSlide({
             ))}
           </View>
         </>
-      ) : posterUri ? (
-        <Image source={{ uri: posterUri }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" />
+      ) : posterSource ? (
+        <Image
+          source={posterSource}
+          style={StyleSheet.absoluteFill}
+          contentFit="cover"
+          cachePolicy={isAuthenticatedImageSource(posterSource) ? 'memory' : 'memory-disk'}
+        />
       ) : null}
       {shouldRenderVideo && videoUri ? <FypReelVideoLayer videoUri={videoUri} isActive={isActive} /> : null}
 

@@ -2,23 +2,24 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useEffect, useState } from 'react';
 import { Image, StyleSheet, View } from 'react-native';
 
+import type { AuthenticatedImageSource } from '@/core/events/event-cover';
 import { useAppTheme } from '@/core/theme';
 
 type MapMarkerBadgeProps = Readonly<{
   selected?: boolean;
   kind?: 'event' | 'search';
-  coverImageUri?: string;
+  coverImageSource?: AuthenticatedImageSource;
   onImageLoad?: () => void;
 }>;
 
-export function MapMarkerBadge({ selected = false, kind = 'event', coverImageUri, onImageLoad }: MapMarkerBadgeProps) {
+export function MapMarkerBadge({ selected = false, kind = 'event', coverImageSource, onImageLoad }: MapMarkerBadgeProps) {
   const { theme } = useAppTheme();
   const size = kind === 'search' ? 20 : 44;
   const [imageFailed, setImageFailed] = useState(false);
 
   useEffect(() => {
     setImageFailed(false);
-  }, [coverImageUri]);
+  }, [coverImageSource?.uri]);
 
   if (kind === 'search') {
     return (
@@ -49,9 +50,9 @@ export function MapMarkerBadge({ selected = false, kind = 'event', coverImageUri
           },
         ]}
       >
-        {coverImageUri && !imageFailed ? (
+        {coverImageSource && !imageFailed ? (
           <Image
-            source={{ uri: coverImageUri }}
+            source={coverImageSource}
             style={styles.image}
             onLoad={() => onImageLoad?.()}
             onError={() => {

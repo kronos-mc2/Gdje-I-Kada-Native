@@ -3,7 +3,7 @@ import { ReactNode } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/primitives';
-import { getEventPosterUri } from '@/core/events/event-cover';
+import { getEventPosterSource } from '@/core/events/event-cover';
 import { useI18n } from '@/core/i18n/use-i18n';
 import { useAppTheme } from '@/core/theme';
 import { AppEvent } from '@/core/types/domain';
@@ -19,12 +19,12 @@ export function ProfileEventRow({ event, onPress, right }: ProfileEventRowProps)
   const { locale, t } = useI18n();
   const { theme } = useAppTheme();
   const attendanceLabel = getAttendanceLabel(event.attendanceStatus, t);
-  const posterUri = getEventPosterUri(event);
+  const posterSource = getEventPosterSource(event);
 
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.row, { opacity: pressed ? 0.74 : 1 }]}>
-      {posterUri ? (
-        <Image source={{ uri: posterUri }} style={styles.image} contentFit="cover" />
+      {posterSource ? (
+        <Image source={posterSource} style={styles.image} contentFit="cover" />
       ) : (
         <View style={[styles.image, styles.imagePlaceholder, { backgroundColor: theme.colors.surfaceElevated, borderColor: theme.colors.border }]} />
       )}

@@ -573,7 +573,7 @@ export default function CreateEventScreen() {
       </CreateEventStepShell>
       <EventImagePreviewModal
         visible={previewImage != null}
-        uri={previewImage?.uri}
+        source={previewImage?.uri ? { uri: previewImage.uri } : undefined}
         title={previewImage?.name}
         onClose={() => setPreviewImage(null)}
       />
