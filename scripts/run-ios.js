@@ -6,6 +6,7 @@ const { spawnSync } = require('node:child_process');
 
 const projectRoot = process.cwd();
 const iosEnvLocalPath = path.join(projectRoot, 'ios', '.xcode.env.local');
+const iosBinPath = path.join(projectRoot, 'scripts', 'ios-bin');
 const args = process.argv.slice(2);
 
 const appVariant = process.env.APP_VARIANT === 'test' ? 'test' : 'prod';
@@ -46,7 +47,11 @@ const runArgs = ['expo', 'run:ios', ...(hasExplicitScheme ? args : ['--scheme', 
 
 const child = spawnSync('npx', runArgs, {
   stdio: 'inherit',
-  env: process.env,
+  env: {
+    ...process.env,
+    GIK_IOS_ALLOW_PROVISIONING_UPDATES: '1',
+    PATH: `${iosBinPath}${path.delimiter}${process.env.PATH || ''}`,
+  },
   shell: process.platform === 'win32',
 });
 

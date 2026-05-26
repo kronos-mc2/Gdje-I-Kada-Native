@@ -2,8 +2,10 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/primitives';
+import { useI18n } from '@/core/i18n/use-i18n';
 import { useAppTheme } from '@/core/theme';
 import { ChatRoom } from '@/core/types/domain';
+import { formatEventTime } from '@/core/utils/date';
 import { ProfileAvatar } from '@/features/profile/components/profile-avatar';
 
 type ChatRoomRowProps = Readonly<{
@@ -13,6 +15,8 @@ type ChatRoomRowProps = Readonly<{
 
 export function ChatRoomRow({ room, onPress }: ChatRoomRowProps) {
   const { theme } = useAppTheme();
+  const { locale } = useI18n();
+  const timeLabel = room.lastMessageAt ? formatEventTime(room.lastMessageAt, locale) : room.timeLabel;
 
   return (
     <Pressable
@@ -38,7 +42,7 @@ export function ChatRoomRow({ room, onPress }: ChatRoomRowProps) {
             {room.title}
           </AppText>
           <AppText variant="caption" color="textMuted">
-            {room.timeLabel}
+            {timeLabel}
           </AppText>
         </View>
         <View style={styles.subtitleRow}>

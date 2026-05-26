@@ -48,6 +48,7 @@ export function EventMap({
         subtitle: event.where[locale],
         coverImageSource: getEventPosterSource(event),
         isSelected: selectedEventId === event.id,
+        isFriendsOnly: event.visibility === 'friends',
       })),
     [events, locale, selectedEventId],
   );

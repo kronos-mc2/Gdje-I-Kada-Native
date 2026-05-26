@@ -67,11 +67,12 @@ function PreferenceRow({
   onRemove: () => void;
 }) {
   const { theme } = useAppTheme();
+  const { t } = useI18n();
 
   return (
     <View style={[styles.row, { borderColor: theme.colors.border }]}>
       <AppText variant="body" numberOfLines={1} style={styles.rowLabel}>
-        {preference.type === 'tag' ? `#${preference.label}` : preference.label}
+        {preference.type === 'tag' ? `${t('ignoreTag')} #${preference.label}` : preference.label}
       </AppText>
       <Pressable
         accessibilityRole="button"

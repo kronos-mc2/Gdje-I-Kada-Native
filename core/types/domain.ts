@@ -47,6 +47,7 @@ export type EventQueryParams = {
 export type FeedQueryParams = {
   cursor?: string;
   limit?: number;
+  seed?: string;
 };
 
 export type MyEventsFilter = 'all' | 'joined' | 'created';
@@ -76,6 +77,7 @@ export type AppEvent = {
   priceCurrency?: string;
   capacity?: number;
   status?: EventStatus;
+  sourceUrl?: string;
   eventRatingAverage?: number;
   eventRatingCount?: number;
   organizerRatingAverage?: number;
@@ -100,6 +102,7 @@ export type FeedPage = {
 export type Friend = {
   id: string;
   name: string;
+  avatarUrl?: string;
   status: LocalizedText;
 };
 

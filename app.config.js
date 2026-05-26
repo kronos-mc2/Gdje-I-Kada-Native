@@ -2,6 +2,7 @@ require('dotenv/config');
 
 const { existsSync } = require('node:fs');
 const { withEntitlementsPlist } = require('expo/config-plugins');
+const { BRAND_COLORS, ICON_ASSETS } = require('./config/app-branding');
 
 const appVariant = process.env.APP_VARIANT === 'test' ? 'test' : 'prod';
 const isTestVariant = appVariant === 'test';
@@ -70,7 +71,7 @@ const config = {
   slug: 'Gdje-I-Kada-Native',
   version: '1.0.0',
   orientation: 'portrait',
-  icon: './assets/images/icon.png',
+  icon: ICON_ASSETS.appIcon,
   scheme: isTestVariant ? 'gdjeikadanative-test' : 'gdjeikadanative',
   userInterfaceStyle: 'automatic',
   // Android dependencies (`react-native-reanimated` / `react-native-worklets`) require the new architecture.
@@ -81,6 +82,11 @@ const config = {
     bundleIdentifier: isTestVariant ? 'com.anonymous.GdjeIKadaNative.test' : 'com.anonymous.GdjeIKadaNative',
     usesAppleSignIn,
     supportsTablet: true,
+    icon: {
+      light: ICON_ASSETS.iosLightIcon,
+      dark: ICON_ASSETS.iosDarkIcon,
+      tinted: ICON_ASSETS.iosTintedIcon,
+    },
     infoPlist: {
       NSLocationWhenInUseUsageDescription: 'Precizna lokacija se koristi za centriranje mape i prikaz događaja u tvojoj blizini.',
       NSLocationAlwaysAndWhenInUseUsageDescription: 'Lokacija se koristi za precizno centriranje mape i prikaz događaja u blizini.',
@@ -89,7 +95,7 @@ const config = {
     },
   },
   androidNavigationBar: {
-    backgroundColor: '#111114',
+    backgroundColor: BRAND_COLORS.darkBackground,
     barStyle: 'light-content',
     enforceContrast: false,
   },
@@ -97,18 +103,19 @@ const config = {
     package: isTestVariant ? 'com.anonymous.GdjeIKadaNative.test' : 'com.anonymous.GdjeIKadaNative',
     ...(googleServicesFile ? { googleServicesFile } : {}),
     permissions: ['ACCESS_COARSE_LOCATION', 'ACCESS_FINE_LOCATION', 'POST_NOTIFICATIONS', 'READ_MEDIA_IMAGES'],
+    icon: ICON_ASSETS.androidLegacyIcon,
     adaptiveIcon: {
-      backgroundColor: '#F0F0F0',
-      foregroundImage: './assets/images/android-icon-foreground.png',
-      backgroundImage: './assets/images/android-icon-background.png',
-      monochromeImage: './assets/images/android-icon-monochrome.png',
+      backgroundColor: BRAND_COLORS.lightBackground,
+      foregroundImage: ICON_ASSETS.androidForegroundIcon,
+      backgroundImage: ICON_ASSETS.androidBackgroundIcon,
+      monochromeImage: ICON_ASSETS.androidMonochromeIcon,
     },
     softwareKeyboardLayoutMode: 'resize',
     predictiveBackGestureEnabled: false,
   },
   web: {
     output: 'static',
-    favicon: './assets/images/favicon.png',
+    favicon: ICON_ASSETS.favicon,
   },
   plugins: [
     'expo-router',
@@ -123,7 +130,8 @@ const config = {
     [
       'expo-notifications',
       {
-        color: '#8B5CF6',
+        icon: ICON_ASSETS.androidNotificationIcon,
+        color: BRAND_COLORS.notificationAccent,
         defaultChannel: 'messages',
         enableBackgroundRemoteNotifications: false,
       },
@@ -146,12 +154,13 @@ const config = {
     [
       'expo-splash-screen',
       {
-        image: './assets/images/splash-icon.png',
+        image: ICON_ASSETS.splashLightIcon,
         imageWidth: 200,
         resizeMode: 'contain',
-        backgroundColor: '#F0F0F0',
+        backgroundColor: BRAND_COLORS.lightBackground,
         dark: {
-          backgroundColor: '#111114',
+          image: ICON_ASSETS.splashDarkIcon,
+          backgroundColor: BRAND_COLORS.darkBackground,
         },
       },
     ],

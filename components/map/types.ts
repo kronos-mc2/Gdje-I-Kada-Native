@@ -8,6 +8,7 @@ export type EventMapMarker = {
   subtitle?: string;
   coverImageSource?: AuthenticatedImageSource;
   isSelected: boolean;
+  isFriendsOnly?: boolean;
 };
 
 export type MapCameraState = {

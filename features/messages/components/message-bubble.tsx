@@ -7,7 +7,7 @@ import { getAuthenticatedImageSource } from '@/core/events/event-cover';
 import { useI18n } from '@/core/i18n/use-i18n';
 import { useAppTheme } from '@/core/theme';
 import { ChatMessage, Locale } from '@/core/types/domain';
-import { formatEventDate } from '@/core/utils/date';
+import { formatEventDate, formatEventTime } from '@/core/utils/date';
 import { ProfileAvatar } from '@/features/profile/components/profile-avatar';
 
 type MessageBubbleProps = Readonly<{
@@ -135,11 +135,15 @@ export function MessageBubble({ message, locale, onOpenEvent }: MessageBubblePro
         ) : null}
 
         <AppText variant="caption" color="textMuted" style={styles.time}>
-          {message.timeLabel}
+          {formatMessageTime(message, locale)}
         </AppText>
       </View>
     </View>
   );
+}
+
+function formatMessageTime(message: ChatMessage, locale: Locale) {
+  return message.createdAt ? formatEventTime(message.createdAt, locale) : message.timeLabel;
 }
 
 function getNextVoteOptionIds(allowMultiple: boolean, currentOptionIds: string[], optionId: string) {

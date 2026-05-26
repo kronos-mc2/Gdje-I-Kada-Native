@@ -24,7 +24,9 @@ export function EventMapSurface({ markers, onMarkerPress }: EventMapSurfaceProps
             style={({ pressed }) => [
               styles.row,
               {
-                borderColor: marker.isSelected ? theme.colors.mapAccent : theme.colors.border,
+                borderColor: marker.isFriendsOnly
+                  ? theme.colors.friendEventAccent
+                  : selectedMarkerBorderColor(marker.isSelected, theme.colors.mapAccent, theme.colors.border),
                 backgroundColor: theme.colors.surface,
                 opacity: pressed ? 0.84 : 1,
               },
@@ -41,6 +43,10 @@ export function EventMapSurface({ markers, onMarkerPress }: EventMapSurfaceProps
       </View>
     </AppCard>
   );
+}
+
+function selectedMarkerBorderColor(selected: boolean, selectedColor: string, fallbackColor: string) {
+  return selected ? selectedColor : fallbackColor;
 }
 
 const styles = StyleSheet.create({

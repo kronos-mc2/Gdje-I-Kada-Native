@@ -1,0 +1,52 @@
+#!/usr/bin/env node
+
+const { spawnSync } = require('node:child_process');
+
+const args = process.argv.slice(2);
+const realXcodebuild = '/usr/bin/xcodebuild';
+
+if (process.env.GIK_IOS_ALLOW_PROVISIONING_UPDATES === '1' && shouldAllowProvisioningUpdates(args)) {
+  if (!args.includes('-allowProvisioningUpdates')) {
+    insertBeforeBuildActions(args, '-allowProvisioningUpdates');
+  }
+
+  if (!args.includes('-allowProvisioningDeviceRegistration')) {
+    insertBeforeBuildActions(args, '-allowProvisioningDeviceRegistration');
+  }
+}
+
+const result = spawnSync(realXcodebuild, args, {
+  stdio: 'inherit',
+  env: process.env,
+});
+
+if (result.error) {
+  console.error(result.error.message);
+  process.exit(1);
+}
+
+process.exit(result.status ?? 1);
+
+function shouldAllowProvisioningUpdates(xcodeArgs) {
+  if (xcodeArgs.includes('-showdestinations') || xcodeArgs.includes('-list') || xcodeArgs.includes('-showBuildSettings')) {
+    return false;
+  }
+
+  return xcodeArgs.some((arg, index) => {
+    if (arg === '-destination') {
+      return xcodeArgs[index + 1]?.startsWith('id=');
+    }
+
+    return arg.startsWith('-destination') && arg.includes('id=');
+  });
+}
+
+function insertBeforeBuildActions(xcodeArgs, value) {
+  const actionIndex = xcodeArgs.findIndex((arg) => ['build', 'clean', 'test', 'archive', 'install'].includes(arg));
+  if (actionIndex === -1) {
+    xcodeArgs.push(value);
+    return;
+  }
+
+  xcodeArgs.splice(actionIndex, 0, value);
+}

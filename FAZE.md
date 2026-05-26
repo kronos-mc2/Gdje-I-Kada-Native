@@ -1,6 +1,6 @@
 # Gdje i Kada - fazni plan rada
 
-Status dokumenta: 2026-05-22
+Status dokumenta: 2026-05-26
 Lokacija master dokumentacije: `README.md`
 
 ## Pravilo rada po fazama
@@ -37,6 +37,20 @@ Aktivna dopuna:
 2026-05-22 - U tijeku: stvarni event image upload/storage i lokalni test data import. Opseg: S3-compatible storage sloj za MinIO/R2, max 5 slika po eventu, 5 MB po slici, 10 GB backend quota, originalni naziv filea u `event_media`, obavezan Step 5 media korak u create flowu, upload/brisanje slika u owner manage screenu, fullscreen image preview s pinch/double-tap zoomom, uklanjanje random cover fallbacka, prva event slika kao poster na mapi/detaljima/profilu/FYP-u, FYP horizontalni image pager za vise slika i normalizirani lokalni CSV za test evente.
 
 2026-05-24 - Dopuna u tijeku: event media privacy. Uploaded media se vise ne oslanja na public MinIO bucket nego se servira kroz authenticated backend endpoint `/api/events/{eventId}/media/{mediaId}/content` s istim access pravilom kao event details. Frontend centralno dodaje Bearer header za API media slike. Friends-only eventi odbijaju external URL media jer se takvi URL-ovi ne mogu privacy-protectati kroz backend.
+
+2026-05-25 - Dopuna u tijeku: FC11-UC01 friends event discovery i batch UX bugovi. Opseg: friends-only evente na mapi/FYP-u/details/media endpointima vide samo kreator i prihvaceni prijatelji kreatora, friends pin na mapi ima zlatni glow, mapa ucitava evente prema trenutnom viewportu umjesto samo oko korisnika, FYP je future-only, randomiziran po seed-u, paginiran s bufferom i biljezi per-user impressions kroz `event_feed_impressions`, chat lista prikazuje stvarni tekst zadnje encrypted text poruke, chat vremena se formatiraju po vremenskoj zoni uredaja, a push permission se jednom trazi pri prvom ulasku nakon prijave.
+
+2026-05-25 - Dopuna map UX-a u tijeku: pomicanje mape vise ne zamjenjuje event pinove na svaki mali pan. Frontend fetch viewport se mijenja samo kod veceg pomaka/zoom promjene, event rezultati se mergeaju u postojece pinove, periodicni refresh ide svake minute, a pinovi se brisu tek kad su daleko izvan trenutnog viewporta.
+
+2026-05-25 - Dopuna friends event share UX-a u tijeku: share modal vise ne nudi cijele chat roomove nego event-specific primatelje kao scrollable avatar bubbles s multi-selectom i jednim slanjem u direct chatove odabranih ljudi. Za friends-only evente backend iz `/api/social/events/{eventId}/share-recipients` vraca samo korisnikove prijatelje koji su prijatelji kreatora eventa, native share je skriven, a `POST /api/messages/chat-rooms/{id}/share-event` dodatno odbija sobu koja sadrzi korisnika bez prihvacenog friendshipa s kreatorom.
+
+2026-05-26 - Dopuna event details UX-a u tijeku: mapa, FYP i direct event details koriste isti shared `EventDetailsContent` s datumom/vremenom naglasenim na vrhu, horizontalnim image galleryjem, detail tablicom i `Izvor` akcijom na dnu za vanjske evente. Map bottom sheet je scrollable kad je otvoren, a backend event DTO dobiva `sourceUrl` preko `events.source_url` umjesto da se source link lijepi u opis.
+
+2026-05-26 - Dopuna event details/rating UX-a u tijeku: gornji detail summary vise ne prikazuje event rating nego organizer AVG rating, tagovi su horizontalni `#tag` chipovi, lokacija otvara native maps i prikazuje udaljenost od korisnika, a puna adresa ostaje u detaljima. Prosli eventi se vise ne mogu naknadno joinati, a korisnik koji je bio prijavljen na prosli event moze ocijeniti organizatora.
+
+2026-05-26 - Dopuna native branding/icon setupa u tijeku: Expo app icon konfiguracija centralizira se u `config/app-branding.js`, finalni source asseti idu u `assets/app-icons/`, a setup pokriva iOS light/dark/tinted ikone, Android legacy/adaptive/monochrome ikone, Android notification small icon, splash light/dark i web favicon uz fallback na postojece `assets/images/*` fileove dok finalni asseti nisu zamijenjeni.
+
+2026-05-26 - Dopuna iOS build fix u tijeku: lokalni `npm run ios:*` runner sada za device buildove koristi env-gated `scripts/ios-bin/xcodebuild` wrapper koji Xcodeu prosljeduje `-allowProvisioningUpdates` i `-allowProvisioningDeviceRegistration`, jer Expo CLI te flagove ne doda kad native projekt vec ima `DEVELOPMENT_TEAM`. Cilj je rijesiti code 65 za `GIKTest` bez hardcodanja provisioning profila u app kod.
 
 ## Faza 0 - Dokumentacija i smjer
 

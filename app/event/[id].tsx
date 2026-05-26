@@ -8,7 +8,6 @@ import { useEventJoinActions } from '@/features/events/hooks/use-event-join-acti
 import { AppButton, AppCard, AppHeader, AppScreen, AppText } from '@/components/primitives';
 import { useEventQuery } from '@/core/api/query-hooks';
 import { useI18n } from '@/core/i18n/use-i18n';
-import { formatEventDate } from '@/core/utils/date';
 import { useState } from 'react';
 
 export default function EventDetailsScreen() {
@@ -54,19 +53,6 @@ export default function EventDetailsScreen() {
 
       {event ? (
         <>
-          <AppText variant="headline" style={styles.title}>
-            {event.title[locale]}
-          </AppText>
-          <AppText variant="body" color="textSecondary">
-            {event.where[locale]}
-          </AppText>
-          <AppText variant="body" color="textSecondary" style={styles.address}>
-            {event.address ?? event.where[locale]}
-          </AppText>
-          <AppText variant="body" color="textMuted" style={styles.date}>
-            {formatEventDate(event.whenISO, locale)}
-          </AppText>
-
           <AppCard variant="glass" style={styles.detailsCard}>
             <EventDetailsContent
               event={event}
@@ -104,16 +90,6 @@ const styles = StyleSheet.create({
   },
   notFoundTitle: {
     textAlign: 'center',
-  },
-  title: {
-    marginBottom: 6,
-  },
-  date: {
-    marginTop: 2,
-    marginBottom: 16,
-  },
-  address: {
-    marginTop: 4,
   },
   detailsCard: {
     marginBottom: 14,

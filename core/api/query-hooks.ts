@@ -21,6 +21,7 @@ import {
   fetchChatRooms,
   fetchEventById,
   fetchEventParticipants,
+  fetchEventShareRecipients,
   fetchConversations,
   fetchEvents,
   fetchFeed,
@@ -38,6 +39,7 @@ import {
   leaveEvent,
   rateOrganizer,
   rateEvent,
+  recordFeedImpression,
   respondToFriendRequest,
   removeEventParticipant,
   registerPushToken,
@@ -52,15 +54,23 @@ import {
   updateChatRoom,
   votePoll,
 } from '@/core/api/services';
-import { AppEvent, ChatRoomDetail, EventQueryParams, FeedPage, MyEventsFilter, Poll, UserProfile } from '@/core/types/domain';
+import { AppEvent, ChatRoomDetail, EventQueryParams, FeedPage, Friend, MyEventsFilter, Poll, UserProfile } from '@/core/types/domain';
 import { useAuthStore } from '@/core/store/auth-store';
 
 export const CHAT_PEOPLE_SEARCH_MIN_LENGTH = 2;
 
-export const useEventsQuery = (params?: EventQueryParams) =>
+export const useEventsQuery = (
+  params?: EventQueryParams,
+  options?: {
+    refetchInterval?: number;
+    staleTime?: number;
+  },
+) =>
   useQuery({
     queryKey: queryKeys.events(params),
     queryFn: () => fetchEvents(params),
+    refetchInterval: options?.refetchInterval,
+    staleTime: options?.staleTime,
   });
 
 export const useEventQuery = (eventId?: string | null, initialData?: AppEvent) =>
@@ -137,7 +147,7 @@ export const useRegisterPushTokenMutation = () =>
     mutationFn: registerPushToken,
   });
 
-export const useFeedInfiniteQuery = (limit = 5) =>
+export const useFeedInfiniteQuery = (limit = 5, seed?: string) =>
   useInfiniteQuery<
     FeedPage,
     Error,
@@ -145,16 +155,28 @@ export const useFeedInfiniteQuery = (limit = 5) =>
     ReturnType<typeof queryKeys.feed>,
     string | undefined
   >({
-    queryKey: queryKeys.feed(limit),
-    queryFn: ({ pageParam }) => fetchFeed({ cursor: pageParam, limit }),
+    queryKey: queryKeys.feed(limit, seed),
+    queryFn: ({ pageParam }) => fetchFeed({ cursor: pageParam, limit, seed }),
     initialPageParam: undefined,
     getNextPageParam: (page) => (page.hasMore ? page.nextCursor : undefined),
+  });
+
+export const useRecordFeedImpressionMutation = () =>
+  useMutation({
+    mutationFn: recordFeedImpression,
   });
 
 export const useFriendsQuery = () =>
   useQuery({
     queryKey: queryKeys.friends,
     queryFn: fetchFriends,
+  });
+
+export const useEventShareRecipientsQuery = (eventId?: string | null) =>
+  useQuery<Friend[]>({
+    queryKey: queryKeys.eventShareRecipients(eventId ?? ''),
+    queryFn: () => fetchEventShareRecipients(eventId ?? ''),
+    enabled: Boolean(eventId),
   });
 
 export const useConversationsQuery = () =>

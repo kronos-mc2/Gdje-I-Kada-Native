@@ -1,12 +1,24 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
-import { StyleSheet, View } from 'react-native';
+import * as Linking from 'expo-linking';
+import type { ComponentProps } from 'react';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
+import { ScrollView as GestureScrollView } from 'react-native-gesture-handler';
 
 import { AppButton, AppText } from '@/components/primitives';
-import { getEventPosterSource } from '@/core/events/event-cover';
+import {
+  getAuthenticatedImageSource,
+  getEventImageMedia,
+  getEventPosterSource,
+  isAuthenticatedImageSource,
+} from '@/core/events/event-cover';
 import { useI18n } from '@/core/i18n/use-i18n';
+import { useAppStore } from '@/core/store/app-store';
 import { useAppTheme } from '@/core/theme';
 import { AppEvent, Locale } from '@/core/types/domain';
 import { formatEventDate, formatEventDay, formatEventDuration, formatEventTime } from '@/core/utils/date';
+import { getDistanceKm } from '@/core/utils/location';
+import { ProfileAvatar } from '@/features/profile/components/profile-avatar';
 
 type EventDetailsContentProps = {
   event: AppEvent;
@@ -17,6 +29,8 @@ type EventDetailsContentProps = {
   onToggleJoin: () => void;
   expanded?: boolean;
 };
+
+type IconName = ComponentProps<typeof Ionicons>['name'];
 
 export function EventDetailsContent({
   event,
@@ -29,95 +43,159 @@ export function EventDetailsContent({
 }: EventDetailsContentProps) {
   const { t } = useI18n();
   const { theme } = useAppTheme();
+  const userLocation = useAppStore((state) => state.userLocation);
   const coverSource = getEventPosterSource(event);
-  const hasOrganizerRating = (event.organizerRatingCount ?? 0) > 0;
-  const hasEventRating = (event.eventRatingCount ?? 0) > 0;
+  const imageSources = getEventImageMedia(event).map((media) => getAuthenticatedImageSource(media.url));
+  const startIso = event.startAt ?? event.whenISO;
+  const dateLabel = formatEventDay(startIso, locale);
+  const timeLabel = formatEventTime(startIso, locale);
+  const durationLabel = formatEventDuration(startIso, event.endAt, locale);
   const priceLabel = formatPrice(event);
-  const durationLabel = formatEventDuration(event.startAt ?? event.whenISO, event.endAt, locale);
+  const hasOrganizerRating = (event.organizerRatingCount ?? 0) > 0;
+  const organizerName = event.creatorName ?? t('organizerFallback');
+  const distanceLabel = formatDistance(getDistanceKm(userLocation, event.coordinates), locale);
+
+  const openSource = () => {
+    if (event.sourceUrl) {
+      void Linking.openURL(event.sourceUrl);
+    }
+  };
+
+  const openMaps = () => {
+    const label = encodeURIComponent(event.address ?? event.where[locale]);
+    const { latitude, longitude } = event.coordinates;
+    const url =
+      Platform.OS === 'ios'
+        ? `maps://?q=${label}&ll=${latitude},${longitude}`
+        : `geo:${latitude},${longitude}?q=${latitude},${longitude}(${label})`;
+    void Linking.openURL(url).catch(() => {
+      void Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`);
+    });
+  };
 
   return (
-    <>
-      <View style={styles.coverRow}>
-        {coverSource ? (
-          <Image source={coverSource} style={styles.cover} contentFit="cover" />
-        ) : (
-          <View style={[styles.cover, styles.coverPlaceholder, { backgroundColor: theme.colors.surfaceElevated }]}>
-            <AppText variant="caption" color="textMuted">
-              {t('media')}
-            </AppText>
-          </View>
-        )}
-        <View style={styles.coverMeta}>
-          <AppText variant="bodyStrong">{event.where[locale]}</AppText>
-          <AppText variant="caption" color="textMuted">
-            {formatEventDate(event.whenISO, locale)}
+    <View style={styles.root}>
+      <View style={styles.heroRow}>
+        <View
+          style={[
+            styles.heroPoster,
+            { borderColor: theme.colors.border, backgroundColor: theme.colors.surfaceElevated },
+          ]}
+        >
+          {coverSource ? (
+            <Image source={coverSource} style={StyleSheet.absoluteFill} contentFit="cover" />
+          ) : (
+            <Ionicons name="image-outline" size={24} color={theme.colors.textMuted} />
+          )}
+        </View>
+
+        <View style={styles.heroCopy}>
+          <AppText variant="headline" numberOfLines={3} style={styles.title}>
+            {event.title[locale]}
           </AppText>
-          <AppText variant="caption" color="textSecondary">
-            {event.participantCount} {t('participants')}
-          </AppText>
-          <AppText variant="caption" color="textSecondary">
-            {getAttendanceModeLabel(event, t)}
-          </AppText>
-          {event.tags?.length ? (
-            <View style={styles.tagRow}>
-              {event.tags.slice(0, 3).map((tag) => (
-                <View key={tag} style={styles.tagPill}>
-                  <AppText variant="caption" color="textSecondary">
-                    #{tag}
-                  </AppText>
-                </View>
-              ))}
+          <View style={styles.whenRow}>
+            <View style={[styles.whenPill, { backgroundColor: theme.colors.mapAccentSoft, borderColor: theme.colors.mapAccent }]}>
+              <Ionicons name="calendar-outline" size={13} color={theme.colors.mapAccent} />
+              <AppText variant="caption" style={{ color: theme.colors.mapAccent }}>
+                {dateLabel}
+              </AppText>
             </View>
-          ) : null}
+            <View style={[styles.whenPill, { backgroundColor: theme.colors.surfaceElevated, borderColor: theme.colors.border }]}>
+              <Ionicons name="time-outline" size={13} color={theme.colors.textSecondary} />
+              <AppText variant="caption" color="textSecondary">
+                {timeLabel}
+              </AppText>
+            </View>
+          </View>
+          <AppButton
+            title={joinButtonTitle ?? (isJoined ? t('leaveEvent') : t('joinEvent'))}
+            variant={isJoined ? 'secondary' : 'primary'}
+            disabled={isJoinDisabled}
+            onPress={onToggleJoin}
+            style={styles.joinButton}
+          />
         </View>
       </View>
 
-      <AppText variant="body" color="textSecondary" style={styles.aboutText}>
-        {event.about[locale]}
-      </AppText>
-
-      <AppButton
-        title={joinButtonTitle ?? (isJoined ? t('leaveEvent') : t('joinEvent'))}
-        variant={isJoined ? 'secondary' : 'primary'}
-        disabled={isJoinDisabled}
-        onPress={onToggleJoin}
-        style={styles.joinButton}
-      />
+      <View style={[styles.statRow, { borderTopColor: theme.colors.border, borderBottomColor: theme.colors.border }]}>
+        <StatCell
+          icon="star-outline"
+          value={hasOrganizerRating ? event.organizerRatingAverage?.toFixed(1) ?? '0.0' : '-'}
+          label={t('organizer')}
+          caption={hasOrganizerRating ? `${formatCompactCount(event.organizerRatingCount, locale)} ${t('reviews')}` : t('notRatedYet')}
+        />
+        <StatCell
+          icon="people-outline"
+          value={formatCompactCount(event.participantCount, locale)}
+          label={t('participants')}
+          caption={t('going')}
+        />
+        <TagsCell tags={event.tags ?? []} />
+        <StatCell icon="location" label={t('locationLabel')} caption={distanceLabel} onPress={openMaps} />
+      </View>
 
       {expanded ? (
-        <View style={styles.expandedBlock}>
-          <AppText variant="label" color="textMuted">
-            {t('details')}
-          </AppText>
-          <AppText variant="body" color="textSecondary" style={styles.expandedText}>
+        <>
+          {imageSources.length > 0 ? (
+            <GestureScrollView
+              horizontal
+              nestedScrollEnabled
+              directionalLockEnabled
+              alwaysBounceHorizontal
+              decelerationRate="fast"
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.galleryContent}
+              style={styles.gallery}
+            >
+              {imageSources.map((source, index) => (
+                <Image
+                  key={`${source.uri}-${index}`}
+                  source={source}
+                  style={[styles.galleryImage, { backgroundColor: theme.colors.surfaceElevated }]}
+                  contentFit="cover"
+                  cachePolicy={isAuthenticatedImageSource(source) ? 'memory' : 'memory-disk'}
+                />
+              ))}
+            </GestureScrollView>
+          ) : null}
+
+          <AppText variant="body" color="textSecondary" style={styles.aboutText}>
             {event.about[locale]}
           </AppText>
 
-          <View style={styles.detailGrid}>
-            <DetailRow label={t('startDateLabel')} value={formatEventDay(event.whenISO, locale)} />
-            <DetailRow label={t('eventTimeLabel')} value={formatEventTime(event.whenISO, locale)} />
+          <View style={styles.organizerRow}>
+            <ProfileAvatar name={organizerName} avatarUrl={event.creatorAvatarUrl} size={54} />
+            <View style={styles.organizerCopy}>
+              <AppText variant="caption" color="textMuted">
+                {t('organizer')}
+              </AppText>
+              <AppText variant="bodyStrong" numberOfLines={1}>
+                {organizerName}
+              </AppText>
+            </View>
+            <View style={styles.organizerRating}>
+              <AppText variant="headline">
+                {hasOrganizerRating ? event.organizerRatingAverage?.toFixed(1) ?? '0.0' : '-'}
+              </AppText>
+              <AppText variant="caption" color="textMuted">
+                {hasOrganizerRating ? `${formatCompactCount(event.organizerRatingCount, locale)} ${t('reviews')}` : t('notRatedYet')}
+              </AppText>
+            </View>
+          </View>
+
+          <View style={styles.detailsBlock}>
+            <AppText variant="headline" style={styles.detailsTitle}>
+              {t('detailsShort')}
+            </AppText>
+            <DetailRow label={t('startDateLabel')} value={dateLabel} />
+            <DetailRow label={t('eventTimeLabel')} value={timeLabel} />
             {durationLabel ? <DetailRow label={t('durationLabel')} value={durationLabel} /> : null}
+            <DetailRow label={t('addressLabel')} value={event.address ?? event.where[locale]} />
             <DetailRow label={t('attendanceMode')} value={getAttendanceModeLabel(event, t)} />
             <DetailRow label={t('eventVisibility')} value={getVisibilityLabel(event, t)} />
             {priceLabel ? <DetailRow label={t('priceAmountLabel')} value={priceLabel} /> : null}
             {event.capacity ? <DetailRow label={t('capacityLabel')} value={String(event.capacity)} /> : null}
             {event.tags?.length ? <DetailRow label={t('eventTags')} value={event.tags.map((tag) => `#${tag}`).join(', ')} /> : null}
-            <DetailRow
-              label={t('eventRating')}
-              value={
-                hasEventRating
-                  ? `${event.eventRatingAverage?.toFixed(1) ?? '0.0'} (${event.eventRatingCount ?? 0})`
-                  : t('notRatedYet')
-              }
-            />
-            <DetailRow
-              label={t('organizerRating')}
-              value={
-                hasOrganizerRating
-                  ? `${event.organizerRatingAverage?.toFixed(1) ?? '0.0'} (${event.organizerRatingCount ?? 0})`
-                  : t('notRatedYet')
-              }
-            />
             {event.entranceCoordinates ? (
               <DetailRow
                 label={t('entrancePin')}
@@ -125,78 +203,309 @@ export function EventDetailsContent({
               />
             ) : null}
             {event.entryInstructions ? <DetailRow label={t('entryInstructions')} value={event.entryInstructions[locale]} /> : null}
-            <DetailRow label={t('addressLabel')} value={event.address ?? event.where[locale]} />
             {event.endAt ? <DetailRow label={t('endDateLabel')} value={formatEventDate(event.endAt, locale)} /> : null}
           </View>
-        </View>
-      ) : null}
-    </>
+
+          {event.sourceUrl ? (
+            <View style={styles.sourceBlock}>
+              <AppText variant="caption" color="textMuted">
+                {t('eventSource')}
+              </AppText>
+              <Pressable
+                accessibilityRole="link"
+                accessibilityLabel={t('openSourcePage')}
+                onPress={openSource}
+                style={({ pressed }) => [
+                  styles.sourceButton,
+                  {
+                    borderColor: theme.colors.border,
+                    backgroundColor: theme.colors.surfaceElevated,
+                    opacity: pressed ? 0.78 : 1,
+                  },
+                ]}
+              >
+                <Ionicons name="open-outline" size={16} color={theme.colors.mapAccent} />
+                <AppText variant="bodyStrong" style={{ color: theme.colors.mapAccent }}>
+                  {t('openSourcePage')}
+                </AppText>
+              </Pressable>
+            </View>
+          ) : null}
+        </>
+      ) : (
+        <AppText variant="body" color="textSecondary" numberOfLines={2} style={styles.collapsedAbout}>
+          {event.about[locale]}
+        </AppText>
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  coverRow: {
+  root: {
+    gap: 14,
+  },
+  heroRow: {
     flexDirection: 'row',
-    gap: 12,
     alignItems: 'center',
+    gap: 14,
   },
-  cover: {
-    width: 72,
-    height: 72,
-    borderRadius: 16,
+  heroPoster: {
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    borderWidth: 1,
     overflow: 'hidden',
-  },
-  coverPlaceholder: {
     alignItems: 'center',
     justifyContent: 'center',
   },
-  coverMeta: {
+  heroCopy: {
     flex: 1,
-    gap: 2,
+    minWidth: 0,
+    gap: 8,
   },
-  tagRow: {
+  title: {
+    flexShrink: 1,
+  },
+  whenRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6,
-    marginTop: 4,
+    gap: 7,
   },
-  tagPill: {
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    backgroundColor: 'rgba(139, 92, 246, 0.18)',
-  },
-  aboutText: {
-    marginTop: 12,
+  whenPill: {
+    minHeight: 26,
+    borderRadius: 13,
+    borderWidth: 1,
+    paddingHorizontal: 9,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
   },
   joinButton: {
-    marginTop: 12,
+    alignSelf: 'flex-start',
+    minHeight: 32,
+    paddingHorizontal: 16,
+    borderRadius: 16,
   },
-  expandedBlock: {
-    marginTop: 10,
-    paddingTop: 10,
+  statRow: {
+    flexDirection: 'row',
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    paddingVertical: 12,
   },
-  expandedText: {
-    marginTop: 6,
+  statCell: {
+    flex: 1,
+    minWidth: 0,
+    alignItems: 'center',
+    gap: 2,
+    paddingHorizontal: 4,
   },
-  detailGrid: {
-    marginTop: 12,
-    gap: 9,
+  tagsCell: {
+    flex: 1.18,
+    minWidth: 0,
+    alignItems: 'center',
+    gap: 2,
+    paddingHorizontal: 4,
+  },
+  statValueRow: {
+    minHeight: 26,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  statValue: {
+    textAlign: 'center',
+  },
+  statLabel: {
+    textAlign: 'center',
+  },
+  statCaption: {
+    textAlign: 'center',
+  },
+  statTagsContent: {
+    gap: 5,
+    paddingHorizontal: 2,
+    paddingTop: 1,
+  },
+  statTagsScroll: {
+    alignSelf: 'stretch',
+  },
+  statTagPill: {
+    maxWidth: 72,
+    minHeight: 18,
+    borderRadius: 9,
+    borderWidth: 1,
+    paddingHorizontal: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  gallery: {
+    marginHorizontal: -2,
+  },
+  galleryContent: {
+    gap: 14,
+    paddingHorizontal: 2,
+    paddingVertical: 2,
+  },
+  galleryImage: {
+    width: 214,
+    height: 338,
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  aboutText: {
+    marginTop: 2,
+  },
+  collapsedAbout: {
+    marginTop: -4,
+  },
+  organizerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  organizerCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  organizerRating: {
+    alignItems: 'flex-end',
+    minWidth: 72,
+  },
+  detailsBlock: {
+    gap: 0,
+  },
+  detailsTitle: {
+    marginBottom: 6,
   },
   detailRow: {
-    gap: 2,
+    minHeight: 34,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    paddingVertical: 7,
+  },
+  detailValue: {
+    flex: 1,
+    textAlign: 'right',
+  },
+  detailLabel: {
+    maxWidth: '44%',
+  },
+  sourceBlock: {
+    gap: 8,
+    paddingTop: 2,
+  },
+  sourceButton: {
+    minHeight: 42,
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
   },
 });
 
 type TranslateFn = ReturnType<typeof useI18n>['t'];
 
-function DetailRow({ label, value }: { label: string; value: string }) {
-  return (
-    <View style={styles.detailRow}>
-      <AppText variant="caption" color="textMuted">
+function StatCell({
+  icon,
+  value,
+  label,
+  caption,
+  onPress,
+}: {
+  icon: IconName;
+  value?: string;
+  label: string;
+  caption: string;
+  onPress?: () => void;
+}) {
+  const { theme } = useAppTheme();
+  const Content = (
+    <>
+      <View style={styles.statValueRow}>
+        <Ionicons name={icon} size={18} color={theme.colors.textPrimary} />
+        {value ? (
+          <AppText variant="headline" numberOfLines={1} adjustsFontSizeToFit style={styles.statValue}>
+            {value}
+          </AppText>
+        ) : null}
+      </View>
+      <AppText variant="caption" color="textSecondary" numberOfLines={1} adjustsFontSizeToFit style={styles.statLabel}>
         {label}
       </AppText>
-      <AppText variant="body" color="textSecondary">
+      <AppText variant="caption" color="textMuted" numberOfLines={1} adjustsFontSizeToFit style={styles.statCaption}>
+        {caption}
+      </AppText>
+    </>
+  );
+
+  if (onPress) {
+    return (
+      <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={({ pressed }) => [styles.statCell, { opacity: pressed ? 0.74 : 1 }]}>
+        {Content}
+      </Pressable>
+    );
+  }
+
+  return (
+    <View style={styles.statCell}>
+      {Content}
+    </View>
+  );
+}
+
+function TagsCell({ tags }: { tags: string[] }) {
+  const { t } = useI18n();
+  const { theme } = useAppTheme();
+
+  return (
+    <View style={styles.tagsCell}>
+      <View style={styles.statValueRow}>
+        <Ionicons name="pricetags-outline" size={18} color={theme.colors.textPrimary} />
+      </View>
+      <AppText variant="caption" color="textSecondary" numberOfLines={1} style={styles.statLabel}>
+        {t('eventTags')}
+      </AppText>
+      {tags.length ? (
+        <GestureScrollView
+          horizontal
+          nestedScrollEnabled
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.statTagsContent}
+          style={styles.statTagsScroll}
+        >
+          {tags.map((tag) => (
+            <View key={tag} style={[styles.statTagPill, { backgroundColor: theme.colors.mapAccentSoft, borderColor: theme.colors.mapAccent }]}>
+              <AppText variant="caption" numberOfLines={1} style={{ color: theme.colors.mapAccent }}>
+                #{tag}
+              </AppText>
+            </View>
+          ))}
+        </GestureScrollView>
+      ) : (
+        <AppText variant="caption" color="textMuted" numberOfLines={1} style={styles.statCaption}>
+          {t('notSpecified')}
+        </AppText>
+      )}
+    </View>
+  );
+}
+
+function DetailRow({ label, value }: { label: string; value: string }) {
+  const { theme } = useAppTheme();
+
+  return (
+    <View style={[styles.detailRow, { borderBottomColor: theme.colors.border }]}>
+      <AppText variant="body" color="textSecondary" numberOfLines={2} style={styles.detailLabel}>
+        {label}
+      </AppText>
+      <AppText variant="bodyStrong" numberOfLines={2} style={styles.detailValue}>
         {value}
       </AppText>
     </View>
@@ -229,4 +538,18 @@ function formatPrice(event: AppEvent) {
 
 function formatCoordinates(latitude: number, longitude: number) {
   return `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
+}
+
+function formatDistance(distanceKm: number, locale: Locale) {
+  return `${new Intl.NumberFormat(locale === 'hr' ? 'hr-HR' : 'en-US', {
+    maximumFractionDigits: distanceKm < 10 ? 1 : 0,
+  }).format(distanceKm)} km`;
+}
+
+function formatCompactCount(value: number | undefined, locale: Locale) {
+  const count = value ?? 0;
+  return new Intl.NumberFormat(locale === 'hr' ? 'hr-HR' : 'en-US', {
+    notation: count >= 1000 ? 'compact' : 'standard',
+    maximumFractionDigits: 1,
+  }).format(count);
 }

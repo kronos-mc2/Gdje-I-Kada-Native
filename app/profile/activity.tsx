@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
 
 import { AppButton, AppCard, AppIconButton, AppInput, AppScreen, AppText, SectionHeader } from '@/components/primitives';
-import { useProfileActivityQuery, useRateEventMutation } from '@/core/api/query-hooks';
+import { useProfileActivityQuery, useRateOrganizerMutation } from '@/core/api/query-hooks';
 import { useI18n } from '@/core/i18n/use-i18n';
 import { useAppTheme } from '@/core/theme';
 import { AppEvent } from '@/core/types/domain';
@@ -78,20 +78,16 @@ export default function ProfileActivityScreen() {
 function RatingCandidate({ event }: { event: AppEvent }) {
   const { t } = useI18n();
   const { theme } = useAppTheme();
-  const rateEventMutation = useRateEventMutation();
-  const [eventRating, setEventRating] = useState(5);
+  const rateOrganizerMutation = useRateOrganizerMutation();
   const [organizerRating, setOrganizerRating] = useState(5);
-  const [eventComment, setEventComment] = useState('');
   const [organizerComment, setOrganizerComment] = useState('');
 
   const submitRating = async () => {
     try {
-      await rateEventMutation.mutateAsync({
+      await rateOrganizerMutation.mutateAsync({
         eventId: event.id,
-        eventRating,
-        organizerRating,
-        eventComment: eventComment.trim() || undefined,
-        organizerComment: organizerComment.trim() || undefined,
+        rating: organizerRating,
+        comment: organizerComment.trim() || undefined,
       });
       Alert.alert(t('ratingSaved'));
     } catch {
@@ -102,15 +98,6 @@ function RatingCandidate({ event }: { event: AppEvent }) {
   return (
     <View style={[styles.ratingBlock, { borderBottomColor: theme.colors.border }]}>
       <ProfileEventRow event={event} onPress={() => undefined} />
-      <RatingStars label={t('eventRating')} rating={eventRating} onChange={setEventRating} />
-      <AppInput
-        value={eventComment}
-        onChangeText={setEventComment}
-        placeholder={t('eventCommentPlaceholder')}
-        multiline
-        style={styles.commentInput}
-        containerStyle={styles.commentInputWrap}
-      />
       <RatingStars label={t('organizerRating')} rating={organizerRating} onChange={setOrganizerRating} />
       <AppInput
         value={organizerComment}
@@ -122,9 +109,9 @@ function RatingCandidate({ event }: { event: AppEvent }) {
       />
       <View style={styles.ratingActions}>
         <AppButton
-          title={rateEventMutation.isPending ? t('loading') : t('rateEvent')}
+          title={rateOrganizerMutation.isPending ? t('loading') : t('rateOrganizer')}
           variant="secondary"
-          disabled={rateEventMutation.isPending}
+          disabled={rateOrganizerMutation.isPending}
           style={styles.rateButton}
           onPress={() => void submitRating()}
         />

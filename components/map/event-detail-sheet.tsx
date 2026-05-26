@@ -4,6 +4,7 @@ import { GlassView, isGlassEffectAPIAvailable, isLiquidGlassAvailable } from 'ex
 import type { ComponentType, ReactNode, Ref } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import type { StyleProp, ViewStyle } from 'react-native';
 
 import { EventDetailsContent } from '@/features/events/components/event-details-content';
 import { EventShareModal } from '@/features/events/components/event-share-modal';
@@ -29,11 +30,16 @@ type SheetController = {
 
 type OptionalBottomSheetModule = {
   BottomSheet: ComponentType<Record<string, unknown> & { ref?: Ref<SheetController> }>;
-  BottomSheetView: ComponentType<{ style?: object; children?: ReactNode }>;
+  BottomSheetScrollView: ComponentType<{
+    contentContainerStyle?: StyleProp<ViewStyle>;
+    showsVerticalScrollIndicator?: boolean;
+    children?: ReactNode;
+  }>;
 };
 
 let cachedBottomSheetModule: OptionalBottomSheetModule | null | undefined;
 let didWarnMissingBottomSheet = false;
+const OPEN_SHEET_BOTTOM_SPACER = 104;
 
 const getBottomSheetModule = (): OptionalBottomSheetModule | null => {
   if (cachedBottomSheetModule !== undefined) {
@@ -44,7 +50,7 @@ const getBottomSheetModule = (): OptionalBottomSheetModule | null => {
     const bottomSheetModule = require('@gorhom/bottom-sheet');
     cachedBottomSheetModule = {
       BottomSheet: bottomSheetModule.default,
-      BottomSheetView: bottomSheetModule.BottomSheetView,
+      BottomSheetScrollView: bottomSheetModule.BottomSheetScrollView,
     };
   } catch (error) {
     if (!didWarnMissingBottomSheet) {
@@ -67,7 +73,7 @@ export function EventDetailSheet({ event, locale, onClose, topInset = 0, bottomI
   const [sheetIndex, setSheetIndex] = useState(0);
   const [isShareOpen, setIsShareOpen] = useState(false);
   const canUseLiquidGlass = useMemo(() => Platform.OS === 'ios' && isLiquidGlassAvailable() && isGlassEffectAPIAvailable(), []);
-  const snapPoints = useMemo(() => ['22%', '76%'], []);
+  const snapPoints = useMemo(() => ['34%', '86%'], []);
   const { data: resolvedEvent } = useEventQuery(event.id, event);
   const detailEvent = resolvedEvent ?? event;
   const { isJoined, isJoinDisabled, joinButtonTitle, onToggleJoin } = useEventJoinActions(detailEvent);
@@ -119,7 +125,7 @@ export function EventDetailSheet({ event, locale, onClose, topInset = 0, bottomI
             style={StyleSheet.absoluteFill}
             glassEffectStyle="regular"
             colorScheme={theme.isDark ? 'dark' : 'light'}
-            tintColor={theme.isDark ? 'rgba(14, 18, 26, 0.20)' : 'rgba(255, 255, 255, 0.24)'}
+            tintColor={theme.isDark ? 'rgba(14, 18, 26, 0.62)' : 'rgba(255, 255, 255, 0.72)'}
             isInteractive
           />
         ) : (
@@ -140,8 +146,8 @@ export function EventDetailSheet({ event, locale, onClose, topInset = 0, bottomI
                         ? 'rgba(12, 16, 24, 0.48)'
                         : 'rgba(252, 253, 255, 0.52)'
                       : theme.isDark
-                        ? 'rgba(18, 23, 31, 0.34)'
-                        : 'rgba(255, 255, 255, 0.30)',
+                        ? 'rgba(18, 23, 31, 0.68)'
+                        : 'rgba(255, 255, 255, 0.62)',
                 },
               ]}
             />
@@ -171,7 +177,10 @@ export function EventDetailSheet({ event, locale, onClose, topInset = 0, bottomI
               ]}
             >
               {renderHandle()}
-              <ScrollView contentContainerStyle={styles.contentWrap} showsVerticalScrollIndicator={false}>
+              <ScrollView
+                contentContainerStyle={[styles.contentWrap, { paddingBottom: bottomInset + OPEN_SHEET_BOTTOM_SPACER }]}
+                showsVerticalScrollIndicator={false}
+              >
                 <View style={styles.headerRow}>
                   <Pressable
                     accessibilityRole="button"
@@ -190,7 +199,7 @@ export function EventDetailSheet({ event, locale, onClose, topInset = 0, bottomI
                   </Pressable>
 
                   <AppText variant="headline" numberOfLines={1} style={styles.headerTitle}>
-                    {detailEvent.title[locale]}
+                    {t('detailsShort')}
                   </AppText>
 
                   <Pressable
@@ -230,7 +239,7 @@ export function EventDetailSheet({ event, locale, onClose, topInset = 0, bottomI
     );
   }
 
-  const { BottomSheet, BottomSheetView } = bottomSheetModule;
+  const { BottomSheet, BottomSheetScrollView } = bottomSheetModule;
 
   return (
     <BottomSheet
@@ -248,7 +257,10 @@ export function EventDetailSheet({ event, locale, onClose, topInset = 0, bottomI
       style={styles.sheetContainer}
       handleIndicatorStyle={styles.hidden}
     >
-      <BottomSheetView style={styles.contentWrap}>
+      <BottomSheetScrollView
+        contentContainerStyle={[styles.contentWrap, { paddingBottom: bottomInset + OPEN_SHEET_BOTTOM_SPACER }]}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.headerRow}>
           <Pressable
             accessibilityRole="button"
@@ -267,7 +279,7 @@ export function EventDetailSheet({ event, locale, onClose, topInset = 0, bottomI
           </Pressable>
 
           <AppText variant="headline" numberOfLines={1} style={styles.headerTitle}>
-            {detailEvent.title[locale]}
+            {t('detailsShort')}
           </AppText>
 
           <Pressable
@@ -298,7 +310,7 @@ export function EventDetailSheet({ event, locale, onClose, topInset = 0, bottomI
             expanded={sheetIndex >= 1}
           />
         </View>
-      </BottomSheetView>
+      </BottomSheetScrollView>
       <EventShareModal event={detailEvent} visible={isShareOpen} locale={locale} onClose={() => setIsShareOpen(false)} />
     </BottomSheet>
   );
@@ -324,7 +336,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 12,
   },
   background: {
-    borderRadius: 28,
+    borderRadius: 22,
     overflow: 'hidden',
     borderWidth: 1,
   },

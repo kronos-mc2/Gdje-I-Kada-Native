@@ -14,7 +14,6 @@ import { useAppTheme } from '@/core/theme';
 import { AppEvent, Locale } from '@/core/types/domain';
 import { EventDetailsContent } from '@/features/events/components/event-details-content';
 import { useEventJoinActions } from '@/features/events/hooks/use-event-join-actions';
-import { ProfileAvatar } from '@/features/profile/components/profile-avatar';
 
 type FypEventDetailsSheetProps = Readonly<{
   event: AppEvent;
@@ -40,6 +39,7 @@ type OptionalBottomSheetModule = {
 
 let cachedBottomSheetModule: OptionalBottomSheetModule | null | undefined;
 let didWarnMissingBottomSheet = false;
+const OPEN_SHEET_BOTTOM_SPACER = 104;
 
 const getBottomSheetModule = (): OptionalBottomSheetModule | null => {
   if (cachedBottomSheetModule !== undefined) {
@@ -75,8 +75,6 @@ export function FypEventDetailsSheet({ event, locale, topInset, bottomInset, onC
   const { data: resolvedEvent } = useEventQuery(event.id, event);
   const detailEvent = resolvedEvent ?? event;
   const { isJoined, isJoinDisabled, joinButtonTitle, onToggleJoin } = useEventJoinActions(detailEvent);
-  const organizerName = detailEvent.creatorName ?? t('organizerFallback');
-
   const closeSheet = useCallback(() => {
     if (sheetRef.current) {
       sheetRef.current.close();
@@ -101,7 +99,7 @@ export function FypEventDetailsSheet({ event, locale, topInset, bottomInset, onC
             style={StyleSheet.absoluteFill}
             glassEffectStyle="regular"
             colorScheme={theme.isDark ? 'dark' : 'light'}
-            tintColor={theme.isDark ? 'rgba(14, 18, 26, 0.20)' : 'rgba(255, 255, 255, 0.24)'}
+            tintColor={theme.isDark ? 'rgba(14, 18, 26, 0.62)' : 'rgba(255, 255, 255, 0.72)'}
             isInteractive
           />
         ) : (
@@ -115,7 +113,7 @@ export function FypEventDetailsSheet({ event, locale, topInset, bottomInset, onC
               pointerEvents="none"
               style={[
                 StyleSheet.absoluteFill,
-                { backgroundColor: theme.isDark ? 'rgba(17, 17, 20, 0.56)' : 'rgba(240, 240, 240, 0.48)' },
+                { backgroundColor: theme.isDark ? 'rgba(17, 17, 20, 0.70)' : 'rgba(240, 240, 240, 0.66)' },
               ]}
             />
           </>
@@ -127,17 +125,9 @@ export function FypEventDetailsSheet({ event, locale, topInset, bottomInset, onC
 
   const header = (
     <View style={styles.headerRow}>
-      <View style={styles.organizerRow}>
-        <ProfileAvatar name={organizerName} avatarUrl={detailEvent.creatorAvatarUrl} size={42} />
-        <View style={styles.headerCopy}>
-          <AppText variant="caption" color="textMuted">
-            {t('organizer')}
-          </AppText>
-          <AppText variant="bodyStrong" numberOfLines={1}>
-            {organizerName}
-          </AppText>
-        </View>
-      </View>
+      <AppText variant="bodyStrong" color="textSecondary">
+        {t('detailsShort')}
+      </AppText>
 
       <View style={styles.headerActions}>
         <Pressable
@@ -165,9 +155,6 @@ export function FypEventDetailsSheet({ event, locale, topInset, bottomInset, onC
       <View style={styles.handleWrap}>
         <View style={[styles.handle, { backgroundColor: theme.colors.border }]} />
       </View>
-      <AppText variant="headline" style={styles.title}>
-        {detailEvent.title[locale]}
-      </AppText>
       {header}
       <View style={styles.detailsWrap}>
         <EventDetailsContent
@@ -201,7 +188,7 @@ export function FypEventDetailsSheet({ event, locale, topInset, bottomInset, onC
             backgroundComponent={renderBackground}
           >
             <BottomSheetScrollView
-              contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomInset + 18 }]}
+              contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomInset + OPEN_SHEET_BOTTOM_SPACER }]}
               showsVerticalScrollIndicator={false}
             >
               {content}
@@ -219,7 +206,10 @@ export function FypEventDetailsSheet({ event, locale, topInset, bottomInset, onC
               },
             ]}
           >
-            <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomInset + 18 }]} showsVerticalScrollIndicator={false}>
+            <ScrollView
+              contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomInset + OPEN_SHEET_BOTTOM_SPACER }]}
+              showsVerticalScrollIndicator={false}
+            >
               {content}
             </ScrollView>
           </View>
@@ -260,25 +250,11 @@ const styles = StyleSheet.create({
     height: 5,
     borderRadius: 999,
   },
-  title: {
-    marginBottom: 14,
-  },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 14,
-  },
-  organizerRow: {
-    flex: 1,
-    minWidth: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  headerCopy: {
-    flex: 1,
-    minWidth: 0,
   },
   headerActions: {
     flexDirection: 'row',

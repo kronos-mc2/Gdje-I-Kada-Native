@@ -5,6 +5,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { isGlassEffectAPIAvailable, isLiquidGlassAvailable } from 'expo-glass-effect';
 
 import { EventDetailSheet, EventMap } from '@/components/map';
+import type { MapCameraState } from '@/components/map/types';
 import { MapSearchBar, MapSearchResults } from '@/components/search';
 import { useI18n } from '@/core/i18n/use-i18n';
 import { MAP_AUTO_USER_ZOOM, MAP_FOCUS_ZOOM } from '@/core/maps/map-config';
@@ -24,6 +25,7 @@ type EventsMapExperienceProps = Readonly<{
   searchQuery: string;
   onDateFilterChange: (dateFilter: MapDateFilter) => void;
   onSearchQueryChange: (query: string) => void;
+  onMapCameraChange?: (camera: MapCameraState) => void;
   onCreateEventPress: () => void;
 }>;
 
@@ -35,6 +37,7 @@ export function EventsMapExperience({
   searchQuery,
   onDateFilterChange,
   onSearchQueryChange,
+  onMapCameraChange,
   onCreateEventPress,
 }: EventsMapExperienceProps) {
   const { t } = useI18n();
@@ -187,7 +190,8 @@ export function EventsMapExperience({
         focusCoordinate={focusTarget?.coordinate ?? null}
         focusZoomLevel={focusTarget?.zoomLevel}
         showsUserLocation={locationConsent === 'accepted'}
-        onCameraStateChange={() => {
+        onCameraStateChange={(camera) => {
+          onMapCameraChange?.(camera);
           clearPendingFocus();
         }}
         onUserLocationUpdate={handleNativeUserLocationUpdate}

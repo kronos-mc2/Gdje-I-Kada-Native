@@ -225,8 +225,17 @@ export const fetchFeed = async (params?: FeedQueryParams): Promise<FeedPage> => 
   return response.data;
 };
 
+export const recordFeedImpression = async (eventId: string): Promise<void> => {
+  await apiClient.post('/feed/impressions', { eventId });
+};
+
 export const fetchFriends = async (): Promise<Friend[]> => {
   const response = await apiClient.get<Friend[]>('/social/friends');
+  return response.data;
+};
+
+export const fetchEventShareRecipients = async (eventId: string): Promise<Friend[]> => {
+  const response = await apiClient.get<Friend[]>(`/social/events/${eventId}/share-recipients`);
   return response.data;
 };
 

@@ -22,6 +22,7 @@ type AppStore = {
   userLocation: Coordinates;
   locationConsent: LocationConsent;
   locationSource: LocationSource;
+  notificationPermissionPrompted: boolean;
   fypEntranceCoordinates: Coordinates | null;
   setLocale: (locale: Locale) => void;
   setThemePreference: (themePreference: ThemePreference) => void;
@@ -33,9 +34,10 @@ type AppStore = {
   setUserLocation: (coordinates: Coordinates) => void;
   setLocationConsent: (consent: LocationConsent) => void;
   setLocationSource: (source: LocationSource) => void;
+  setNotificationPermissionPrompted: (prompted: boolean) => void;
 };
 
-type PersistedAppStore = Pick<AppStore, 'locale' | 'themePreference' | 'locationConsent'>;
+type PersistedAppStore = Pick<AppStore, 'locale' | 'themePreference' | 'locationConsent' | 'notificationPermissionPrompted'>;
 
 export const useAppStore = create<AppStore>()(
   persist(
@@ -48,6 +50,7 @@ export const useAppStore = create<AppStore>()(
       userLocation: USER_LOCATION,
       locationConsent: 'unknown',
       locationSource: 'default',
+      notificationPermissionPrompted: false,
       fypEntranceCoordinates: null,
       setLocale: (locale) => set({ locale }),
       setThemePreference: (themePreference) => set({ themePreference }),
@@ -69,10 +72,13 @@ export const useAppStore = create<AppStore>()(
       setLocationSource: (locationSource) => {
         set({ locationSource });
       },
+      setNotificationPermissionPrompted: (notificationPermissionPrompted) => {
+        set({ notificationPermissionPrompted });
+      },
     }),
     {
       name: 'gdje-i-kada-app-store',
-      version: 2,
+      version: 3,
       storage: createJSONStorage(() => getAsyncStorage()),
       migrate: (persistedState): PersistedAppStore => {
         if (!persistedState || typeof persistedState !== 'object') {
@@ -80,6 +86,7 @@ export const useAppStore = create<AppStore>()(
             locale: 'hr',
             themePreference: 'dark',
             locationConsent: 'unknown',
+            notificationPermissionPrompted: false,
           };
         }
 
@@ -89,12 +96,14 @@ export const useAppStore = create<AppStore>()(
           locale: state.locale ?? 'hr',
           themePreference: state.themePreference ?? 'dark',
           locationConsent: state.locationConsent ?? 'unknown',
+          notificationPermissionPrompted: state.notificationPermissionPrompted ?? false,
         };
       },
       partialize: (state) => ({
         locale: state.locale,
         themePreference: state.themePreference,
         locationConsent: state.locationConsent,
+        notificationPermissionPrompted: state.notificationPermissionPrompted,
       }),
     },
   ),

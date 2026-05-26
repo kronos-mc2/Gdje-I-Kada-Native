@@ -1,14 +1,15 @@
-import { useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
-import { ActivityIndicator, Alert, FlatList, StyleSheet, View, ViewToken, useWindowDimensions } from 'react-native';
-import type { AlertButton } from 'react-native';
+import { ActivityIndicator, FlatList, Modal, Pressable, StyleSheet, View, ViewToken, useWindowDimensions } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { AppText } from '@/components/primitives';
+import { AppButton, AppCard, AppText } from '@/components/primitives';
 import {
   useFeedInfiniteQuery,
   useCreateFeedPreferenceMutation,
   useLikeEventMutation,
+  useRecordFeedImpressionMutation,
   useUnlikeEventMutation,
 } from '@/core/api/query-hooks';
 import { useI18n } from '@/core/i18n/use-i18n';
@@ -25,6 +26,9 @@ import {
 import { FypReelSlide } from '@/features/events/components/fyp/fyp-reel-slide';
 
 const isValidFeedEvent = (event: AppEvent | null | undefined): event is AppEvent => Boolean(event?.id);
+const createFeedSeed = () => `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+const FEED_PAGE_SIZE = 8;
+const NOT_INTERESTED_NAV_CLEARANCE = 28;
 
 export default function FypScreen() {
   const { t, locale } = useI18n();
@@ -32,13 +36,20 @@ export default function FypScreen() {
   const insets = useSafeAreaInsets();
   const tabBarHeight = useContext(BottomTabBarHeightContext) ?? getEstimatedFypTabBarHeight(insets);
   const { height, width } = useWindowDimensions();
-  const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage, refetch, isRefetching } = useFeedInfiniteQuery();
+  const [feedSeed, setFeedSeed] = useState(createFeedSeed);
+  const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage, refetch, isRefetching } = useFeedInfiniteQuery(
+    FEED_PAGE_SIZE,
+    feedSeed,
+  );
   const likeEventMutation = useLikeEventMutation();
   const unlikeEventMutation = useUnlikeEventMutation();
+  const recordFeedImpressionMutation = useRecordFeedImpressionMutation();
   const createFeedPreferenceMutation = useCreateFeedPreferenceMutation();
   const [selectedEvent, setSelectedEvent] = useState<AppEvent | null>(null);
   const [shareEvent, setShareEvent] = useState<AppEvent | null>(null);
+  const [notInterestedEvent, setNotInterestedEvent] = useState<AppEvent | null>(null);
   const [activeEventId, setActiveEventId] = useState<string | null>(null);
+  const recordedImpressionIdsRef = useRef<Set<string>>(new Set());
   const itemHeight = getFypViewportHeight(height, tabBarHeight);
   const slideBottomInset = getFypBottomContentInset(insets);
   const detailBottomInset = getFypDetailBottomInset();
@@ -61,6 +72,14 @@ export default function FypScreen() {
     itemVisiblePercentThreshold: 75,
   });
 
+  useFocusEffect(
+    useCallback(() => {
+      recordedImpressionIdsRef.current.clear();
+      setActiveEventId(null);
+      setFeedSeed(createFeedSeed());
+    }, []),
+  );
+
   const onToggleLike = (event: AppEvent) => {
     if (event.likedByMe) {
       unlikeEventMutation.mutate(event.id);
@@ -72,42 +91,27 @@ export default function FypScreen() {
 
   const blockFeedPreference = (event: AppEvent, type: 'event' | 'creator' | 'tag', targetId: string, label: string) => {
     createFeedPreferenceMutation.mutate({ type, targetId, label });
+    setNotInterestedEvent(null);
   };
 
   const onNotInterested = (event: AppEvent) => {
-    const buttons: AlertButton[] = [
-      {
-        text: t('notInterestedThisEvent'),
-        onPress: () => blockFeedPreference(event, 'event', event.id, event.title[locale]),
-      },
-    ];
-
-    if (event.creatorUserId) {
-      buttons.push({
-        text: t('notInterestedCreator'),
-        onPress: () =>
-          blockFeedPreference(event, 'creator', event.creatorUserId!, event.creatorName ?? t('organizerFallback')),
-      });
-    }
-
-    for (const tag of event.tags?.slice(0, 4) ?? []) {
-      buttons.push({
-        text: `#${tag}`,
-        onPress: () => blockFeedPreference(event, 'tag', tag.toLowerCase(), tag),
-      });
-    }
-
-    Alert.alert(t('notInterested'), t('notInterestedPrompt'), [
-      ...buttons,
-      { text: t('cancel'), style: 'cancel' },
-    ]);
+    setNotInterestedEvent(event);
   };
 
   useEffect(() => {
-    if (!activeEventId && feedEvents[0]?.id) {
+    if (feedEvents[0]?.id && (!activeEventId || !feedEvents.some((event) => event.id === activeEventId))) {
       setActiveEventId(feedEvents[0].id);
     }
   }, [activeEventId, feedEvents]);
+
+  useEffect(() => {
+    if (!activeEventId || recordedImpressionIdsRef.current.has(activeEventId)) {
+      return;
+    }
+
+    recordedImpressionIdsRef.current.add(activeEventId);
+    recordFeedImpressionMutation.mutate(activeEventId);
+  }, [activeEventId, recordFeedImpressionMutation]);
 
   const renderFooter = () => {
     if (isFetchingNextPage) {
@@ -202,7 +206,105 @@ export default function FypScreen() {
       ) : null}
 
       <EventShareModal event={shareEvent} visible={shareEvent != null} locale={locale} onClose={() => setShareEvent(null)} />
+      <NotInterestedModal
+        event={notInterestedEvent}
+        visible={notInterestedEvent != null}
+        bottomInset={insets.bottom}
+        onClose={() => setNotInterestedEvent(null)}
+        onBlock={blockFeedPreference}
+      />
     </SafeAreaView>
+  );
+}
+
+function NotInterestedModal({
+  event,
+  visible,
+  bottomInset,
+  onClose,
+  onBlock,
+}: {
+  event: AppEvent | null;
+  visible: boolean;
+  bottomInset: number;
+  onClose: () => void;
+  onBlock: (event: AppEvent, type: 'event' | 'creator' | 'tag', targetId: string, label: string) => void;
+}) {
+  const { t, locale } = useI18n();
+  const { theme } = useAppTheme();
+
+  if (!event) {
+    return null;
+  }
+
+  const options = [
+    {
+      key: 'event',
+      title: t('notInterestedThisEvent'),
+      onPress: () => onBlock(event, 'event', event.id, event.title[locale]),
+    },
+    ...(event.creatorUserId
+      ? [
+          {
+            key: 'creator',
+            title: t('notInterestedCreator'),
+            onPress: () => onBlock(event, 'creator', event.creatorUserId!, event.creatorName ?? t('organizerFallback')),
+          },
+        ]
+      : []),
+    ...(event.tags ?? []).slice(0, 6).map((tag) => ({
+      key: `tag-${tag}`,
+      title: `${t('ignoreTag')} #${tag}`,
+      onPress: () => onBlock(event, 'tag', tag.toLowerCase(), tag),
+    })),
+  ];
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable style={[styles.notInterestedOverlay, { backgroundColor: theme.colors.overlay }]} onPress={onClose}>
+        <Pressable style={styles.notInterestedPressable} onPress={() => {}}>
+          <AppCard
+            variant="glass"
+            style={[
+              styles.notInterestedPanel,
+              {
+                marginBottom: Math.max(bottomInset, 16) + NOT_INTERESTED_NAV_CLEARANCE,
+                paddingBottom: 18,
+              },
+            ]}
+          >
+            <View>
+              <AppText variant="headline">{t('notInterested')}</AppText>
+              <AppText variant="body" color="textSecondary" style={styles.notInterestedSubtitle}>
+                {t('notInterestedPrompt')}
+              </AppText>
+            </View>
+
+            <View style={styles.notInterestedOptions}>
+              {options.map((option) => (
+                <Pressable
+                  key={option.key}
+                  accessibilityRole="button"
+                  onPress={option.onPress}
+                  style={({ pressed }) => [
+                    styles.notInterestedOption,
+                    {
+                      borderColor: theme.colors.border,
+                      backgroundColor: theme.colors.surfaceElevated,
+                      opacity: pressed ? 0.74 : 1,
+                    },
+                  ]}
+                >
+                  <AppText variant="bodyStrong">{option.title}</AppText>
+                </Pressable>
+              ))}
+            </View>
+
+            <AppButton title={t('cancel')} variant="secondary" onPress={onClose} style={styles.notInterestedBack} />
+          </AppCard>
+        </Pressable>
+      </Pressable>
+    </Modal>
   );
 }
 
@@ -230,5 +332,36 @@ const styles = StyleSheet.create({
   },
   footerSpacer: {
     height: 18,
+  },
+  notInterestedOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    paddingHorizontal: 16,
+    paddingTop: 64,
+  },
+  notInterestedPressable: {
+    width: '100%',
+  },
+  notInterestedPanel: {
+    gap: 14,
+    minHeight: 0,
+  },
+  notInterestedSubtitle: {
+    marginTop: 6,
+  },
+  notInterestedOptions: {
+    gap: 10,
+    paddingVertical: 2,
+  },
+  notInterestedOption: {
+    minHeight: 48,
+    borderRadius: 14,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 14,
+  },
+  notInterestedBack: {
+    marginTop: 2,
   },
 });

@@ -1,13 +1,15 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useMemo } from 'react';
-import { Alert, Modal, Pressable, Share, StyleSheet, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { Alert, FlatList, Modal, Pressable, Share, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppButton, AppCard, AppText } from '@/components/primitives';
-import { useChatRoomsQuery, useShareEventMutation } from '@/core/api/query-hooks';
+import { useCreateChatRoomMutation, useEventShareRecipientsQuery, useShareEventMutation } from '@/core/api/query-hooks';
 import { useI18n } from '@/core/i18n/use-i18n';
 import { useAppTheme } from '@/core/theme';
-import { AppEvent, Locale } from '@/core/types/domain';
+import type { AppEvent, Friend, Locale } from '@/core/types/domain';
 import { formatEventDate } from '@/core/utils/date';
+import { ProfileAvatar } from '@/features/profile/components/profile-avatar';
 
 type EventShareModalProps = {
   event?: AppEvent | null;
@@ -19,8 +21,13 @@ type EventShareModalProps = {
 export function EventShareModal({ event, visible, locale, onClose }: EventShareModalProps) {
   const { t } = useI18n();
   const { theme } = useAppTheme();
-  const { data: conversations = [] } = useChatRoomsQuery();
+  const insets = useSafeAreaInsets();
+  const { data: shareRecipients = [], isLoading: isRecipientsLoading } = useEventShareRecipientsQuery(event?.id);
+  const createChatRoomMutation = useCreateChatRoomMutation();
   const shareEventMutation = useShareEventMutation();
+  const [selectedFriendIds, setSelectedFriendIds] = useState<Set<string>>(() => new Set());
+  const selectedCount = selectedFriendIds.size;
+  const isSharing = createChatRoomMutation.isPending || shareEventMutation.isPending;
 
   const nativeMessage = useMemo(() => {
     if (!event) {
@@ -29,6 +36,22 @@ export function EventShareModal({ event, visible, locale, onClose }: EventShareM
 
     return `${event.title[locale]}\n${event.where[locale]}\n${formatEventDate(event.whenISO, locale)}\n\n${event.about[locale]}`;
   }, [event, locale]);
+
+  useEffect(() => {
+    setSelectedFriendIds(new Set());
+  }, [visible, event?.id]);
+
+  const toggleFriend = (friendId: string) => {
+    setSelectedFriendIds((current) => {
+      const next = new Set(current);
+      if (next.has(friendId)) {
+        next.delete(friendId);
+      } else {
+        next.add(friendId);
+      }
+      return next;
+    });
+  };
 
   const onNativeShare = async () => {
     if (!event) {
@@ -45,25 +68,74 @@ export function EventShareModal({ event, visible, locale, onClose }: EventShareM
     }
   };
 
-  const onShareToConversation = async (conversationId: string) => {
-    if (!event) {
+  const onShareToSelected = async () => {
+    if (!event || selectedFriendIds.size === 0) {
       return;
     }
 
     try {
-      const conversation = await shareEventMutation.mutateAsync({ conversationId, eventId: event.id });
-      Alert.alert(t('eventSharedToChat'), conversation.body ?? event.title[locale]);
+      const selectedFriends = shareRecipients.filter((friend) => selectedFriendIds.has(friend.id));
+      for (const friend of selectedFriends) {
+        const room = await createChatRoomMutation.mutateAsync({ type: 'direct', memberUserId: friend.id });
+        await shareEventMutation.mutateAsync({ conversationId: room.id, eventId: event.id });
+      }
+      Alert.alert(t('eventSharedToSelected'), event.title[locale]);
       onClose();
     } catch {
       Alert.alert(t('eventShareFailed'));
     }
   };
 
+  const renderFriend = ({ item }: { item: Friend }) => {
+    const selected = selectedFriendIds.has(item.id);
+    return (
+      <Pressable
+        onPress={() => toggleFriend(item.id)}
+        disabled={isSharing}
+        style={({ pressed }) => [
+          styles.friendBubble,
+          {
+            opacity: pressed || isSharing ? 0.78 : 1,
+          },
+        ]}
+      >
+        <View
+          style={[
+            styles.avatarRing,
+            {
+              borderColor: selected ? theme.colors.mapAccent : 'transparent',
+              backgroundColor: selected ? theme.colors.mapAccentSoft : 'transparent',
+            },
+          ]}
+        >
+          <ProfileAvatar name={item.name} avatarUrl={item.avatarUrl} size={58} />
+          {selected ? (
+            <View style={[styles.checkBadge, { backgroundColor: theme.colors.mapAccent, borderColor: theme.colors.background }]}>
+              <Ionicons name="checkmark" size={13} color={theme.colors.textPrimary} />
+            </View>
+          ) : null}
+        </View>
+        <AppText variant="caption" numberOfLines={2} style={styles.friendName}>
+          {item.name}
+        </AppText>
+      </Pressable>
+    );
+  };
+
   return (
-    <Modal visible={visible && !!event} animationType="fade" transparent onRequestClose={onClose}>
-      <Pressable style={[styles.overlay, { backgroundColor: theme.colors.overlay }]} onPress={onClose}>
+    <Modal visible={visible && !!event} animationType="slide" transparent onRequestClose={onClose}>
+      <Pressable
+        style={[
+          styles.overlay,
+          {
+            backgroundColor: theme.colors.overlay,
+            paddingTop: insets.top + 28,
+          },
+        ]}
+        onPress={onClose}
+      >
         <Pressable style={styles.panelPressable} onPress={() => {}}>
-          <AppCard variant="glass" style={styles.panel}>
+          <AppCard variant="glass" style={[styles.panel, { paddingBottom: Math.max(insets.bottom, 16) + 18 }]}>
             <View style={styles.headerRow}>
               <View style={styles.headerCopy}>
                 <AppText variant="headline">{t('shareEvent')}</AppText>
@@ -82,42 +154,52 @@ export function EventShareModal({ event, visible, locale, onClose }: EventShareM
             </View>
 
             <AppText variant="label" color="textMuted" style={styles.sectionLabel}>
-              {t('shareToChats')}
+              {t('shareToFriends')}
             </AppText>
+            {event?.visibility === 'friends' ? (
+              <AppText variant="caption" color="textMuted">
+                {t('friendsEventShareHelp')}
+              </AppText>
+            ) : null}
 
-            {conversations.length === 0 ? (
+            {isRecipientsLoading ? (
               <AppText variant="body" color="textMuted">
-                {t('noConversations')}
+                {t('loading')}
+              </AppText>
+            ) : shareRecipients.length === 0 ? (
+              <AppText variant="body" color="textMuted">
+                {t('noFriendsToShare')}
               </AppText>
             ) : (
-              conversations.map((conversation) => (
-                <Pressable
-                  key={conversation.id}
-                  onPress={() => void onShareToConversation(conversation.id)}
-                  disabled={shareEventMutation.isPending}
-                  style={({ pressed }) => [
-                    styles.conversationButton,
-                    {
-                      borderColor: theme.colors.border,
-                      backgroundColor: theme.colors.surface,
-                      opacity: pressed || shareEventMutation.isPending ? 0.8 : 1,
-                    },
-                  ]}
-                >
-                  <View style={styles.conversationCopy}>
-                    <AppText variant="bodyStrong">{conversation.title}</AppText>
-                    <AppText variant="caption" color="textMuted">
-                      {conversation.lastMessage ?? conversation.subtitle}
-                    </AppText>
-                  </View>
-                  <Ionicons name="paper-plane-outline" size={18} color={theme.colors.textSecondary} />
-                </Pressable>
-              ))
+              <FlatList
+                data={shareRecipients}
+                keyExtractor={(friend) => friend.id}
+                renderItem={renderFriend}
+                numColumns={4}
+                style={styles.friendsList}
+                contentContainerStyle={styles.friendsListContent}
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+              />
             )}
 
             <View style={styles.footerActions}>
-              <AppButton title={t('shareOutsideApp')} variant="glass" style={styles.footerButton} onPress={() => void onNativeShare()} />
-              <AppButton title={t('cancel')} variant="secondary" style={styles.footerButton} onPress={onClose} />
+              <AppButton
+                title={isSharing ? t('loading') : t('shareToSelected')}
+                variant="primary"
+                style={styles.primaryFooterButton}
+                disabled={selectedCount === 0 || isSharing}
+                onPress={() => void onShareToSelected()}
+              />
+              {event?.visibility === 'friends' ? null : (
+                <AppButton
+                  title={t('shareOutsideApp')}
+                  variant="glass"
+                  style={styles.secondaryFooterButton}
+                  disabled={isSharing}
+                  onPress={() => void onNativeShare()}
+                />
+              )}
             </View>
           </AppCard>
         </Pressable>
@@ -130,14 +212,14 @@ const styles = StyleSheet.create({
   overlay: {
     flex: 1,
     justifyContent: 'flex-end',
-    padding: 16,
+    paddingHorizontal: 16,
   },
   panelPressable: {
     width: '100%',
   },
   panel: {
     gap: 14,
-    paddingBottom: 18,
+    maxHeight: '96%',
   },
   headerRow: {
     flexDirection: 'row',
@@ -161,24 +243,53 @@ const styles = StyleSheet.create({
   sectionLabel: {
     marginTop: 4,
   },
-  conversationButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    borderWidth: 1,
-    borderRadius: 18,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+  friendsList: {
+    maxHeight: 940,
   },
-  conversationCopy: {
-    flex: 1,
+  friendsListContent: {
+    paddingTop: 12,
+    paddingBottom: 18,
+  },
+  friendBubble: {
+    width: '25%',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+    paddingTop: 6,
+    paddingBottom: 12,
+  },
+  avatarRing: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkBadge: {
+    position: 'absolute',
+    right: 2,
+    bottom: 3,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  friendName: {
+    marginTop: 6,
+    textAlign: 'center',
+    minHeight: 36,
   },
   footerActions: {
     flexDirection: 'row',
     gap: 10,
-    marginTop: 6,
+    marginTop: 2,
   },
-  footerButton: {
+  primaryFooterButton: {
+    flex: 1.25,
+  },
+  secondaryFooterButton: {
     flex: 1,
   },
 });
