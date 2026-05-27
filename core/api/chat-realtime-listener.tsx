@@ -1,13 +1,26 @@
-import { useEffect, useRef } from 'react';
-import { AppState, AppStateStatus } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { router, usePathname } from 'expo-router';
+import { AppState, AppStateStatus, Modal, PanResponder, Pressable, StyleSheet, View } from 'react-native';
 
+import { AppText } from '@/components/primitives';
 import { createChatRealtimeSocket, parseChatRealtimeEvent } from '@/core/api/chat-realtime-client';
 import { queryKeys } from '@/core/api/query-keys';
+import { fetchChatRoom } from '@/core/api/services';
 import { queryClient } from '@/core/query/query-client';
 import { useAuthStore } from '@/core/store/auth-store';
+import { useAppTheme } from '@/core/theme';
+import { ChatRoom, ChatRoomDetail, NotificationPreferences } from '@/core/types/domain';
 
 const INITIAL_RECONNECT_DELAY_MS = 1000;
 const MAX_RECONNECT_DELAY_MS = 30000;
+const IN_APP_MESSAGE_VISIBLE_MS = 5000;
+
+type InAppMessagePreview = {
+  roomId: string;
+  title: string;
+  body: string;
+};
 
 const refreshChatQueries = (roomId?: string) => {
   void queryClient.invalidateQueries({ queryKey: queryKeys.chatRoomsRoot, refetchType: 'active' });
@@ -25,11 +38,61 @@ const refreshChatQueries = (roomId?: string) => {
 
 export function ChatRealtimeListener() {
   const accessToken = useAuthStore((state) => state.accessToken);
+  const { theme } = useAppTheme();
+  const pathname = usePathname();
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
   const socketRef = useRef<WebSocket | null>(null);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const inAppDismissTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reconnectAttemptRef = useRef(0);
   const intentionalCloseRef = useRef(false);
+  const [inAppMessage, setInAppMessage] = useState<InAppMessagePreview | null>(null);
+
+  const clearInAppDismissTimer = useCallback(() => {
+    if (inAppDismissTimerRef.current) {
+      clearTimeout(inAppDismissTimerRef.current);
+      inAppDismissTimerRef.current = null;
+    }
+  }, []);
+
+  const dismissInAppMessage = useCallback(() => {
+    clearInAppDismissTimer();
+    setInAppMessage(null);
+  }, [clearInAppDismissTimer]);
+
+  const showInAppMessage = useCallback(
+    (preview: InAppMessagePreview) => {
+      clearInAppDismissTimer();
+      setInAppMessage(preview);
+      inAppDismissTimerRef.current = setTimeout(() => {
+        setInAppMessage((current) => (current?.roomId === preview.roomId ? null : current));
+        inAppDismissTimerRef.current = null;
+      }, IN_APP_MESSAGE_VISIBLE_MS);
+    },
+    [clearInAppDismissTimer],
+  );
+
+  const showInAppMessageForRoom = useCallback(
+    (roomId: string) => {
+      void fetchChatRoom(roomId)
+        .then((detail) => {
+          queryClient.setQueryData(queryKeys.chatRoom(roomId), detail);
+          showInAppMessage(buildInAppMessagePreview(roomId, detail));
+        })
+        .catch(() => undefined);
+    },
+    [showInAppMessage],
+  );
+  const inAppMessagePanResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, gesture) => gesture.dy < -10 && Math.abs(gesture.dy) > Math.abs(gesture.dx),
+      onPanResponderRelease: (_, gesture) => {
+        if (gesture.dy < -28) {
+          dismissInAppMessage();
+        }
+      },
+    }),
+  ).current;
 
   useEffect(() => {
     if (!accessToken) {
@@ -94,6 +157,15 @@ export function ChatRealtimeListener() {
 
         const roomId = realtimeEvent.roomId ?? realtimeEvent.payload?.roomId;
         refreshChatQueries(roomId);
+        if (
+          realtimeEvent.type === 'message.created' &&
+          roomId &&
+          appStateRef.current === 'active' &&
+          pathname !== `/chat/${roomId}` &&
+          shouldShowInAppMessage(roomId)
+        ) {
+          showInAppMessageForRoom(roomId);
+        }
       };
 
       socket.onerror = () => {
@@ -135,7 +207,120 @@ export function ChatRealtimeListener() {
       closeSocket();
       subscription.remove();
     };
-  }, [accessToken]);
+  }, [accessToken, pathname, showInAppMessageForRoom]);
 
-  return null;
+  useEffect(() => () => clearInAppDismissTimer(), [clearInAppDismissTimer]);
+
+  return (
+    <Modal visible={Boolean(inAppMessage)} transparent animationType="fade" onRequestClose={dismissInAppMessage}>
+      <Pressable style={styles.modalOverlay} onPress={dismissInAppMessage}>
+        <Pressable
+          {...inAppMessagePanResponder.panHandlers}
+          style={[
+            styles.modalCard,
+            {
+              backgroundColor: theme.colors.card,
+              borderColor: theme.colors.border,
+              shadowColor: theme.colors.background,
+            },
+          ]}
+          onPress={() => {
+            const roomId = inAppMessage?.roomId;
+            dismissInAppMessage();
+            if (roomId) {
+              router.push(`/chat/${roomId}`);
+            }
+          }}
+        >
+          <View style={[styles.modalIcon, { backgroundColor: theme.colors.mapAccentSoft }]}>
+            <Ionicons name="chatbubble" size={22} color={theme.colors.mapAccent} />
+          </View>
+          <View style={styles.modalCopy}>
+            <AppText variant="bodyStrong" numberOfLines={1}>
+              {inAppMessage?.title}
+            </AppText>
+            <AppText variant="caption" color="textMuted" numberOfLines={2}>
+              {inAppMessage?.body}
+            </AppText>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={theme.colors.textMuted} />
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
 }
+
+function shouldShowInAppMessage(roomId: string) {
+  const room = findCachedRoom(roomId);
+  const preferences = queryClient.getQueryData<NotificationPreferences>(queryKeys.notificationPreferences);
+  if (room?.mutedByMe) {
+    return false;
+  }
+
+  if (!preferences || !room) {
+    return true;
+  }
+
+  if (room.type === 'direct') {
+    return preferences.directMessagesEnabled;
+  }
+
+  return preferences.groupMessagesEnabled;
+}
+
+function findCachedRoom(roomId: string) {
+  const roomLists = queryClient.getQueriesData<ChatRoom[]>({ queryKey: queryKeys.chatRoomsRoot });
+  for (const [, rooms] of roomLists) {
+    const room = rooms?.find((candidate) => candidate.id === roomId);
+    if (room) {
+      return room;
+    }
+  }
+
+  return undefined;
+}
+
+function buildInAppMessagePreview(roomId: string, source: ChatRoom | ChatRoomDetail): InAppMessagePreview {
+  const room = 'room' in source ? source.room : source;
+  const latestMessage = 'messages' in source ? source.messages[source.messages.length - 1] : undefined;
+  const title = latestMessage?.senderName?.trim() || room.title || 'Nova poruka';
+  const body = latestMessage?.body?.trim() || room.lastMessage?.trim() || room.subtitle?.trim() || '';
+
+  return {
+    roomId,
+    title,
+    body,
+  };
+}
+
+const styles = StyleSheet.create({
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-start',
+    paddingTop: 62,
+    paddingHorizontal: 16,
+  },
+  modalCard: {
+    minHeight: 72,
+    borderRadius: 20,
+    borderWidth: StyleSheet.hairlineWidth,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 14,
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 10,
+  },
+  modalIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalCopy: {
+    flex: 1,
+  },
+});

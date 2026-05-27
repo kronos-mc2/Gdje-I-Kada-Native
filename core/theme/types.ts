@@ -21,6 +21,10 @@ export type ThemeColors = {
   mapAccentSoft: string;
   friendEventAccent: string;
   friendEventAccentSoft: string;
+  todayAccent: string;
+  tomorrowAccent: string;
+  weekAccent: string;
+  floatingTabBackground: string;
   mapOverlay: string;
   overlay: string;
   glassTint: string;

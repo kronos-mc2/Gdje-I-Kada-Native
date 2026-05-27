@@ -23,17 +23,18 @@ Aplikacija pomaze korisniku pronaci evente oko sebe, pregledati ih na mapi ili k
 Planirani glavni tabovi:
 
 1. `Mapa`
-2. `Reels/FYP`
+2. `Discover`
 3. `Kalendar`
-4. `Poruke`
+4. `Inbox`
 5. `Profil`
 
 Trenutno stanje tabova:
 
 - Mapa je implementirana kao `app/(tabs)/index.tsx` i rendera `EventsMapExperience`.
-- FYP je implementiran kao `app/(tabs)/fyp.tsx`.
+- Discover je implementiran kao postojeći `app/(tabs)/fyp.tsx`.
 - Kalendar je implementiran kao `app/(tabs)/calendar.tsx` i prikazuje joined-only mjesecni grid s event oznakama, searchom i povratkom na danas.
-- Poruke su glavni tab kroz `app/(tabs)/messages.tsx`; chat screen je `app/chat/[id].tsx`.
+- Kreiranje eventa otvara floating `+` na mapi kroz `app/create-event.tsx`.
+- Inbox je glavni tab kroz `app/(tabs)/messages.tsx`; chat screen je `app/chat/[id].tsx`.
 - `app/(tabs)/social.tsx` ostaje prototip/sekundarni ekran za conversations + friends, ali vise nije glavni tab.
 - Profil je implementiran kao `app/(tabs)/profile.tsx`; sada je activity/profile hub s avatarom, imenom, bio tekstom, edit profilom, activity historyjem, liked historyjem, transaction historyjem i odvojenim settings screenom.
 
@@ -44,7 +45,7 @@ Postojece frontend tehnologije i patterni:
 - App branding/native icon setup je centraliziran u `config/app-branding.js`. Finalni source asseti idu u `assets/app-icons/` s imenima iz `assets/app-icons/README.md`; dok pojedini file nedostaje config pada natrag na postojece `assets/images/*` ikone. Setup pokriva iOS light/dark/tinted app ikone, Android legacy/adaptive/monochrome ikone, Android notification small icon, splash light/dark i web favicon.
 - Android i iOS trenutno koriste `newArchEnabled=true` jer `react-native-reanimated` i `react-native-worklets` to zahtijevaju pri buildu. Android edge-to-edge nije eksplicitno ukljucen u Expo configu jer three-button navigation bar mora pratiti app theme boju; ostaje `softwareKeyboardLayoutMode: resize`, a chat inputi dodatno koriste shared keyboard/safe-area hook samo za inset koji native resize nije vec pokrio. Za iOS je ostao i pojacani `react-native-maps` (`AIRMap`) patch u `scripts/patch-react-native-maps-airmap.js`.
 - iOS workspace sada ima dva native targeta/schemea: `GIKDev` i `GIKTest`. `npm run ios` / `npm run ios:dev` prije builda automatski pripremaju `ios/.xcode.env.local` za lokalni `prod`/dev variant (`localhost` backend) i pokrecu `GIKDev`, a `npm run ios:test` / `npm run ios:test:release` pripremaju test env i pokrecu `GIKTest`. Lokalni iOS runner kroz `scripts/ios-bin/xcodebuild` dopusta Xcode automatic provisioning update za device buildove, jer Expo CLI ne proslijedi `-allowProvisioningUpdates` kad je `DEVELOPMENT_TEAM` vec upisan u native projektu.
-- Navigacija: `expo-router` i `expo-router/unstable-native-tabs` u `app/(tabs)/_layout.tsx`.
+- Navigacija: `expo-router` tabs u `app/(tabs)/_layout.tsx`; Android koristi custom floating toolbar s redoslijedom Mapa, Discover, Kalendar, Inbox i Profil te unread dot indikatorom za Inbox, a iOS koristi `expo-router/unstable-native-tabs` Liquid Glass toolbar s istim glavnim tabovima.
 - Data fetching/cache: TanStack React Query u `core/api/query-hooks.ts` i `core/query/query-client.ts`.
 - HTTP: Axios u `core/api/http-client.ts`, s Bearer token interceptorom iz `useAuthStore`.
 - Global state: Zustand u `core/store/app-store.ts` i `core/store/auth-store.ts`.
@@ -55,12 +56,13 @@ Postojece frontend tehnologije i patterni:
 - Theme: `AppThemeProvider`, `createAppTheme`, `palette`, `tokens`, `ThemeToggle`. Centralna paleta je ogranicena na Rich Black `#111114`, Off White `#F0F0F0`, Gunmetal Gray `#2A2D33`, Charcoal Gray `#3A3C40`, Graphite `#191B1E`, Cool Gray `#6F7072`, uz postojeci purple accent za map/app akcente.
 - Kalendar grid: `react-native-calendars` za cross-platform mjesecni prikaz bez dodatnog native linkinga.
 - iOS glass: `expo-glass-effect` i `expo-blur` se vec koriste u `EventDetailSheet` i `MapSearchBar.ios.tsx`; shared `GlassSurface` daje `GlassView` kad je Liquid Glass API dostupan, a `BlurView` + themed tint fallback inace. `AppCard`, `AppButton`, `AppHeader` i `AppIconButton` koriste taj shared surface da iOS ne povuce defaultnu sistemsku sivu. Event detail sheetovi koriste tamniji/konkretniji glass fallback i scrollable content da se donji detalji uvijek mogu dohvatiti.
-- Push obavijesti: `expo-notifications` registrira Expo push token za autentificiranog korisnika kad je permission vec odobren, kad korisnik to rucno zatrazi u `Preferences > Notifications`, ili jednom pri prvom ulasku nakon prijave kroz first-run permission prompt. Frontend salje i trenutni HR/EN locale uz token, backend lokalizira fallback body za poruke/pollove/event share, Android koristi `messages` notification channel s purple accent bojom, a tap na push otvara odgovarajuci chat. Android Expo Go runtime se eksplicitno odbija jer ne podrzava push u SDK 54; EAS development, test/internal i production buildovi idu kroz isti token registration flow.
+- Push obavijesti: `expo-notifications` registrira Expo push token za autentificiranog korisnika kad je permission vec odobren, kad korisnik to rucno zatrazi u `Preferences > Notifications`, ili jednom pri prvom ulasku nakon prijave kroz first-run permission prompt. Frontend salje i trenutni HR/EN locale uz token, backend lokalizira fallback body za poruke/pollove/event share, Android koristi `messages` notification channel s purple accent bojom, a tap na push otvara odgovarajuci chat. Ako korisnik ima aktivnu websocket sesiju u aplikaciji, backend ne salje Expo push za novu chat poruku, a frontend prikazuje in-app modal koji vodi u chat; unread poruke se dodatno vide kao purple dot na Inbox ikoni. Android Expo Go runtime se eksplicitno odbija jer ne podrzava push u SDK 54; EAS development, test/internal i production buildovi idu kroz isti token registration flow.
 - Expo push `projectId` dolazi iz `EXPO_PUBLIC_EAS_PROJECT_ID` i izlozen je u app configu kao `extra.eas.projectId`; `test` EAS profile ga postavlja kroz `eas.json`, a test build bez stvarnog projectId-a faila config provjeru. Android FCM ima dva filea: EAS FCM V1 service account key sluzi Expo serveru za slanje push poruka, a `google-services.json` mora biti ugradjen u Android app da se Firebase inicializira na uredaju. Test Firebase app config za package `com.anonymous.GdjeIKadaNative.test` moze biti EAS file env var `GOOGLE_SERVICES_JSON`, lokalni ignorirani `./google-services.json`, `GOOGLE_SERVICES_JSON_PATH` ili, za lokalni checked-in native Android flavor, `android/app/src/qa/google-services.json`; produkcijski config kasnije ide u odgovarajuci prod file. Firebase private key/service account JSON ostaje ignoriran i ne commita se.
 - Karte:
   - iOS: `components/map/event-map-surface.ios.tsx` koristi `react-native-maps` / MapKit.
   - Android: `components/map/event-map-surface.android.tsx` koristi `@maplibre/maplibre-react-native` i prikazuje pojedinacne event pinove bez clusteriranja.
   - Shared API: `components/map/event-map.tsx`, `components/map/types.ts`, `MapMarkerBadge`, `EventDetailSheet`.
+  - Mapa ima floating nearby preview sheet s manjim horizontalnim cardovima, strelicom za zatvaranje/ponovno otvaranje i `See all` prikazom svih ucitanih eventova u gradu s dva eventa po redu sortiranih po udaljenosti, radius korisnik mijenja u `Preferences` od 1 do 20 km, a pinovi se grupiraju samo kad vise eventova ima potpuno istu adresu/koordinatu.
 - Lokacija: `features/events/hooks/use-map-location-bootstrap.ts` odmah trazi native foreground permission kad se mapa otvori, koristi `expo-location`, Android MapLibre fallback i IP/capital fallback; `locationSource` se ne persistira jer se stvarna `userLocation` namjerno ponovno dohvaća na cold startu.
 - Search po eventima na mapi: `features/events/hooks/use-event-map-search.ts`, `MapSearchBar`, `MapSearchResults`.
 - Frontend unit testovi: Jest kroz `jest-expo`, trenutno pokrivaju `selectEvents`, date formatting i location search servise/providere.

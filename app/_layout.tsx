@@ -105,10 +105,10 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#111114' }}>
       <QueryClientProvider client={queryClient}>
-        <ChatRealtimeListener />
-        <PushNotificationRegistrar />
         <SafeAreaProvider>
           <AppThemeProvider>
+            <ChatRealtimeListener />
+            <PushNotificationRegistrar />
             <RootNavigator />
           </AppThemeProvider>
         </SafeAreaProvider>

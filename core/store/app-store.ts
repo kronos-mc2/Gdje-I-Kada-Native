@@ -23,6 +23,7 @@ type AppStore = {
   locationConsent: LocationConsent;
   locationSource: LocationSource;
   notificationPermissionPrompted: boolean;
+  nearbyRadiusKm: number;
   fypEntranceCoordinates: Coordinates | null;
   setLocale: (locale: Locale) => void;
   setThemePreference: (themePreference: ThemePreference) => void;
@@ -35,9 +36,21 @@ type AppStore = {
   setLocationConsent: (consent: LocationConsent) => void;
   setLocationSource: (source: LocationSource) => void;
   setNotificationPermissionPrompted: (prompted: boolean) => void;
+  setNearbyRadiusKm: (radiusKm: number) => void;
 };
 
-type PersistedAppStore = Pick<AppStore, 'locale' | 'themePreference' | 'locationConsent' | 'notificationPermissionPrompted'>;
+type PersistedAppStore = Pick<
+  AppStore,
+  'locale' | 'themePreference' | 'locationConsent' | 'notificationPermissionPrompted' | 'nearbyRadiusKm'
+>;
+
+const clampNearbyRadiusKm = (radiusKm: number) => {
+  if (!Number.isFinite(radiusKm)) {
+    return 10;
+  }
+
+  return Math.min(20, Math.max(1, Math.round(radiusKm)));
+};
 
 export const useAppStore = create<AppStore>()(
   persist(
@@ -51,6 +64,7 @@ export const useAppStore = create<AppStore>()(
       locationConsent: 'unknown',
       locationSource: 'default',
       notificationPermissionPrompted: false,
+      nearbyRadiusKm: 10,
       fypEntranceCoordinates: null,
       setLocale: (locale) => set({ locale }),
       setThemePreference: (themePreference) => set({ themePreference }),
@@ -75,10 +89,13 @@ export const useAppStore = create<AppStore>()(
       setNotificationPermissionPrompted: (notificationPermissionPrompted) => {
         set({ notificationPermissionPrompted });
       },
+      setNearbyRadiusKm: (nearbyRadiusKm) => {
+        set({ nearbyRadiusKm: clampNearbyRadiusKm(nearbyRadiusKm) });
+      },
     }),
     {
       name: 'gdje-i-kada-app-store',
-      version: 3,
+      version: 4,
       storage: createJSONStorage(() => getAsyncStorage()),
       migrate: (persistedState): PersistedAppStore => {
         if (!persistedState || typeof persistedState !== 'object') {
@@ -87,6 +104,7 @@ export const useAppStore = create<AppStore>()(
             themePreference: 'dark',
             locationConsent: 'unknown',
             notificationPermissionPrompted: false,
+            nearbyRadiusKm: 10,
           };
         }
 
@@ -97,6 +115,7 @@ export const useAppStore = create<AppStore>()(
           themePreference: state.themePreference ?? 'dark',
           locationConsent: state.locationConsent ?? 'unknown',
           notificationPermissionPrompted: state.notificationPermissionPrompted ?? false,
+          nearbyRadiusKm: clampNearbyRadiusKm(state.nearbyRadiusKm ?? 10),
         };
       },
       partialize: (state) => ({
@@ -104,6 +123,7 @@ export const useAppStore = create<AppStore>()(
         themePreference: state.themePreference,
         locationConsent: state.locationConsent,
         notificationPermissionPrompted: state.notificationPermissionPrompted,
+        nearbyRadiusKm: state.nearbyRadiusKm,
       }),
     },
   ),

@@ -16,6 +16,11 @@ import { useEventMapSearch } from '@/features/events/hooks/use-event-map-search'
 import { MapDateFilterControl } from '@/features/events/components/map-date-filter-control';
 import { MapDateFilter } from '@/features/events/hooks/use-events-map-screen-model';
 import { useMapLocationBootstrap } from '@/features/events/hooks/use-map-location-bootstrap';
+import { MapNearbySheet } from '@/features/events/components/map-nearby-sheet';
+
+const NEARBY_SHEET_COLLAPSED_HEIGHT = 96;
+const TOOLBAR_BOTTOM_GAP_ANDROID = 18;
+const TOOLBAR_BOTTOM_GAP_IOS = -18;
 
 type EventsMapExperienceProps = Readonly<{
   events: AppEvent[];
@@ -48,9 +53,13 @@ export function EventsMapExperience({
   const locationSource = useAppStore((state) => state.locationSource);
   const setLocationSource = useAppStore((state) => state.setLocationSource);
   const setUserLocation = useAppStore((state) => state.setUserLocation);
+  const nearbyRadiusKm = useAppStore((state) => state.nearbyRadiusKm);
   const { requestPreciseLocationNow } = useMapLocationBootstrap();
 
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const [selectionEvents, setSelectionEvents] = useState<AppEvent[] | null>(null);
+  const [nearbyCloseSignal, setNearbyCloseSignal] = useState(0);
+  const [nearbyVisibleHeight, setNearbyVisibleHeight] = useState(NEARBY_SHEET_COLLAPSED_HEIGHT);
   const [focusTarget, setFocusTarget] = useState<{ coordinate: Coordinates; zoomLevel: number } | null>(null);
   const [isRecenterBusy, setIsRecenterBusy] = useState(false);
   const [isSearchPanelVisible, setIsSearchPanelVisible] = useState(false);
@@ -177,7 +186,13 @@ export function EventsMapExperience({
   );
 
   const showSearchResults = isSearchPanelVisible && searchQuery.trim().length > 0;
-  const detailBottomInset = Platform.OS === 'android' ? insets.bottom + 92 : insets.bottom + 62;
+  const detailBottomInset = Platform.OS === 'android' ? insets.bottom + 112 : insets.bottom + 102;
+  const toolbarBottomGap = Platform.OS === 'ios' ? TOOLBAR_BOTTOM_GAP_IOS : TOOLBAR_BOTTOM_GAP_ANDROID;
+  const toolbarBottomEdge = Math.max(insets.bottom, 10) + toolbarBottomGap;
+  const floatingControlsBottom = Math.max(
+    detailBottomInset + 10,
+    toolbarBottomEdge + nearbyVisibleHeight + 10,
+  );
 
   return (
     <View style={styles.container}>
@@ -195,13 +210,23 @@ export function EventsMapExperience({
           clearPendingFocus();
         }}
         onUserLocationUpdate={handleNativeUserLocationUpdate}
-        onSelectEvent={(eventId) => {
-          const event = eventsById.get(eventId);
+        onSelectEvent={(eventIds) => {
+          const selectedEvents = eventIds.map((eventId) => eventsById.get(eventId)).filter((event): event is AppEvent => Boolean(event));
+          const event = selectedEvents[0];
           if (!event) {
             return;
           }
 
-          setSelectedEventId(eventId);
+          if (selectedEvents.length > 1) {
+            setSelectionEvents(selectedEvents);
+            setSelectedEventId(null);
+            queueOneShotFocus(event.coordinates);
+            setIsSearchPanelVisible(false);
+            return;
+          }
+
+          setSelectionEvents(null);
+          setSelectedEventId(event.id);
           queueOneShotFocus(event.coordinates);
           setIsSearchPanelVisible(false);
         }}
@@ -266,7 +291,7 @@ export function EventsMapExperience({
         style={({ pressed }) => [
           styles.floatingButton,
           {
-            bottom: detailBottomInset + 58,
+            bottom: floatingControlsBottom + 48,
             right: theme.tokens.spacing.md,
             borderColor: theme.colors.border,
             backgroundColor: theme.colors.mapAccent,
@@ -288,7 +313,7 @@ export function EventsMapExperience({
         style={({ pressed }) => [
           styles.floatingButton,
           {
-            bottom: detailBottomInset + 10,
+            bottom: floatingControlsBottom,
             right: theme.tokens.spacing.md,
             borderColor: theme.colors.border,
             backgroundColor: theme.colors.surfaceElevated,
@@ -298,6 +323,41 @@ export function EventsMapExperience({
       >
         <Ionicons name="locate-outline" size={17} color={theme.colors.textPrimary} />
       </Pressable>
+
+      <MapNearbySheet
+        events={events}
+        locale={locale}
+        userLocation={userLocation}
+        radiusKm={nearbyRadiusKm}
+        bottomInset={insets.bottom}
+        closeSignal={nearbyCloseSignal}
+        onVisibleHeightChange={setNearbyVisibleHeight}
+        onSelectEvent={(event) => {
+          setNearbyCloseSignal((signal) => signal + 1);
+          setSelectionEvents(null);
+          setSelectedEventId(event.id);
+          queueOneShotFocus(event.coordinates);
+        }}
+      />
+
+      {selectionEvents ? (
+        <MapNearbySheet
+          events={selectionEvents}
+          locale={locale}
+          userLocation={userLocation}
+          radiusKm={Number.POSITIVE_INFINITY}
+          bottomInset={insets.bottom}
+          title={t('eventSelection')}
+          initiallyExpanded
+          onSelectEvent={(event) => {
+            setNearbyCloseSignal((signal) => signal + 1);
+            setSelectionEvents(null);
+            setSelectedEventId(event.id);
+            queueOneShotFocus(event.coordinates);
+          }}
+          onClose={() => setSelectionEvents(null)}
+        />
+      ) : null}
 
       {selectedEvent ? (
         <EventDetailSheet

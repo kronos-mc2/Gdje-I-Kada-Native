@@ -310,6 +310,9 @@ export function EventMapSurface({
               <MapMarkerBadge
                 selected={marker.isSelected}
                 coverImageSource={marker.coverImageSource}
+                coverImageSources={marker.coverImageSources}
+                count={marker.count}
+                dateBadge={marker.dateBadge}
                 isFriendsOnly={marker.isFriendsOnly}
                 onImageLoad={() => {
                   annotationRefs.current[markerKey]?.refresh?.();

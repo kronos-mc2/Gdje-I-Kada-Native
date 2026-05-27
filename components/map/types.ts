@@ -7,6 +7,13 @@ export type EventMapMarker = {
   title: string;
   subtitle?: string;
   coverImageSource?: AuthenticatedImageSource;
+  coverImageSources?: AuthenticatedImageSource[];
+  eventIds?: string[];
+  count?: number;
+  dateBadge?: {
+    label: string;
+    colorKey: 'todayAccent' | 'tomorrowAccent' | 'weekAccent';
+  } | null;
   isSelected: boolean;
   isFriendsOnly?: boolean;
 };
