@@ -16,10 +16,17 @@ import {
   MAX_EVENT_IMAGES,
   normalizePickedEventImage,
 } from '@/core/events/event-image-assets';
+import {
+  formatEventVideoSize,
+  isEventVideoUploadUriSupported,
+  isEventVideoTooLarge,
+  isSupportedEventVideo,
+  normalizePickedEventVideo,
+} from '@/core/events/event-video-assets';
 import { useI18n } from '@/core/i18n/use-i18n';
 import { useAppStore } from '@/core/store/app-store';
 import { useAppTheme } from '@/core/theme';
-import { Coordinates, EventAttendanceMode, EventVisibility, LocalEventImage } from '@/core/types/domain';
+import { Coordinates, EventAttendanceMode, EventVisibility, LocalEventImage, LocalEventVideo } from '@/core/types/domain';
 import {
   CREATE_EVENT_STEPS,
   CreateEventFormState,
@@ -55,6 +62,7 @@ export default function CreateEventScreen() {
   const [eventCoordinates, setEventCoordinates] = useState<Coordinates | null>(null);
   const [createdTitle, setCreatedTitle] = useState<string | null>(null);
   const [images, setImages] = useState<LocalEventImage[]>([]);
+  const [video, setVideo] = useState<LocalEventVideo | null>(null);
   const [previewImage, setPreviewImage] = useState<LocalEventImage | null>(null);
   const imageSlotSize = Math.max(74, Math.floor((Math.min(screenWidth, 430) - 82) / 3));
 
@@ -203,6 +211,11 @@ export default function CreateEventScreen() {
       return false;
     }
 
+    if (step === 'media' && video && !isEventVideoUploadUriSupported(video)) {
+      Alert.alert(t('validation'), t('eventVideoCouldNotPrepare'));
+      return false;
+    }
+
     return true;
   };
 
@@ -255,6 +268,7 @@ export default function CreateEventScreen() {
         capacity: typeof capacity === 'number' ? capacity : undefined,
         tags,
         images,
+        video: video ?? undefined,
       });
 
       clearEntranceCoordinates();
@@ -314,6 +328,46 @@ export default function CreateEventScreen() {
 
   const removeImage = (index: number) => {
     setImages((current) => current.filter((_, currentIndex) => currentIndex !== index));
+  };
+
+  const addVideo = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert(t('validation'), t('mediaPermissionDenied'));
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      allowsMultipleSelection: false,
+      legacy: true,
+      mediaTypes: 'videos',
+      videoExportPreset: ImagePicker.VideoExportPreset.Passthrough,
+    });
+
+    if (result.canceled || !result.assets[0]) {
+      return;
+    }
+
+    let pickedVideo: LocalEventVideo;
+    try {
+      pickedVideo = await normalizePickedEventVideo(result.assets[0], `event-video-${Date.now()}.mp4`);
+    } catch {
+      Alert.alert(t('validation'), t('eventVideoUnsupported'));
+      return;
+    }
+    if (!isSupportedEventVideo(pickedVideo)) {
+      Alert.alert(t('validation'), t('eventVideoUnsupported'));
+      return;
+    }
+    if (!isEventVideoUploadUriSupported(pickedVideo)) {
+      Alert.alert(t('validation'), t('eventVideoCouldNotPrepare'));
+      return;
+    }
+    if (isEventVideoTooLarge(pickedVideo)) {
+      Alert.alert(t('validation'), t('eventVideoTooLarge'));
+      return;
+    }
+    setVideo(pickedVideo);
   };
 
   if (createdTitle) {
@@ -513,50 +567,96 @@ export default function CreateEventScreen() {
 
         {step === 'media' ? (
           <>
-            <View style={styles.imageGrid}>
-              {Array.from({ length: MAX_EVENT_IMAGES }).map((_, index) => {
-                const image = images[index];
-                return image ? (
-                  <View key={image.uri} style={[styles.imageSlot, { width: imageSlotSize, height: imageSlotSize, borderColor: theme.colors.border }]}>
-                    <Image source={{ uri: image.uri }} style={StyleSheet.absoluteFill} contentFit="cover" />
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel={image.name}
-                      onPress={() => setPreviewImage(image)}
-                      style={StyleSheet.absoluteFill}
-                    />
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel={t('removeImage')}
-                      onPress={() => removeImage(index)}
-                      style={styles.removeImageButton}
-                    >
-                      <Ionicons name="close" size={18} color="#FFFFFF" />
-                    </Pressable>
+            <View style={[styles.mediaPanel, { borderColor: theme.colors.border, backgroundColor: theme.colors.surface }]}>
+              <View style={styles.mediaPanelHeader}>
+                <View style={styles.mediaPanelTitleRow}>
+                  <Ionicons name="videocam-outline" size={19} color={theme.colors.accent} />
+                  <AppText variant="bodyStrong">{t('eventVideo')}</AppText>
+                </View>
+                <AppText variant="caption" color="textMuted">
+                  {t('optional')}
+                </AppText>
+              </View>
+              {video ? (
+                <View style={styles.videoFileRow}>
+                  <View style={[styles.videoFileIcon, { backgroundColor: theme.colors.surfaceElevated }]}>
+                    <Ionicons name="play" size={20} color={theme.colors.accent} />
                   </View>
-                ) : (
-                  <Pressable
-                    key={`empty-${index}`}
-                    accessibilityRole="button"
-                    accessibilityLabel={t('addImage')}
-                    onPress={() => void addImages()}
-                    style={[
-                      styles.imageSlot,
-                      styles.emptyImageSlot,
-                      { width: imageSlotSize, height: imageSlotSize, borderColor: theme.colors.border, backgroundColor: theme.colors.surface },
-                    ]}
-                  >
-                    <View style={styles.addImageIconWrap}>
-                      <Ionicons name="add" size={24} color={theme.colors.accent} style={styles.addImageIcon} />
-                    </View>
+                  <View style={styles.videoFileCopy}>
+                    <AppText variant="bodyStrong" numberOfLines={1}>
+                      {video.name}
+                    </AppText>
+                    <AppText variant="caption" color="textMuted" numberOfLines={1}>
+                      {formatEventVideoSize(video.size) ?? t('eventVideoSelected')}
+                    </AppText>
+                  </View>
+                  <Pressable accessibilityRole="button" accessibilityLabel={t('removeVideo')} onPress={() => setVideo(null)} hitSlop={8}>
+                    <Ionicons name="trash-outline" size={21} color={theme.colors.textSecondary} />
                   </Pressable>
-                );
-              })}
+                </View>
+              ) : (
+                <AppButton title={t('addVideo')} variant="secondary" onPress={() => void addVideo()} />
+              )}
+              <AppText variant="caption" color="textMuted">
+                {t('eventVideoHint')}
+              </AppText>
             </View>
-            <AppButton title={t('addImage')} variant="glass" disabled={images.length >= MAX_EVENT_IMAGES} onPress={() => void addImages()} />
-            <AppText variant="caption" color="textMuted">
-              {t('eventImagesHint')}
-            </AppText>
+
+            <View style={[styles.mediaPanel, { borderColor: theme.colors.border, backgroundColor: theme.colors.surface }]}>
+              <View style={styles.mediaPanelHeader}>
+                <View style={styles.mediaPanelTitleRow}>
+                  <Ionicons name="images-outline" size={19} color={theme.colors.accent} />
+                  <AppText variant="bodyStrong">{t('media')}</AppText>
+                </View>
+                <AppText variant="caption" color="textMuted">
+                  {images.length}/{MAX_EVENT_IMAGES}
+                </AppText>
+              </View>
+              <View style={styles.imageGrid}>
+                {Array.from({ length: MAX_EVENT_IMAGES }).map((_, index) => {
+                  const image = images[index];
+                  return image ? (
+                    <View key={image.uri} style={[styles.imageSlot, { width: imageSlotSize, height: imageSlotSize, borderColor: theme.colors.border }]}>
+                      <Image source={{ uri: image.uri }} style={StyleSheet.absoluteFill} contentFit="cover" />
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={image.name}
+                        onPress={() => setPreviewImage(image)}
+                        style={StyleSheet.absoluteFill}
+                      />
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={t('removeImage')}
+                        onPress={() => removeImage(index)}
+                        style={styles.removeImageButton}
+                      >
+                        <Ionicons name="close" size={18} color="#FFFFFF" />
+                      </Pressable>
+                    </View>
+                  ) : (
+                    <Pressable
+                      key={`empty-${index}`}
+                      accessibilityRole="button"
+                      accessibilityLabel={t('addImage')}
+                      onPress={() => void addImages()}
+                      style={[
+                        styles.imageSlot,
+                        styles.emptyImageSlot,
+                        { width: imageSlotSize, height: imageSlotSize, borderColor: theme.colors.border, backgroundColor: theme.colors.surfaceElevated },
+                      ]}
+                    >
+                      <View style={styles.addImageIconWrap}>
+                        <Ionicons name="add" size={24} color={theme.colors.accent} style={styles.addImageIcon} />
+                      </View>
+                    </Pressable>
+                  );
+                })}
+              </View>
+              <AppButton title={t('addImage')} variant="glass" disabled={images.length >= MAX_EVENT_IMAGES} onPress={() => void addImages()} />
+              <AppText variant="caption" color="textMuted">
+                {t('eventImagesHint')}
+              </AppText>
+            </View>
           </>
         ) : null}
 
@@ -640,6 +740,38 @@ const styles = StyleSheet.create({
   },
   paidFields: {
     gap: 0,
+  },
+  mediaPanel: {
+    borderRadius: 14,
+    borderWidth: 1,
+    gap: 12,
+    padding: 12,
+  },
+  mediaPanelHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  mediaPanelTitleRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
+  videoFileRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 12,
+  },
+  videoFileIcon: {
+    alignItems: 'center',
+    borderRadius: 12,
+    height: 44,
+    justifyContent: 'center',
+    width: 44,
+  },
+  videoFileCopy: {
+    flex: 1,
+    minWidth: 0,
   },
   imageGrid: {
     flexDirection: 'row',

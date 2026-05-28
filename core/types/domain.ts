@@ -407,6 +407,7 @@ export type CreateEventPayload = {
   capacity?: number;
   tags?: string[];
   images?: LocalEventImage[];
+  video?: LocalEventVideo;
 };
 
 export type LocalEventImage = {
@@ -416,4 +417,14 @@ export type LocalEventImage = {
   size?: number;
   width?: number;
   height?: number;
+};
+
+export type LocalEventVideo = {
+  uri: string;
+  name: string;
+  type: string;
+  size?: number;
+  width?: number;
+  height?: number;
+  duration?: number | null;
 };

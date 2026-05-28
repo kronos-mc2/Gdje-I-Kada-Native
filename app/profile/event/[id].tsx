@@ -26,8 +26,15 @@ import {
   isEventImageTooLarge,
   normalizePickedEventImage,
 } from '@/core/events/event-image-assets';
+import {
+  formatEventVideoSize,
+  isEventVideoUploadUriSupported,
+  isEventVideoTooLarge,
+  isSupportedEventVideo,
+  normalizePickedEventVideo,
+} from '@/core/events/event-video-assets';
 import { useAppTheme } from '@/core/theme';
-import { EventMedia, EventParticipant, LocalEventImage } from '@/core/types/domain';
+import { EventMedia, EventParticipant, LocalEventImage, LocalEventVideo } from '@/core/types/domain';
 import { ProfileAvatar } from '@/features/profile/components/profile-avatar';
 
 export default function ManageCreatedEventScreen() {
@@ -125,7 +132,55 @@ export default function ManageCreatedEventScreen() {
       return;
     }
     try {
-      await uploadMediaMutation.mutateAsync({ eventId, image });
+      await uploadMediaMutation.mutateAsync({ eventId, media: image, mediaType: 'image' });
+    } catch (error) {
+      Alert.alert(t('actionFailed'), getApiErrorMessage(error) ?? undefined);
+    }
+  };
+
+  const addVideo = async () => {
+    if (!eventId || !event) {
+      return;
+    }
+    if (event.media?.some((media) => media.mediaType === 'video')) {
+      Alert.alert(t('validation'), t('eventVideoMax'));
+      return;
+    }
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert(t('validation'), t('mediaPermissionDenied'));
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      legacy: true,
+      mediaTypes: 'videos',
+      videoExportPreset: ImagePicker.VideoExportPreset.Passthrough,
+      allowsMultipleSelection: false,
+    });
+    if (result.canceled || !result.assets[0]) {
+      return;
+    }
+    let video: LocalEventVideo;
+    try {
+      video = await normalizePickedEventVideo(result.assets[0], `event-video-${Date.now()}.mp4`);
+    } catch {
+      Alert.alert(t('validation'), t('eventVideoUnsupported'));
+      return;
+    }
+    if (!isSupportedEventVideo(video)) {
+      Alert.alert(t('validation'), t('eventVideoUnsupported'));
+      return;
+    }
+    if (!isEventVideoUploadUriSupported(video)) {
+      Alert.alert(t('validation'), t('eventVideoCouldNotPrepare'));
+      return;
+    }
+    if (isEventVideoTooLarge(video)) {
+      Alert.alert(t('validation'), t('eventVideoTooLarge'));
+      return;
+    }
+    try {
+      await uploadMediaMutation.mutateAsync({ eventId, media: video, mediaType: 'video' });
     } catch (error) {
       Alert.alert(t('actionFailed'), getApiErrorMessage(error) ?? undefined);
     }
@@ -135,7 +190,9 @@ export default function ManageCreatedEventScreen() {
     if (!eventId || !event) {
       return;
     }
-    if ((event.media?.length ?? 0) <= 1) {
+    const media = event.media?.find((item) => item.id === mediaId);
+    const imageCount = event.media?.filter((item) => item.mediaType === 'image').length ?? 0;
+    if (media?.mediaType === 'image' && imageCount <= 1) {
       Alert.alert(t('validation'), t('eventImageMustRemain'));
       return;
     }
@@ -170,6 +227,8 @@ export default function ManageCreatedEventScreen() {
 
   const waitlisted = participants.filter((participant) => participant.status === 'waitlisted');
   const activeParticipants = participants.filter((participant) => participant.status !== 'waitlisted');
+  const videoMedia = event?.media?.find((media) => media.mediaType === 'video');
+  const imageMedia = event?.media?.filter((media) => media.mediaType === 'image') ?? [];
 
   return (
     <AppScreen scroll>
@@ -193,10 +252,46 @@ export default function ManageCreatedEventScreen() {
             <AppButton title={updateEventMutation.isPending ? t('loading') : t('submit')} onPress={() => void save()} />
           </AppCard>
 
+          <SectionHeader title={t('eventVideo')} subtitle={t('eventVideoHint')} />
+          <AppCard variant="glass" style={styles.card}>
+            {videoMedia ? (
+              <View style={styles.mediaRow}>
+                <View style={[styles.videoPreviewIcon, { backgroundColor: theme.colors.surfaceElevated }]}>
+                  <Ionicons name="play" size={22} color={theme.colors.accent} />
+                </View>
+                <View style={styles.mediaCopy}>
+                  <AppText variant="caption" color="textSecondary" numberOfLines={1}>
+                    {getMediaDisplayName(videoMedia, t('videoFallbackName'))}
+                  </AppText>
+                  <AppText variant="caption" color="textMuted" numberOfLines={1}>
+                    {formatEventVideoSize(videoMedia.byteSize) ?? t('eventVideoSelected')}
+                  </AppText>
+                </View>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={t('removeVideo')}
+                  disabled={deleteMediaMutation.isPending}
+                  onPress={() => void deleteImage(videoMedia.id)}
+                  hitSlop={8}
+                  style={({ pressed }) => [styles.mediaDeleteButton, { opacity: deleteMediaMutation.isPending ? 0.34 : pressed ? 0.68 : 1 }]}
+                >
+                  <Ionicons name="trash-outline" size={20} color={theme.colors.textSecondary} />
+                </Pressable>
+              </View>
+            ) : (
+              <AppButton
+                title={uploadMediaMutation.isPending ? t('loading') : t('addVideo')}
+                variant="secondary"
+                disabled={uploadMediaMutation.isPending}
+                onPress={() => void addVideo()}
+              />
+            )}
+          </AppCard>
+
           <SectionHeader title={t('media')} subtitle={t('addImage')} />
           <AppCard variant="glass" style={styles.card}>
-            {event.media?.map((media) => {
-              const canDeleteImage = (event.media?.length ?? 0) > 1 && !deleteMediaMutation.isPending;
+            {imageMedia.map((media) => {
+              const canDeleteImage = imageMedia.length > 1 && !deleteMediaMutation.isPending;
               return (
                 <View key={media.id} style={styles.mediaRow}>
                   <Pressable
@@ -234,7 +329,7 @@ export default function ManageCreatedEventScreen() {
             <AppButton
               title={uploadMediaMutation.isPending ? t('loading') : t('addImage')}
               variant="secondary"
-              disabled={uploadMediaMutation.isPending || (event.media?.length ?? 0) >= 5}
+              disabled={uploadMediaMutation.isPending || imageMedia.length >= 5}
               onPress={() => void addImage()}
             />
           </AppCard>
@@ -356,6 +451,13 @@ const styles = StyleSheet.create({
     width: 54,
     height: 54,
     borderRadius: 10,
+  },
+  videoPreviewIcon: {
+    alignItems: 'center',
+    borderRadius: 10,
+    height: 54,
+    justifyContent: 'center',
+    width: 54,
   },
   mediaCopy: {
     flex: 1,

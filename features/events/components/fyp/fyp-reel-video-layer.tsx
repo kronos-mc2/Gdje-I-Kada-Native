@@ -2,9 +2,12 @@ import type { VideoSource } from 'expo-video';
 import { useEffect, useMemo } from 'react';
 import { StyleSheet } from 'react-native';
 
+import { isAuthenticatedImageSource, type AuthenticatedImageSource } from '@/core/events/event-cover';
+
 type FypReelVideoLayerProps = Readonly<{
-  videoUri: string;
+  videoSource: AuthenticatedImageSource;
   isActive: boolean;
+  isMuted: boolean;
 }>;
 
 type ExpoVideoModule = typeof import('expo-video');
@@ -28,12 +31,20 @@ export function canRenderFypVideo() {
   return expoVideoModule != null;
 }
 
-export function FypReelVideoLayer({ videoUri, isActive }: FypReelVideoLayerProps) {
+export function FypReelVideoLayer({ videoSource, isActive, isMuted }: FypReelVideoLayerProps) {
   const videoModule = requireExpoVideoModule();
-  const videoSource = useMemo<VideoSource>(() => ({ uri: videoUri, useCaching: true }), [videoUri]);
-  const player = videoModule.useVideoPlayer(videoSource, (videoPlayer) => {
+  const source = useMemo<VideoSource>(
+    () => ({
+      uri: videoSource.uri,
+      headers: videoSource.headers,
+      contentType: 'progressive',
+      useCaching: !isAuthenticatedImageSource(videoSource),
+    }),
+    [videoSource.headers, videoSource.uri],
+  );
+  const player = videoModule.useVideoPlayer(source, (videoPlayer) => {
     videoPlayer.loop = true;
-    videoPlayer.muted = true;
+    videoPlayer.muted = isMuted;
   });
   const ExpoVideoView = videoModule.VideoView;
 
@@ -45,6 +56,10 @@ export function FypReelVideoLayer({ videoUri, isActive }: FypReelVideoLayerProps
 
     player.pause();
   }, [isActive, player]);
+
+  useEffect(() => {
+    player.muted = isMuted;
+  }, [isMuted, player]);
 
   return (
     <ExpoVideoView

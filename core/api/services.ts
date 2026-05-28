@@ -1,3 +1,5 @@
+import * as FileSystem from 'expo-file-system/legacy';
+
 import { apiClient, getApiBaseUrl } from '@/core/api/http-client';
 import { useAuthStore } from '@/core/store/auth-store';
 import {
@@ -22,6 +24,7 @@ import {
   Friend,
   FriendRequest,
   LocalEventImage,
+  LocalEventVideo,
   MyEventsFilter,
   NotificationPreferences,
   OrganizerRatingPayload,
@@ -35,6 +38,9 @@ import {
   UserProfile,
   Locale,
 } from '@/core/types/domain';
+
+const MULTIPART_UPLOAD_TIMEOUT_MS = 90_000;
+const VIDEO_UPLOAD_TIMEOUT_MS = 90_000;
 
 export const fetchEvents = async (params?: EventQueryParams): Promise<AppEvent[]> => {
   const response = await apiClient.get<AppEvent[]>('/events', { params });
@@ -94,9 +100,21 @@ export const addEventMedia = async ({ eventId, payload }: { eventId: string; pay
   return response.data;
 };
 
-export const uploadEventMedia = async ({ eventId, image }: { eventId: string; image: LocalEventImage }): Promise<AppEvent> => {
+export const uploadEventMedia = async ({
+  eventId,
+  media,
+  mediaType,
+}: {
+  eventId: string;
+  media: LocalEventImage | LocalEventVideo;
+  mediaType: 'image' | 'video';
+}): Promise<AppEvent> => {
+  if (mediaType === 'video') {
+    return uploadEventVideoFile({ eventId, video: media as LocalEventVideo });
+  }
+
   const formData = new FormData();
-  formData.append('image', toFormDataFile(image));
+  formData.append(mediaType, toFormDataFile(media));
   return postMultipart<AppEvent>(`/events/${eventId}/media`, formData);
 };
 
@@ -322,40 +340,133 @@ export const votePoll = async ({ pollId, optionIds }: { pollId: string; optionId
 };
 
 export const createEvent = async (payload: CreateEventPayload): Promise<AppEvent> => {
-  if (payload.images?.length) {
-    const { images, ...eventPayload } = payload;
+  if (payload.images?.length || payload.video) {
+    const { images, video, ...eventPayload } = payload;
     const formData = new FormData();
     formData.append('event', JSON.stringify(eventPayload));
-    images.forEach((image) => formData.append('images', toFormDataFile(image)));
-    return postMultipart<AppEvent>('/events', formData);
+    images?.forEach((image) => formData.append('images', toFormDataFile(image)));
+    const createdEvent = await postMultipart<AppEvent>('/events', formData);
+
+    if (!video) {
+      return createdEvent;
+    }
+
+    try {
+      return await uploadEventMedia({ eventId: createdEvent.id, media: video, mediaType: 'video' });
+    } catch (error) {
+      try {
+        await deleteEvent(createdEvent.id);
+      } catch {
+        // Keep the original video upload error; the event can still be managed by the owner if cleanup fails.
+      }
+      throw error;
+    }
   }
 
   const response = await apiClient.post<AppEvent>('/events', payload);
   return response.data;
 };
 
-const toFormDataFile = (image: LocalEventImage) =>
+const toFormDataFile = (file: LocalEventImage | LocalEventVideo) =>
   ({
-    uri: image.uri,
-    name: image.name,
-    type: image.type,
+    uri: file.uri,
+    name: file.name,
+    type: file.type,
   }) as unknown as Blob;
 
-const postMultipart = async <T>(path: string, formData: FormData): Promise<T> => {
+const uploadEventVideoFile = async ({ eventId, video }: { eventId: string; video: LocalEventVideo }): Promise<AppEvent> => {
   const token = useAuthStore.getState().accessToken;
-  const response = await fetch(`${getApiBaseUrl()}${path}`, {
-    method: 'POST',
-    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-    body: formData,
+  const headers: Record<string, string> = {
+    'Content-Type': video.type,
+    'X-File-Name': encodeURIComponent(video.name),
+  };
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  const uploadTask = FileSystem.createUploadTask(`${getApiBaseUrl()}/events/${eventId}/media/video`, video.uri, {
+    httpMethod: 'POST',
+    uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
+    sessionType: FileSystem.FileSystemSessionType.FOREGROUND,
+    headers,
   });
-  return readApiResponse<T>(response);
+
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      void uploadTask.cancelAsync().catch(() => undefined);
+      reject(new Error('Upload timed out. Please try again.'));
+    }, VIDEO_UPLOAD_TIMEOUT_MS);
+  });
+
+  try {
+    const result = await Promise.race([uploadTask.uploadAsync(), timeout]);
+    if (!result) {
+      throw new Error('Upload cancelled.');
+    }
+    return readApiResponseText<AppEvent>(result.status, result.body ?? '');
+  } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+  }
 };
+
+const postMultipart = async <T>(path: string, formData: FormData): Promise<T> =>
+  new Promise((resolve, reject) => {
+    const token = useAuthStore.getState().accessToken;
+    const xhr = new XMLHttpRequest();
+    let settled = false;
+
+    const finish = (callback: () => void) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      clearTimeout(timeoutId);
+      callback();
+    };
+
+    const timeoutId = setTimeout(() => {
+      finish(() => reject(new Error('Upload timed out. Please try again.')));
+      xhr.abort();
+    }, MULTIPART_UPLOAD_TIMEOUT_MS);
+
+    xhr.open('POST', `${getApiBaseUrl()}${path}`);
+    xhr.timeout = MULTIPART_UPLOAD_TIMEOUT_MS;
+    if (token) {
+      xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+    }
+
+    xhr.onload = () => {
+      finish(() => {
+        try {
+          resolve(readApiResponseText<T>(xhr.status, xhr.responseText ?? ''));
+        } catch (error) {
+          reject(error);
+        }
+      });
+    };
+    xhr.onerror = () => finish(() => reject(new Error('Network request failed.')));
+    xhr.onabort = () => finish(() => reject(new Error('Upload cancelled.')));
+    xhr.ontimeout = () => finish(() => reject(new Error('Upload timed out. Please try again.')));
+
+    try {
+      xhr.send(formData);
+    } catch (error) {
+      finish(() => reject(error));
+    }
+  });
 
 const readApiResponse = async <T>(response: Response): Promise<T> => {
   const text = await response.text();
+  return readApiResponseText<T>(response.status, text);
+};
+
+const readApiResponseText = <T>(status: number, text: string): T => {
   const data = text ? parseJson(text) : null;
-  if (!response.ok) {
-    throw new Error(resolveApiResponseMessage(data, text, response.status));
+  if (status < 200 || status >= 300) {
+    throw new Error(resolveApiResponseMessage(data, text, status));
   }
   return data as T;
 };

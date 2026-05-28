@@ -20,6 +20,9 @@ export const getEventImageUris = (event?: Pick<AppEvent, 'media'> | null): strin
 export const getEventImageSources = (event?: Pick<AppEvent, 'media'> | null): AuthenticatedImageSource[] =>
   getEventImageUris(event).map((uri) => getAuthenticatedImageSource(uri));
 
+export const getEventVideoMedia = (event?: Pick<AppEvent, 'media'> | null): EventMedia | undefined =>
+  event?.media?.find((media) => media.mediaType === 'video');
+
 export const getEventPosterUri = (event: Pick<AppEvent, 'media'>) => {
   const firstImageUri = getEventImageUris(event)[0];
   if (firstImageUri) {
@@ -34,8 +37,13 @@ export const getEventPosterSource = (event: Pick<AppEvent, 'media'>) => {
 };
 
 export const getEventVideoUri = (event?: Pick<AppEvent, 'media'> | null) => {
-  const primaryMedia = getEventPrimaryMedia(event);
-  return primaryMedia?.mediaType === 'video' ? normalizeEventMediaUri(primaryMedia.url) : undefined;
+  const videoMedia = getEventVideoMedia(event);
+  return videoMedia ? normalizeEventMediaUri(videoMedia.url) : undefined;
+};
+
+export const getEventVideoSource = (event?: Pick<AppEvent, 'media'> | null) => {
+  const uri = getEventVideoUri(event);
+  return uri ? getAuthenticatedImageSource(uri) : undefined;
 };
 
 export function getAuthenticatedImageSource(uri: string): AuthenticatedImageSource;

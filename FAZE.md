@@ -1,6 +1,6 @@
 # Gdje i Kada - fazni plan rada
 
-Status dokumenta: 2026-05-26
+Status dokumenta: 2026-05-28
 Lokacija master dokumentacije: `README.md`
 
 ## Pravilo rada po fazama
@@ -53,6 +53,8 @@ Aktivna dopuna:
 2026-05-26 - Dopuna iOS build fix u tijeku: lokalni `npm run ios:*` runner sada za device buildove koristi env-gated `scripts/ios-bin/xcodebuild` wrapper koji Xcodeu prosljeduje `-allowProvisioningUpdates` i `-allowProvisioningDeviceRegistration`, jer Expo CLI te flagove ne doda kad native projekt vec ima `DEVELOPMENT_TEAM`. Cilj je rijesiti code 65 za `GIKTest` bez hardcodanja provisioning profila u app kod.
 
 2026-05-27 - Dopuna map/navigation redesign u tijeku: glavni toolbar postaje floating Map/Discover/Calendar/Inbox/Profile model, FYP label je Discover, Messages label je Inbox, create se otvara floating `+` gumbom na mapi, mapa dobiva nearby sheet s 1-20 km radiusom iz preferenci, TODAY/SUTRA/THIS WEEK badgeve i grupiranje samo za potpuno istu adresu/koordinatu. Chat poruke dok je korisnik aktivan u aplikaciji idu kroz in-app modal i unread dot, a backend preskace Expo push za korisnike s otvorenom websocket sesijom.
+
+2026-05-28 - Dopuna event video media u tijeku: event i dalje mora imati barem jednu sliku za map/list prikaze, a uz najvise 5 slika moze imati jedan opcionalni MP4/MOV/M4V video do 10 MB kroz isti private S3-compatible storage i authenticated media endpoint. Create flow salje slike u create multipart requestu, a opcionalni video nakon kreiranja kao raw binary owner media upload kroz `expo-file-system` na `/api/events/{id}/media/video`, zbog Android multipart problema s vecim video fileovima. Create i owner manage screen odvajaju video i slike u zasebne media sekcije. Discover/FYP prikazuje video kao prvu media stranicu ako postoji, slike su dostupne horizontalnim scrollom, video se pauzira izvan aktivnog eventa ili kad korisnik ode na sliku, vertical feed snap staje na iducem eventu, single tap po sredini toggla globalni mute, a double tap samo lajka event.
 
 ## Faza 0 - Dokumentacija i smjer
 

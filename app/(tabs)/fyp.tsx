@@ -49,6 +49,7 @@ export default function FypScreen() {
   const [shareEvent, setShareEvent] = useState<AppEvent | null>(null);
   const [notInterestedEvent, setNotInterestedEvent] = useState<AppEvent | null>(null);
   const [activeEventId, setActiveEventId] = useState<string | null>(null);
+  const [isFeedMuted, setIsFeedMuted] = useState(false);
   const recordedImpressionIdsRef = useRef<Set<string>>(new Set());
   const itemHeight = getFypViewportHeight(height, tabBarHeight);
   const slideBottomInset = getFypBottomContentInset(insets);
@@ -87,6 +88,12 @@ export default function FypScreen() {
     }
 
     likeEventMutation.mutate(event.id);
+  };
+
+  const onLikeOnly = (event: AppEvent) => {
+    if (!event.likedByMe) {
+      likeEventMutation.mutate(event.id);
+    }
   };
 
   const blockFeedPreference = (event: AppEvent, type: 'event' | 'creator' | 'tag', targetId: string, label: string) => {
@@ -163,7 +170,10 @@ export default function FypScreen() {
               bottomInset={slideBottomInset}
               isActive={item.id === activeEventId}
               shouldPreload={Math.abs(index - activeIndex) <= 2}
+              isMuted={isFeedMuted}
               onToggleLike={onToggleLike}
+              onLikeOnly={onLikeOnly}
+              onToggleMute={() => setIsFeedMuted((current) => !current)}
               onOpenDetails={setSelectedEvent}
               onOpenShare={setShareEvent}
               onNotInterested={onNotInterested}
@@ -172,6 +182,7 @@ export default function FypScreen() {
           pagingEnabled
           showsVerticalScrollIndicator={false}
           decelerationRate="fast"
+          disableIntervalMomentum
           snapToAlignment="start"
           snapToInterval={itemHeight}
           onEndReachedThreshold={0.55}

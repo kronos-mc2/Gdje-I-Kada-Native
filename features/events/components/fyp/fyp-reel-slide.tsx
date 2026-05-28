@@ -1,9 +1,10 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
-import { NativeScrollEvent, NativeSyntheticEvent, ScrollView, StyleSheet, View } from 'react-native';
-import { useMemo, useState } from 'react';
+import { GestureResponderEvent, NativeScrollEvent, NativeSyntheticEvent, ScrollView, StyleSheet, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { AppCard, AppText } from '@/components/primitives';
-import { getEventImageSources, getEventPosterSource, getEventVideoUri, isAuthenticatedImageSource } from '@/core/events/event-cover';
+import { getEventImageSources, getEventVideoSource, isAuthenticatedImageSource } from '@/core/events/event-cover';
 import { useI18n } from '@/core/i18n/use-i18n';
 import { useAppTheme } from '@/core/theme';
 import { AppEvent, Locale } from '@/core/types/domain';
@@ -21,7 +22,10 @@ type FypReelSlideProps = Readonly<{
   bottomInset: number;
   isActive: boolean;
   shouldPreload: boolean;
+  isMuted: boolean;
   onToggleLike: (event: AppEvent) => void;
+  onLikeOnly: (event: AppEvent) => void;
+  onToggleMute: () => void;
   onOpenDetails: (event: AppEvent) => void;
   onOpenShare: (event: AppEvent) => void;
   onNotInterested: (event: AppEvent) => void;
@@ -36,25 +40,103 @@ export function FypReelSlide({
   bottomInset,
   isActive,
   shouldPreload,
+  isMuted,
   onToggleLike,
+  onLikeOnly,
+  onToggleMute,
   onOpenDetails,
   onOpenShare,
   onNotInterested,
 }: FypReelSlideProps) {
   const { t } = useI18n();
   const { theme } = useAppTheme();
-  const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [activeMediaIndex, setActiveMediaIndex] = useState(0);
+  const [feedback, setFeedback] = useState<'heart' | 'muted' | 'unmuted' | null>(null);
+  const touchStartRef = useRef<{ x: number; y: number; localY: number; at: number } | null>(null);
+  const touchMovedRef = useRef(false);
+  const lastTapAtRef = useRef(0);
+  const singleTapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const imageSources = useMemo(() => getEventImageSources(event), [event]);
-  const posterSource = getEventPosterSource(event);
-  const videoUri = getEventVideoUri(event);
-  const shouldRenderVideo = Boolean(videoUri) && shouldPreload && canRenderFypVideo();
-  const onImageMomentumEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    setActiveImageIndex(Math.round(event.nativeEvent.contentOffset.x / width));
+  const videoSource = getEventVideoSource(event);
+  const hasVideo = Boolean(videoSource);
+  const pageCount = imageSources.length + (hasVideo ? 1 : 0);
+  const shouldRenderVideo = Boolean(videoSource) && shouldPreload && canRenderFypVideo();
+  const videoIsFocused = isActive && activeMediaIndex === 0;
+  useEffect(() => {
+    setActiveMediaIndex(0);
+  }, [event.id]);
+  const onMediaMomentumEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    setActiveMediaIndex(Math.round(event.nativeEvent.contentOffset.x / width));
+  };
+  const showFeedback = (nextFeedback: 'heart' | 'muted' | 'unmuted') => {
+    setFeedback(nextFeedback);
+    setTimeout(() => setFeedback(null), 620);
+  };
+  const handleSingleTap = () => {
+    if (!hasVideo) {
+      return;
+    }
+    onToggleMute();
+    showFeedback(isMuted ? 'unmuted' : 'muted');
+  };
+  const handleDoubleTap = () => {
+    onLikeOnly(event);
+    showFeedback('heart');
+  };
+  const onTouchStart = (touchEvent: GestureResponderEvent) => {
+    touchStartRef.current = {
+      x: touchEvent.nativeEvent.pageX,
+      y: touchEvent.nativeEvent.pageY,
+      localY: touchEvent.nativeEvent.locationY,
+      at: Date.now(),
+    };
+    touchMovedRef.current = false;
+  };
+  const onTouchMove = (touchEvent: GestureResponderEvent) => {
+    const start = touchStartRef.current;
+    if (!start) {
+      return;
+    }
+    const dx = Math.abs(touchEvent.nativeEvent.pageX - start.x);
+    const dy = Math.abs(touchEvent.nativeEvent.pageY - start.y);
+    if (dx > 12 || dy > 12) {
+      touchMovedRef.current = true;
+    }
+  };
+  const onTouchEnd = () => {
+    const start = touchStartRef.current;
+    if (!start) {
+      return;
+    }
+    const isCenterTap = start.localY >= topInset + 120 && start.localY <= height - bottomInset - 190;
+    if (!isCenterTap || touchMovedRef.current || Date.now() - start.at > 360) {
+      return;
+    }
+    const now = Date.now();
+    if (now - lastTapAtRef.current < 280) {
+      if (singleTapTimerRef.current) {
+        clearTimeout(singleTapTimerRef.current);
+        singleTapTimerRef.current = null;
+      }
+      lastTapAtRef.current = 0;
+      handleDoubleTap();
+      return;
+    }
+    lastTapAtRef.current = now;
+    singleTapTimerRef.current = setTimeout(() => {
+      singleTapTimerRef.current = null;
+      handleSingleTap();
+    }, 280);
   };
 
   return (
-    <View style={[styles.slide, { width, height, backgroundColor: theme.colors.background }]}>
-      {imageSources.length > 1 ? (
+    <View
+      style={[styles.slide, { width, height, backgroundColor: theme.colors.background }]}
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+    >
+      {pageCount > 1 ? (
         <>
           <ScrollView
             horizontal
@@ -64,8 +146,21 @@ export function FypReelSlide({
             scrollEventThrottle={16}
             showsHorizontalScrollIndicator={false}
             style={StyleSheet.absoluteFill}
-            onMomentumScrollEnd={onImageMomentumEnd}
+            onMomentumScrollEnd={onMediaMomentumEnd}
           >
+            {hasVideo ? (
+              <View style={{ width, height }}>
+                {imageSources[0] ? (
+                  <Image
+                    source={imageSources[0]}
+                    style={StyleSheet.absoluteFill}
+                    contentFit="cover"
+                    cachePolicy={isAuthenticatedImageSource(imageSources[0]) ? 'memory' : 'memory-disk'}
+                  />
+                ) : null}
+                {shouldRenderVideo && videoSource ? <FypReelVideoLayer videoSource={videoSource} isActive={videoIsFocused} isMuted={isMuted} /> : null}
+              </View>
+            ) : null}
             {imageSources.map((source) => (
               <Image
                 key={source.uri}
@@ -77,13 +172,13 @@ export function FypReelSlide({
             ))}
           </ScrollView>
           <View style={[styles.imagePageDots, { top: topInset + 86 }]}>
-            {imageSources.map((source, index) => (
+            {Array.from({ length: pageCount }).map((_, index) => (
               <View
-                key={`${source.uri}-${index}`}
+                key={`media-page-${event.id}-${index}`}
                 style={[
                   styles.imagePageDot,
                   {
-                    backgroundColor: index === activeImageIndex ? theme.colors.textPrimary : theme.colors.surfaceElevated,
+                    backgroundColor: index === activeMediaIndex ? theme.colors.textPrimary : theme.colors.surfaceElevated,
                     borderColor: theme.colors.border,
                   },
                 ]}
@@ -91,15 +186,38 @@ export function FypReelSlide({
             ))}
           </View>
         </>
-      ) : posterSource ? (
+      ) : hasVideo && videoSource ? (
+        <>
+          {imageSources[0] ? (
+            <Image
+              source={imageSources[0]}
+              style={StyleSheet.absoluteFill}
+              contentFit="cover"
+              cachePolicy={isAuthenticatedImageSource(imageSources[0]) ? 'memory' : 'memory-disk'}
+            />
+          ) : null}
+          {shouldRenderVideo ? <FypReelVideoLayer videoSource={videoSource} isActive={videoIsFocused} isMuted={isMuted} /> : null}
+        </>
+      ) : imageSources[0] ? (
         <Image
-          source={posterSource}
+          source={imageSources[0]}
           style={StyleSheet.absoluteFill}
           contentFit="cover"
-          cachePolicy={isAuthenticatedImageSource(posterSource) ? 'memory' : 'memory-disk'}
+          cachePolicy={isAuthenticatedImageSource(imageSources[0]) ? 'memory' : 'memory-disk'}
         />
       ) : null}
-      {shouldRenderVideo && videoUri ? <FypReelVideoLayer videoUri={videoUri} isActive={isActive} /> : null}
+
+      {feedback ? (
+        <View pointerEvents="none" style={styles.feedbackOverlay}>
+          <View style={styles.feedbackIcon}>
+            <Ionicons
+              name={feedback === 'heart' ? 'heart' : feedback === 'muted' ? 'volume-mute' : 'volume-high'}
+              size={72}
+              color="#FFFFFF"
+            />
+          </View>
+        </View>
+      ) : null}
 
       <View style={[styles.topBadgeWrap, { paddingTop: topInset + 10 }]}>
         <AppCard variant="glass" style={styles.topBadge}>
@@ -137,6 +255,19 @@ export function FypReelSlide({
 const styles = StyleSheet.create({
   slide: {
     overflow: 'hidden',
+  },
+  feedbackOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  feedbackIcon: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(17, 17, 20, 0.28)',
+    borderRadius: 999,
+    height: 116,
+    justifyContent: 'center',
+    width: 116,
   },
   topBadgeWrap: {
     position: 'absolute',
