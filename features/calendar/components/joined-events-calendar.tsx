@@ -1,12 +1,14 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { Image } from 'expo-image';
 import { BlurView } from 'expo-blur';
 import { GlassView, isGlassEffectAPIAvailable, isLiquidGlassAvailable } from 'expo-glass-effect';
 import { PropsWithChildren, useDeferredValue, useEffect, useMemo, useState } from 'react';
-import { Platform, Pressable, StyleProp, StyleSheet, TextInput, View, ViewStyle } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleProp, StyleSheet, TextInput, View, ViewStyle, useWindowDimensions } from 'react-native';
 import { Calendar, DateData, LocaleConfig } from 'react-native-calendars';
 
 import { AppText } from '@/components/primitives';
-import { formatEventDate } from '@/core/utils/date';
+import { getEventPosterSource } from '@/core/events/event-cover';
+import { formatEventTime } from '@/core/utils/date';
 import { useI18n } from '@/core/i18n/use-i18n';
 import { useAppTheme } from '@/core/theme';
 import { AppEvent } from '@/core/types/domain';
@@ -71,6 +73,7 @@ type JoinedEventsCalendarProps = {
 export function JoinedEventsCalendar({ events, onOpenEvent }: JoinedEventsCalendarProps) {
   const { t, locale } = useI18n();
   const { theme } = useAppTheme();
+  const { width: windowWidth } = useWindowDimensions();
   const [selectedDay, setSelectedDay] = useState(todayDateKey());
   const [visibleMonth, setVisibleMonth] = useState(monthDateKey(new Date()));
   const [searchVisible, setSearchVisible] = useState(false);
@@ -118,6 +121,8 @@ export function JoinedEventsCalendar({ events, onOpenEvent }: JoinedEventsCalend
   }, [visibleEvents]);
 
   const selectedDayEvents = eventsByDay.get(selectedDay) ?? [];
+  const selectedEventCardWidth =
+    selectedDayEvents.length <= 1 ? Math.max(0, windowWidth - 32) : Math.max(128, (windowWidth - 44) / 2);
   const hasSearch = searchQuery.trim().length > 0;
   const today = todayDateKey();
   const accentColors = useMemo(() => createCalendarAccentColors(theme), [theme]);
@@ -208,9 +213,24 @@ export function JoinedEventsCalendar({ events, onOpenEvent }: JoinedEventsCalend
       );
     }
 
-    return selectedDayEvents.map((event) => (
-      <CalendarEventRow key={event.id} event={event} onPress={() => onOpenEvent(event.id)} />
-    ));
+    return (
+      <ScrollView
+        horizontal
+        scrollEnabled={selectedDayEvents.length > 1}
+        showsHorizontalScrollIndicator={false}
+        style={styles.eventScroller}
+        contentContainerStyle={styles.eventScrollerContent}
+      >
+        {selectedDayEvents.map((event) => (
+          <CalendarEventCard
+            key={event.id}
+            event={event}
+            width={selectedEventCardWidth}
+            onPress={() => onOpenEvent(event.id)}
+          />
+        ))}
+      </ScrollView>
+    );
   };
 
   return (
@@ -389,60 +409,83 @@ function CalendarDayCell({ date, state, selected, today, events, accentColors, o
   );
 }
 
-type CalendarEventRowProps = {
+type CalendarEventCardProps = {
   event: AppEvent;
+  width: number;
   onPress: () => void;
 };
 
-function CalendarEventRow({ event, onPress }: CalendarEventRowProps) {
+function CalendarEventCard({ event, width, onPress }: CalendarEventCardProps) {
   const { locale, t } = useI18n();
   const { theme } = useAppTheme();
-  const accentColors = useMemo(() => createCalendarAccentColors(theme), [theme]);
   const attendanceLabel = getAttendanceLabel(event.attendanceStatus, t);
+  const posterSource = getEventPosterSource(event);
 
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => ({ opacity: pressed ? 0.78 : 1 })}>
-      <CalendarSurface style={styles.eventRow}>
-        <View style={styles.eventIconWrap}>
-          <Ionicons name="calendar-outline" size={18} color={theme.colors.textSecondary} />
-        </View>
-        <View style={styles.eventContent}>
-          <View style={styles.eventTitleLine}>
-            <View style={[styles.eventAccent, { backgroundColor: accentColors.primary }]} />
-            <AppText variant="bodyStrong" numberOfLines={1} style={styles.eventTitle}>
-              {event.title[locale]}
-            </AppText>
-            {event.participantCount > 1 ? (
-              <View style={[styles.countBadge, { backgroundColor: theme.colors.surfaceElevated }]}>
-                <AppText variant="caption" color="textSecondary">
-                  {event.participantCount}
-                </AppText>
-              </View>
-            ) : null}
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.eventCard,
+        {
+          width,
+          backgroundColor: theme.colors.surface,
+          borderColor: theme.colors.border,
+          opacity: pressed ? 0.82 : 1,
+        },
+      ]}
+    >
+      <View style={styles.eventImageWrap}>
+        {posterSource ? (
+          <Image source={posterSource} style={styles.eventImage} contentFit="cover" />
+        ) : (
+          <View style={[styles.eventImagePlaceholder, { backgroundColor: theme.colors.surfaceElevated }]}>
+            <Ionicons name="calendar-outline" size={24} color={theme.colors.textMuted} />
           </View>
-          <AppText variant="caption" color="textSecondary" numberOfLines={1}>
+        )}
+      </View>
+      <View style={styles.eventCardBody}>
+        <AppText variant="bodyStrong" numberOfLines={2} style={styles.eventCardTitle}>
+          {event.title[locale]}
+        </AppText>
+        <View style={styles.eventMetaLine}>
+          <Ionicons name="time-outline" size={14} color={theme.colors.textMuted} />
+          <AppText variant="caption" color="textMuted" numberOfLines={1} style={styles.eventMetaText}>
+            {formatEventTime(event.startAt || event.whenISO, locale)}
+          </AppText>
+        </View>
+        <View style={styles.eventMetaLine}>
+          <Ionicons name="location-outline" size={14} color={theme.colors.textMuted} />
+          <AppText variant="caption" color="textMuted" numberOfLines={1} style={styles.eventMetaText}>
             {event.where[locale]}
           </AppText>
-          <AppText variant="caption" color="textMuted" numberOfLines={1}>
-            {formatEventDate(event.startAt || event.whenISO, locale)}
-          </AppText>
+        </View>
+        <View style={styles.eventCardFooter}>
           {attendanceLabel ? (
-            <AppText variant="caption" color="textSecondary" numberOfLines={1}>
-              {attendanceLabel}
-            </AppText>
+            <View style={[styles.attendancePill, { backgroundColor: theme.colors.mapAccentSoft }]}>
+              <AppText variant="caption" numberOfLines={1} style={{ color: theme.colors.mapAccent }}>
+                {attendanceLabel}
+              </AppText>
+            </View>
+          ) : null}
+          {event.participantCount > 1 ? (
+            <View style={[styles.eventCountBadge, { backgroundColor: theme.colors.surfaceElevated }]}>
+              <AppText variant="caption" color="textSecondary">
+                {event.participantCount}
+              </AppText>
+            </View>
           ) : null}
         </View>
-      </CalendarSurface>
+      </View>
     </Pressable>
   );
 }
 
 function getAttendanceLabel(status: AppEvent['attendanceStatus'], t: ReturnType<typeof useI18n>['t']) {
   if (status === 'waitlisted') {
-    return t('attendanceWaitlisted');
+    return t('waitlist');
   }
   if (status === 'approved') {
-    return t('attendanceApproved');
+    return t('goingStatus');
   }
   if (status === 'rejected') {
     return t('attendanceRemoved');
@@ -618,40 +661,73 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   eventsList: {
-    gap: 10,
+    minHeight: 178,
   },
   emptyCard: {
     minHeight: 82,
     justifyContent: 'center',
   },
-  eventRow: {
-    flexDirection: 'row',
+  eventScroller: {
+    marginHorizontal: -1,
+  },
+  eventScrollerContent: {
     gap: 12,
-    alignItems: 'flex-start',
+    paddingHorizontal: 1,
+    paddingBottom: 2,
   },
-  eventIconWrap: {
-    width: 28,
-    alignItems: 'center',
-    paddingTop: 2,
+  eventCard: {
+    minHeight: 168,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 18,
+    overflow: 'hidden',
   },
-  eventContent: {
+  eventImageWrap: {
+    height: 88,
+    overflow: 'hidden',
+  },
+  eventImage: {
+    width: '100%',
+    height: '100%',
+  },
+  eventImagePlaceholder: {
     flex: 1,
-    gap: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  eventTitleLine: {
+  eventCardBody: {
+    gap: 4,
+    padding: 10,
+  },
+  eventCardTitle: {
+    minHeight: 24,
+  },
+  eventMetaLine: {
+    minHeight: 18,
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 4,
+  },
+  eventMetaText: {
+    flex: 1,
+  },
+  eventCardFooter: {
+    minHeight: 22,
+    marginTop: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     gap: 8,
   },
-  eventAccent: {
-    width: 4,
-    height: 18,
-    borderRadius: 999,
-  },
-  eventTitle: {
+  attendancePill: {
     flex: 1,
+    minHeight: 22,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
   },
-  countBadge: {
+  eventCountBadge: {
+    marginLeft: 'auto',
     minWidth: 24,
     height: 22,
     borderRadius: 11,

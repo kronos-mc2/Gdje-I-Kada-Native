@@ -1,34 +1,41 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Platform, Pressable, StyleSheet, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState, type ComponentProps } from 'react';
+import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { isGlassEffectAPIAvailable, isLiquidGlassAvailable } from 'expo-glass-effect';
 
 import { EventDetailSheet, EventMap } from '@/components/map';
 import type { MapCameraState } from '@/components/map/types';
 import { MapSearchBar, MapSearchResults } from '@/components/search';
+import { AppText } from '@/components/primitives';
 import { useI18n } from '@/core/i18n/use-i18n';
 import { MAP_AUTO_USER_ZOOM, MAP_FOCUS_ZOOM } from '@/core/maps/map-config';
 import { useAppStore } from '@/core/store/app-store';
 import { useAppTheme } from '@/core/theme';
-import { AppEvent, Coordinates, Locale } from '@/core/types/domain';
+import { AppEvent, Coordinates, EventAttendanceMode, Locale } from '@/core/types/domain';
 import { useEventMapSearch } from '@/features/events/hooks/use-event-map-search';
-import { MapDateFilterControl } from '@/features/events/components/map-date-filter-control';
-import { MapDateFilter } from '@/features/events/hooks/use-events-map-screen-model';
+import { MapDateFilter, MapQuickFilter } from '@/features/events/hooks/use-events-map-screen-model';
 import { useMapLocationBootstrap } from '@/features/events/hooks/use-map-location-bootstrap';
 import { MapNearbySheet } from '@/features/events/components/map-nearby-sheet';
+import { MapFilterModal } from '@/features/events/components/map-filter-modal';
 
 const NEARBY_SHEET_COLLAPSED_HEIGHT = 96;
 const TOOLBAR_BOTTOM_GAP_ANDROID = 18;
 const TOOLBAR_BOTTOM_GAP_IOS = -18;
+type IconName = ComponentProps<typeof Ionicons>['name'];
 
 type EventsMapExperienceProps = Readonly<{
   events: AppEvent[];
   locale: Locale;
   userLocation: Coordinates;
   dateFilter: MapDateFilter;
+  selectedTags: string[];
+  attendanceModes: EventAttendanceMode[];
+  activeQuickFilter: MapQuickFilter | null;
   searchQuery: string;
   onDateFilterChange: (dateFilter: MapDateFilter) => void;
+  onSelectedTagsChange: (tags: string[]) => void;
+  onClearFilters: () => void;
+  onQuickFilterPress: (filter: MapQuickFilter) => void;
   onSearchQueryChange: (query: string) => void;
   onMapCameraChange?: (camera: MapCameraState) => void;
   onCreateEventPress: () => void;
@@ -39,8 +46,14 @@ export function EventsMapExperience({
   locale,
   userLocation,
   dateFilter,
+  selectedTags,
+  attendanceModes,
+  activeQuickFilter,
   searchQuery,
   onDateFilterChange,
+  onSelectedTagsChange,
+  onClearFilters,
+  onQuickFilterPress,
   onSearchQueryChange,
   onMapCameraChange,
   onCreateEventPress,
@@ -48,7 +61,6 @@ export function EventsMapExperience({
   const { t } = useI18n();
   const { theme } = useAppTheme();
   const insets = useSafeAreaInsets();
-  const canUseLiquidGlass = useMemo(() => Platform.OS === 'ios' && isLiquidGlassAvailable() && isGlassEffectAPIAvailable(), []);
   const locationConsent = useAppStore((state) => state.locationConsent);
   const locationSource = useAppStore((state) => state.locationSource);
   const setLocationSource = useAppStore((state) => state.setLocationSource);
@@ -63,6 +75,7 @@ export function EventsMapExperience({
   const [focusTarget, setFocusTarget] = useState<{ coordinate: Coordinates; zoomLevel: number } | null>(null);
   const [isRecenterBusy, setIsRecenterBusy] = useState(false);
   const [isSearchPanelVisible, setIsSearchPanelVisible] = useState(false);
+  const [isFilterModalVisible, setIsFilterModalVisible] = useState(false);
   const { results: searchResults, isSearching } = useEventMapSearch({ events, query: searchQuery, locale });
 
   const eventsById = useMemo(() => new Map(events.map((event) => [event.id, event])), [events]);
@@ -193,6 +206,7 @@ export function EventsMapExperience({
     detailBottomInset + 10,
     toolbarBottomEdge + nearbyVisibleHeight + 10,
   );
+  const hasActiveFilters = dateFilter.mode !== 'all' || selectedTags.length > 0 || attendanceModes.length > 0;
 
   return (
     <View style={styles.container}>
@@ -254,16 +268,18 @@ export function EventsMapExperience({
             onSearchQueryChange('');
             setIsSearchPanelVisible(false);
           }}
+          onFilterPress={() => {
+            setIsFilterModalVisible(true);
+            setIsSearchPanelVisible(false);
+          }}
           onFocus={() => setIsSearchPanelVisible(true)}
           onBlur={() => undefined}
+          filterActive={hasActiveFilters}
+          filterAccessibilityLabel={t('filters')}
+          clearAccessibilityLabel={t('clearSearch')}
         />
 
-        <MapDateFilterControl
-          dateFilter={dateFilter}
-          locale={locale}
-          canUseLiquidGlass={canUseLiquidGlass}
-          onDateFilterChange={onDateFilterChange}
-        />
+        <MapQuickFilters activeFilter={activeQuickFilter} onPress={onQuickFilterPress} />
 
         <MapSearchResults
           visible={showSearchResults}
@@ -369,7 +385,71 @@ export function EventsMapExperience({
           onClose={() => setSelectedEventId(null)}
         />
       ) : null}
+
+      <MapFilterModal
+        visible={isFilterModalVisible}
+        locale={locale}
+        dateFilter={dateFilter}
+        selectedTags={selectedTags}
+        onDateFilterChange={onDateFilterChange}
+        onSelectedTagsChange={onSelectedTagsChange}
+        onClearFilters={onClearFilters}
+        onClose={() => setIsFilterModalVisible(false)}
+      />
     </View>
+  );
+}
+
+function MapQuickFilters({
+  activeFilter,
+  onPress,
+}: {
+  activeFilter: MapQuickFilter | null;
+  onPress: (filter: MapQuickFilter) => void;
+}) {
+  const { t } = useI18n();
+  const { theme } = useAppTheme();
+  const filters: { key: MapQuickFilter; label: string; icon: IconName }[] = [
+    { key: 'today', label: t('quickToday'), icon: 'moon-outline' },
+    { key: 'thisWeek', label: t('thisWeek'), icon: 'calendar-outline' },
+    { key: 'free', label: t('freeFilter'), icon: 'ticket-outline' },
+    { key: 'paid', label: t('paidFilter'), icon: 'card-outline' },
+    { key: 'waitlist', label: t('reservationFilter'), icon: 'time-outline' },
+    { key: 'weekend', label: t('weekend'), icon: 'sunny-outline' },
+  ];
+
+  return (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={styles.quickFilterContent}
+      style={styles.quickFilterScroll}
+    >
+      {filters.map((filter) => {
+        const active = activeFilter === filter.key;
+        return (
+          <Pressable
+            key={filter.key}
+            accessibilityRole="button"
+            accessibilityState={{ selected: active }}
+            onPress={() => onPress(filter.key)}
+            style={({ pressed }) => [
+              styles.quickFilterChip,
+              {
+                borderColor: active ? theme.colors.mapAccent : theme.colors.border,
+                backgroundColor: active ? theme.colors.mapAccent : theme.colors.surface,
+                opacity: pressed ? 0.82 : 1,
+              },
+            ]}
+          >
+            <Ionicons name={filter.icon} size={14} color={active ? '#FFFFFF' : theme.colors.textSecondary} />
+            <AppText variant="caption" style={{ color: active ? '#FFFFFF' : theme.colors.textSecondary }}>
+              {filter.label}
+            </AppText>
+          </Pressable>
+        );
+      })}
+    </ScrollView>
   );
 }
 
@@ -379,6 +459,22 @@ const styles = StyleSheet.create({
   },
   topOverlay: {
     position: 'absolute',
+  },
+  quickFilterScroll: {
+    marginTop: 10,
+  },
+  quickFilterContent: {
+    gap: 8,
+    paddingRight: 6,
+  },
+  quickFilterChip: {
+    alignItems: 'center',
+    borderRadius: 999,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 6,
+    minHeight: 34,
+    paddingHorizontal: 12,
   },
   floatingButton: {
     position: 'absolute',

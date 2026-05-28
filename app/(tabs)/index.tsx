@@ -6,10 +6,13 @@ import type { MapCameraState } from '@/components/map/types';
 import { EventsMapExperience } from '@/features/events/components/events-map-experience';
 import {
   createInitialMapDateFilter,
+  toDateKey,
   useEventsMapScreenModel,
 } from '@/features/events/hooks/use-events-map-screen-model';
 import type { MapDateFilter, MapEventViewport } from '@/features/events/hooks/use-events-map-screen-model';
+import type { MapQuickFilter } from '@/features/events/hooks/use-events-map-screen-model';
 import { useAppTheme } from '@/core/theme';
+import type { EventAttendanceMode } from '@/core/types/domain';
 
 const MIN_VIEWPORT_RADIUS_KM = 5;
 const MAX_VIEWPORT_RADIUS_KM = 500;
@@ -18,9 +21,18 @@ export default function EventsScreen() {
   const router = useRouter();
   const { theme } = useAppTheme();
   const [dateFilter, setDateFilter] = useState<MapDateFilter>(() => createInitialMapDateFilter());
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [attendanceModes, setAttendanceModes] = useState<EventAttendanceMode[]>([]);
+  const [activeQuickFilter, setActiveQuickFilter] = useState<MapQuickFilter | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [mapViewport, setMapViewport] = useState<MapEventViewport | null>(null);
-  const { events, userLocation, locale } = useEventsMapScreenModel({ dateFilter, searchQuery, viewport: mapViewport });
+  const { events, userLocation, locale } = useEventsMapScreenModel({
+    dateFilter,
+    searchQuery,
+    selectedTags,
+    attendanceModes,
+    viewport: mapViewport,
+  });
 
   const handleMapCameraChange = useCallback((camera: MapCameraState) => {
     const radiusKm = estimateViewportRadiusKm(camera);
@@ -49,8 +61,31 @@ export default function EventsScreen() {
         locale={locale}
         userLocation={userLocation}
         dateFilter={dateFilter}
+        selectedTags={selectedTags}
+        attendanceModes={attendanceModes}
+        activeQuickFilter={activeQuickFilter}
         searchQuery={searchQuery}
-        onDateFilterChange={setDateFilter}
+        onDateFilterChange={(nextDateFilter) => {
+          setDateFilter(nextDateFilter);
+          setActiveQuickFilter(null);
+        }}
+        onSelectedTagsChange={(nextTags) => {
+          setSelectedTags(nextTags);
+          setActiveQuickFilter(null);
+        }}
+        onClearFilters={() => {
+          setDateFilter(createInitialMapDateFilter());
+          setSelectedTags([]);
+          setAttendanceModes([]);
+          setActiveQuickFilter(null);
+        }}
+        onQuickFilterPress={(quickFilter) => {
+          const nextFilters = getQuickFilterState(quickFilter);
+          setDateFilter(nextFilters.dateFilter);
+          setSelectedTags([]);
+          setAttendanceModes(nextFilters.attendanceModes);
+          setActiveQuickFilter(quickFilter);
+        }}
         onSearchQueryChange={setSearchQuery}
         onMapCameraChange={handleMapCameraChange}
         onCreateEventPress={() => router.push('/create-event')}
@@ -85,4 +120,42 @@ function clampRadius(radiusKm: number) {
   }
 
   return Math.min(MAX_VIEWPORT_RADIUS_KM, Math.max(MIN_VIEWPORT_RADIUS_KM, Math.round(radiusKm)));
+}
+
+function getQuickFilterState(filter: MapQuickFilter): { dateFilter: MapDateFilter; attendanceModes: EventAttendanceMode[] } {
+  switch (filter) {
+    case 'today':
+      return { dateFilter: { mode: 'day', dateISO: toDateKey(new Date()) }, attendanceModes: [] };
+    case 'thisWeek':
+      return {
+        dateFilter: { mode: 'range', fromISO: toDateKey(new Date()), toISO: toDateKey(addDays(new Date(), 6)) },
+        attendanceModes: [],
+      };
+    case 'free':
+      return { dateFilter: createInitialMapDateFilter(), attendanceModes: ['open'] };
+    case 'paid':
+      return { dateFilter: createInitialMapDateFilter(), attendanceModes: ['paid'] };
+    case 'waitlist':
+      return { dateFilter: createInitialMapDateFilter(), attendanceModes: ['waitlist'] };
+    case 'weekend':
+      return { dateFilter: getUpcomingWeekendFilter(), attendanceModes: [] };
+  }
+}
+
+function getUpcomingWeekendFilter(): MapDateFilter {
+  const today = new Date();
+  const day = today.getDay();
+  const daysUntilSaturday = (6 - day + 7) % 7;
+  const saturday = addDays(today, daysUntilSaturday);
+  return {
+    mode: 'range',
+    fromISO: toDateKey(saturday),
+    toISO: toDateKey(addDays(saturday, 1)),
+  };
+}
+
+function addDays(date: Date, days: number) {
+  const nextDate = new Date(date);
+  nextDate.setDate(nextDate.getDate() + days);
+  return nextDate;
 }

@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
 import * as Linking from 'expo-linking';
-import type { ComponentProps } from 'react';
+import { useEffect, useRef, useState, type ComponentProps } from 'react';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import { ScrollView as GestureScrollView } from 'react-native-gesture-handler';
 
@@ -195,7 +195,7 @@ export function EventDetailsContent({
             <DetailRow label={t('eventVisibility')} value={getVisibilityLabel(event, t)} />
             {priceLabel ? <DetailRow label={t('priceAmountLabel')} value={priceLabel} /> : null}
             {event.capacity ? <DetailRow label={t('capacityLabel')} value={String(event.capacity)} /> : null}
-            {event.tags?.length ? <DetailRow label={t('eventTags')} value={event.tags.map((tag) => `#${tag}`).join(', ')} /> : null}
+            {event.tags?.length ? <DetailRow label={t('eventTags')} value={event.tags.join(', ')} /> : null}
             {event.entranceCoordinates ? (
               <DetailRow
                 label={t('entrancePin')}
@@ -325,15 +325,16 @@ const styles = StyleSheet.create({
   statTagsContent: {
     gap: 5,
     paddingHorizontal: 2,
-    paddingTop: 1,
+    paddingVertical: 3,
   },
   statTagsScroll: {
     alignSelf: 'stretch',
+    height: 66,
   },
   statTagPill: {
-    maxWidth: 72,
-    minHeight: 18,
-    borderRadius: 9,
+    maxWidth: 92,
+    minHeight: 24,
+    borderRadius: 12,
     borderWidth: 1,
     paddingHorizontal: 6,
     alignItems: 'center',
@@ -463,37 +464,98 @@ function StatCell({
 function TagsCell({ tags }: { tags: string[] }) {
   const { t } = useI18n();
   const { theme } = useAppTheme();
+  const [expanded, setExpanded] = useState(false);
+  const collapseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  return (
-    <View style={styles.tagsCell}>
+  useEffect(
+    () => () => {
+      if (collapseTimerRef.current) {
+        clearTimeout(collapseTimerRef.current);
+      }
+    },
+    [],
+  );
+
+  const scheduleCollapse = () => {
+    if (collapseTimerRef.current) {
+      clearTimeout(collapseTimerRef.current);
+    }
+
+    collapseTimerRef.current = setTimeout(() => {
+      setExpanded(false);
+      collapseTimerRef.current = null;
+    }, 5000);
+  };
+
+  const showAllTags = () => {
+    if (tags.length === 0) {
+      return;
+    }
+
+    setExpanded(true);
+    scheduleCollapse();
+  };
+
+  const firstTagLabel = tags.length > 1 ? `${tags[0]}...` : tags[0];
+  const header = (
+    <>
       <View style={styles.statValueRow}>
         <Ionicons name="pricetags-outline" size={18} color={theme.colors.textPrimary} />
       </View>
       <AppText variant="caption" color="textSecondary" numberOfLines={1} style={styles.statLabel}>
         {t('eventTags')}
       </AppText>
-      {tags.length ? (
+    </>
+  );
+
+  if (expanded && tags.length) {
+    return (
+      <View style={styles.tagsCell} onTouchStart={scheduleCollapse}>
+        {header}
         <GestureScrollView
-          horizontal
           nestedScrollEnabled
-          showsHorizontalScrollIndicator={false}
+          directionalLockEnabled
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          scrollEventThrottle={250}
           contentContainerStyle={styles.statTagsContent}
           style={styles.statTagsScroll}
+          onScrollBeginDrag={scheduleCollapse}
+          onScroll={scheduleCollapse}
+          onMomentumScrollEnd={scheduleCollapse}
+          onTouchStart={scheduleCollapse}
+          onTouchEnd={scheduleCollapse}
         >
           {tags.map((tag) => (
             <View key={tag} style={[styles.statTagPill, { backgroundColor: theme.colors.mapAccentSoft, borderColor: theme.colors.mapAccent }]}>
               <AppText variant="caption" numberOfLines={1} style={{ color: theme.colors.mapAccent }}>
-                #{tag}
+                {tag}
               </AppText>
             </View>
           ))}
         </GestureScrollView>
+      </View>
+    );
+  }
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={t('eventTags')}
+      onPress={showAllTags}
+      style={({ pressed }) => [styles.tagsCell, { opacity: pressed && tags.length > 0 ? 0.76 : 1 }]}
+    >
+      {header}
+      {tags.length ? (
+        <AppText variant="caption" color="textMuted" numberOfLines={1} adjustsFontSizeToFit style={styles.statCaption}>
+          {firstTagLabel}
+        </AppText>
       ) : (
         <AppText variant="caption" color="textMuted" numberOfLines={1} style={styles.statCaption}>
           {t('notSpecified')}
         </AppText>
       )}
-    </View>
+    </Pressable>
   );
 }
 

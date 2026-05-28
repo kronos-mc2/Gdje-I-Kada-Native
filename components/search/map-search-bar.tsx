@@ -9,11 +9,27 @@ type MapSearchBarProps = Readonly<{
   loading?: boolean;
   onChangeText: (value: string) => void;
   onClear: () => void;
+  onFilterPress?: () => void;
   onFocus: () => void;
   onBlur: () => void;
+  filterActive?: boolean;
+  filterAccessibilityLabel?: string;
+  clearAccessibilityLabel?: string;
 }>;
 
-export function MapSearchBar({ value, placeholder, loading, onChangeText, onClear, onFocus, onBlur }: MapSearchBarProps) {
+export function MapSearchBar({
+  value,
+  placeholder,
+  loading,
+  onChangeText,
+  onClear,
+  onFilterPress,
+  onFocus,
+  onBlur,
+  filterActive,
+  filterAccessibilityLabel = 'Filter events',
+  clearAccessibilityLabel = 'Clear search',
+}: MapSearchBarProps) {
   const { theme } = useAppTheme();
   const isAndroid = Platform.OS === 'android';
   const wrapperBackground = theme.colors.surface;
@@ -65,9 +81,27 @@ export function MapSearchBar({ value, placeholder, loading, onChangeText, onClea
               },
             ]}
             accessibilityRole="button"
-            accessibilityLabel="Clear search"
+            accessibilityLabel={clearAccessibilityLabel}
           >
             <Ionicons name="close" size={14} color={theme.colors.textSecondary} />
+          </Pressable>
+        ) : null}
+        {onFilterPress ? (
+          <Pressable
+            onPress={onFilterPress}
+            style={({ pressed }) => [
+              styles.filterButton,
+              {
+                borderColor: filterActive ? theme.colors.mapAccent : theme.colors.border,
+                backgroundColor: filterActive ? theme.colors.mapAccent : theme.colors.surfaceElevated,
+                opacity: pressed ? 0.82 : 1,
+              },
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel={filterAccessibilityLabel}
+            accessibilityState={{ selected: Boolean(filterActive) }}
+          >
+            <Ionicons name="options-outline" size={18} color={filterActive ? '#FFFFFF' : theme.colors.textSecondary} />
           </Pressable>
         ) : null}
       </View>
@@ -97,6 +131,14 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  filterButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',

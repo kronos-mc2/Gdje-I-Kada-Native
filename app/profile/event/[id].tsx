@@ -343,7 +343,15 @@ export default function ManageCreatedEventScreen() {
           <SectionHeader title={t('waitlist')} subtitle={`${waitlisted.length} ${t('waitlistWaiting')}`} />
           <AppCard variant="glass" style={styles.card}>
             {waitlisted.length ? (
-              waitlisted.map((participant) => <ParticipantRow key={participant.userId} eventId={event.id} eventIsPaid={event.attendanceMode === 'paid'} participant={participant} />)
+              waitlisted.map((participant) => (
+                <ParticipantRow
+                  key={participant.userId}
+                  eventId={event.id}
+                  eventIsPaid={event.attendanceMode === 'paid'}
+                  ownerUserId={event.creatorUserId}
+                  participant={participant}
+                />
+              ))
             ) : (
               <AppText variant="body" color="textMuted">
                 {t('noWaitlistWaiting')}
@@ -354,7 +362,15 @@ export default function ManageCreatedEventScreen() {
           <SectionHeader title={t('attendees')} subtitle={`${activeParticipants.length} ${t('participants')}`} />
           <AppCard variant="glass" style={styles.card}>
             {activeParticipants.length ? (
-              activeParticipants.map((participant) => <ParticipantRow key={participant.userId} eventId={event.id} eventIsPaid={event.attendanceMode === 'paid'} participant={participant} />)
+              activeParticipants.map((participant) => (
+                <ParticipantRow
+                  key={participant.userId}
+                  eventId={event.id}
+                  eventIsPaid={event.attendanceMode === 'paid'}
+                  ownerUserId={event.creatorUserId}
+                  participant={participant}
+                />
+              ))
             ) : (
               <AppText variant="body" color="textMuted">
                 {t('noChatMembers')}
@@ -377,16 +393,20 @@ function getMediaDisplayName(media: EventMedia, fallbackTemplate: string) {
 function ParticipantRow({
   eventId,
   eventIsPaid,
+  ownerUserId,
   participant,
 }: {
   eventId: string;
   eventIsPaid: boolean;
+  ownerUserId?: string;
   participant: EventParticipant;
 }) {
   const { t } = useI18n();
+  const { theme } = useAppTheme();
   const approveMutation = useApproveEventParticipantMutation();
   const removeMutation = useRemoveEventParticipantMutation();
   const blockMutation = useBlockEventParticipantMutation();
+  const isOwnerParticipant = Boolean(ownerUserId && participant.userId === ownerUserId);
 
   const run = async (action: 'approve' | 'remove' | 'block') => {
     try {
@@ -413,12 +433,66 @@ function ParticipantRow({
           {participant.blocked ? t('attendanceBlocked') : participant.status === 'rejected' ? t('attendanceRemoved') : participant.status}
         </AppText>
       </View>
-      {participant.status === 'waitlisted' ? (
-        <AppButton title={t('approve')} variant="secondary" style={styles.smallButton} onPress={() => void run('approve')} />
+      {!isOwnerParticipant ? (
+        <View style={styles.participantActions}>
+          {participant.status === 'waitlisted' ? (
+            <ParticipantActionButton
+              accessibilityLabel={t('approve')}
+              icon="checkmark"
+              color={theme.colors.mapAccent}
+              onPress={() => void run('approve')}
+            />
+          ) : null}
+          <ParticipantActionButton
+            accessibilityLabel={t('remove')}
+            icon="close"
+            color={theme.colors.textSecondary}
+            onPress={() => void run('remove')}
+          />
+          {!eventIsPaid ? (
+            <ParticipantActionButton
+              accessibilityLabel={t('block')}
+              icon="ban-outline"
+              color={theme.colors.textSecondary}
+              onPress={() => void run('block')}
+            />
+          ) : null}
+        </View>
       ) : null}
-      <AppButton title={t('remove')} variant="ghost" style={styles.smallButton} onPress={() => void run('remove')} />
-      {!eventIsPaid ? <AppButton title={t('block')} variant="ghost" style={styles.smallButton} onPress={() => void run('block')} /> : null}
     </View>
+  );
+}
+
+function ParticipantActionButton({
+  accessibilityLabel,
+  icon,
+  color,
+  onPress,
+}: {
+  accessibilityLabel: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  color: string;
+  onPress: () => void;
+}) {
+  const { theme } = useAppTheme();
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      hitSlop={8}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.participantActionButton,
+        {
+          backgroundColor: theme.colors.surface,
+          borderColor: theme.colors.border,
+          opacity: pressed ? 0.68 : 1,
+        },
+      ]}
+    >
+      <Ionicons name={icon} size={18} color={color} />
+    </Pressable>
   );
 }
 
@@ -472,15 +546,24 @@ const styles = StyleSheet.create({
   participantRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    flexWrap: 'wrap',
+    gap: 9,
   },
   participantCopy: {
     flex: 1,
     minWidth: 0,
   },
-  smallButton: {
-    minHeight: 34,
-    paddingHorizontal: 10,
+  participantActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexShrink: 0,
+  },
+  participantActionButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

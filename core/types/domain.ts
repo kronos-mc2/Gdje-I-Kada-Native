@@ -42,6 +42,8 @@ export type EventQueryParams = {
   lng?: number;
   radiusKm?: number;
   query?: string;
+  tags?: string;
+  attendanceModes?: string;
 };
 
 export type FeedQueryParams = {

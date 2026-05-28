@@ -5,7 +5,6 @@ export type CreateEventFormState = {
   locationName: string;
   address: string;
   about: string;
-  tags: string;
   startAt: string;
   endAt: string;
   entryInstructions: string;
@@ -21,7 +20,6 @@ export const INITIAL_CREATE_EVENT_FORM: CreateEventFormState = {
   locationName: '',
   address: '',
   about: '',
-  tags: '',
   startAt: '',
   endAt: '',
   entryInstructions: '',

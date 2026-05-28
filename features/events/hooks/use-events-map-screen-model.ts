@@ -4,7 +4,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { useEventsQuery } from '@/core/api/query-hooks';
 import { useI18n } from '@/core/i18n/use-i18n';
 import { useAppStore } from '@/core/store/app-store';
-import type { AppEvent, EventQueryParams } from '@/core/types/domain';
+import type { AppEvent, EventAttendanceMode, EventQueryParams } from '@/core/types/domain';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 
 export type MapDateFilter =
@@ -12,9 +12,13 @@ export type MapDateFilter =
   | { mode: 'day'; dateISO: string }
   | { mode: 'range'; fromISO: string; toISO: string };
 
+export type MapQuickFilter = 'today' | 'thisWeek' | 'free' | 'paid' | 'waitlist' | 'weekend';
+
 type UseEventsMapScreenModelInput = {
   dateFilter: MapDateFilter;
   searchQuery: string;
+  selectedTags: string[];
+  attendanceModes: EventAttendanceMode[];
   viewport?: MapEventViewport | null;
 };
 
@@ -38,7 +42,13 @@ export function createInitialMapDateFilter(): MapDateFilter {
   return { mode: 'all' };
 }
 
-export function useEventsMapScreenModel({ dateFilter, searchQuery, viewport }: UseEventsMapScreenModelInput) {
+export function useEventsMapScreenModel({
+  dateFilter,
+  searchQuery,
+  selectedTags,
+  attendanceModes,
+  viewport,
+}: UseEventsMapScreenModelInput) {
   const { locale } = useI18n();
   const { userLocation } = useAppStore(
     useShallow((state) => ({
@@ -59,8 +69,8 @@ export function useEventsMapScreenModel({ dateFilter, searchQuery, viewport }: U
   const filterKey = useMemo(() => {
     const dateRange = getDateRange(dateFilter);
     const query = debouncedSearchQuery.length >= 2 ? debouncedSearchQuery : '';
-    return `${dateRange.from ?? ''}:${dateRange.to ?? ''}:${query}`;
-  }, [dateFilter, debouncedSearchQuery]);
+    return `${dateRange.from ?? ''}:${dateRange.to ?? ''}:${query}:${selectedTags.join(',')}:${attendanceModes.join(',')}`;
+  }, [attendanceModes, dateFilter, debouncedSearchQuery, selectedTags]);
   const previousFilterKeyRef = useRef(filterKey);
   const [fetchViewport, setFetchViewport] = useState<MapEventViewport>(currentQueryCenter);
   const [visibleEvents, setVisibleEvents] = useState(() => new Map<string, AppEvent>());
@@ -89,8 +99,10 @@ export function useEventsMapScreenModel({ dateFilter, searchQuery, viewport }: U
       lng: fetchViewport.longitude,
       radiusKm: fetchViewport.radiusKm,
       query: debouncedSearchQuery.length >= 2 ? debouncedSearchQuery : undefined,
+      tags: selectedTags.length > 0 ? selectedTags.join(',') : undefined,
+      attendanceModes: attendanceModes.length > 0 ? attendanceModes.join(',') : undefined,
     };
-  }, [dateFilter, debouncedSearchQuery, fetchViewport]);
+  }, [attendanceModes, dateFilter, debouncedSearchQuery, fetchViewport, selectedTags]);
 
   const { data: fetchedEvents, dataUpdatedAt } = useEventsQuery(queryParams, {
     refetchInterval: MAP_REFETCH_INTERVAL_MS,

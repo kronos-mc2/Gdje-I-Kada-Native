@@ -265,7 +265,7 @@ function NotInterestedModal({
       : []),
     ...(event.tags ?? []).slice(0, 6).map((tag) => ({
       key: `tag-${tag}`,
-      title: `${t('ignoreTag')} #${tag}`,
+      title: `${t('ignoreTag')} ${tag}`,
       onPress: () => onBlock(event, 'tag', tag.toLowerCase(), tag),
     })),
   ];

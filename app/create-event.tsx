@@ -38,6 +38,7 @@ import {
 import { CreateEventAddressField } from '@/features/events/create/create-event-address-field';
 import { CreateEventSegmentedControl } from '@/features/events/create/create-event-segmented-control';
 import { CreateEventStepShell } from '@/features/events/create/create-event-step-shell';
+import { CreateEventTagSelector } from '@/features/events/create/create-event-tag-selector';
 import { LocationSearchResult } from '@/services/locationSearch';
 
 const getNextStep = (step: CreateEventStep) => CREATE_EVENT_STEPS[CREATE_EVENT_STEPS.indexOf(step) + 1];
@@ -61,6 +62,7 @@ export default function CreateEventScreen() {
   const [attendanceMode, setAttendanceMode] = useState<EventAttendanceMode>('open');
   const [eventCoordinates, setEventCoordinates] = useState<Coordinates | null>(null);
   const [createdTitle, setCreatedTitle] = useState<string | null>(null);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [images, setImages] = useState<LocalEventImage[]>([]);
   const [video, setVideo] = useState<LocalEventVideo | null>(null);
   const [previewImage, setPreviewImage] = useState<LocalEventImage | null>(null);
@@ -144,10 +146,6 @@ export default function CreateEventScreen() {
   const validateCurrentStep = () => {
     if (step === 'basics') {
       if (!requireFields(['title', 'about'])) {
-        return false;
-      }
-      if (parseEventTags(form.tags).length > 5) {
-        Alert.alert(t('validation'), t('eventTagsMax'));
         return false;
       }
       return true;
@@ -247,8 +245,6 @@ export default function CreateEventScreen() {
     const capacity = parseOptionalPositiveInteger(form.capacity);
     const priceAmount = attendanceMode === 'paid' ? parseOptionalMoneyAmount(form.priceAmount) : undefined;
     const entryInstructions = form.entryInstructions.trim();
-    const tags = parseEventTags(form.tags);
-
     try {
       await createEvent({
         title: form.title.trim(),
@@ -266,7 +262,7 @@ export default function CreateEventScreen() {
         priceAmount: typeof priceAmount === 'number' ? priceAmount : undefined,
         priceCurrency: attendanceMode === 'paid' ? form.priceCurrency.trim().toUpperCase() : undefined,
         capacity: typeof capacity === 'number' ? capacity : undefined,
-        tags,
+        tags: selectedTags,
         images,
         video: video ?? undefined,
       });
@@ -415,15 +411,7 @@ export default function CreateEventScreen() {
               multiline
               style={styles.textArea}
             />
-            <AppInput
-              label={`${t('eventTags')} (${t('optional')})`}
-              value={form.tags}
-              onChangeText={(value) => updateField('tags', value)}
-              placeholder={t('eventTagsPlaceholder')}
-            />
-            <AppText variant="caption" color="textMuted">
-              {t('eventTagsHint')}
-            </AppText>
+            <CreateEventTagSelector selectedTags={selectedTags} locale={locale} onChange={setSelectedTags} />
           </>
         ) : null}
 
@@ -678,17 +666,6 @@ export default function CreateEventScreen() {
         onClose={() => setPreviewImage(null)}
       />
     </AppScreen>
-  );
-}
-
-function parseEventTags(value: string) {
-  return Array.from(
-    new Set(
-      value
-        .split(/[,\s]+/)
-        .map((tag) => tag.replace(/^#+/, '').trim())
-        .filter(Boolean),
-    ),
   );
 }
 
