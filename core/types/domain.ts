@@ -99,6 +99,12 @@ export type FeedPage = {
   hasMore: boolean;
 };
 
+export type SavedEventsOverview = {
+  savedEvents: AppEvent[];
+  goingSoon: AppEvent[];
+  pastEvents: AppEvent[];
+};
+
 export type Friend = {
   id: string;
   name: string;

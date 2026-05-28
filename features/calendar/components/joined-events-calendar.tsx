@@ -216,24 +216,23 @@ export function JoinedEventsCalendar({ events, onOpenEvent }: JoinedEventsCalend
   return (
     <View style={styles.root}>
       <View style={styles.topBar}>
-        <Pressable
-          accessibilityLabel={t('previousMonth')}
-          onPress={() => moveMonth(-1)}
-          style={({ pressed }) => [
-            styles.iconButton,
-            { backgroundColor: theme.colors.surface, borderColor: theme.colors.border, opacity: pressed ? 0.76 : 1 },
-          ]}
-        >
-          <Ionicons name="chevron-back" size={18} color={theme.colors.textSecondary} />
-        </Pressable>
-
-        <View style={[styles.monthPill, { borderColor: theme.colors.border, backgroundColor: theme.colors.surface }]}>
+        <View style={styles.monthPill}>
           <AppText variant="headline" style={styles.monthText}>
             {formatCalendarMonth(visibleMonth, locale)}
           </AppText>
         </View>
 
         <View style={styles.rightActions}>
+          <Pressable
+            accessibilityLabel={t('previousMonth')}
+            onPress={() => moveMonth(-1)}
+            style={({ pressed }) => [
+              styles.iconButton,
+              { backgroundColor: theme.colors.surface, borderColor: theme.colors.border, opacity: pressed ? 0.76 : 1 },
+            ]}
+          >
+            <Ionicons name="chevron-back" size={18} color={theme.colors.textSecondary} />
+          </Pressable>
           <Pressable
             accessibilityLabel={t('nextMonth')}
             onPress={() => moveMonth(1)}
@@ -382,7 +381,7 @@ function CalendarDayCell({ date, state, selected, today, events, accentColors, o
         {eventPreview.map((event, index) => (
           <View
             key={event.id}
-            style={[styles.eventMark, { width: index === 0 ? 34 : 28, backgroundColor: accentColors.primary }]}
+            style={[styles.eventMark, { opacity: index === 0 ? 1 : 0.72, backgroundColor: accentColors.primary }]}
           />
         ))}
       </View>
@@ -539,14 +538,11 @@ const styles = StyleSheet.create({
   monthPill: {
     flex: 1,
     minHeight: 42,
-    borderWidth: 1,
-    borderRadius: 999,
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'center',
-    paddingHorizontal: 14,
   },
   monthText: {
-    letterSpacing: 0.4,
+    letterSpacing: 0,
   },
   rightActions: {
     flexDirection: 'row',
@@ -600,13 +596,16 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   eventMarks: {
-    marginTop: 3,
-    minHeight: 22,
+    marginTop: 4,
+    minHeight: 12,
+    flexDirection: 'row',
     gap: 2,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   eventMark: {
-    height: 4,
+    width: 5,
+    height: 5,
     borderRadius: 999,
     justifyContent: 'center',
     overflow: 'hidden',

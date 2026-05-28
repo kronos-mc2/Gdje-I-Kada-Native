@@ -3,16 +3,16 @@ import { useState } from 'react';
 import { Alert, StyleSheet, View } from 'react-native';
 
 import { AppButton, AppInput, AppScreen, AppText } from '@/components/primitives';
-import { registerWithEmail } from '@/core/api/auth-services';
+import { loginWithEmail } from '@/core/api/auth-services';
 import { getApiBaseUrl, getApiErrorMessage, isApiNetworkError } from '@/core/api/http-client';
 import { useI18n } from '@/core/i18n/use-i18n';
 import { SocialAuthButton } from '@/features/auth/components/social-auth-button';
+import { useAuthRestoreMessageAlert } from '@/features/auth/hooks/use-auth-restore-message-alert';
 import { useSocialAuth } from '@/features/auth/hooks/use-social-auth';
 
 const EMAIL_PATTERN = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
-const PASSWORD_PATTERN = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/;
 
-export default function RegisterScreen() {
+export default function LoginScreen() {
   const router = useRouter();
   const { t } = useI18n();
   const {
@@ -23,42 +23,28 @@ export default function RegisterScreen() {
     persistSession,
   } = useSocialAuth();
 
-  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [passwordConfirm, setPasswordConfirm] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isAuthSubmitting = isSubmitting || isSocialSubmitting;
 
-  const onRegister = async () => {
-    const trimmedName = name.trim();
-    const trimmedEmail = email.trim().toLowerCase();
+  useAuthRestoreMessageAlert();
 
-    if (trimmedName.length < 2) {
-      Alert.alert(t('authError'), t('invalidName'));
-      return;
-    }
-
-    if (!EMAIL_PATTERN.test(trimmedEmail)) {
+  const handleEmailLogin = async () => {
+    if (!EMAIL_PATTERN.test(email.trim())) {
       Alert.alert(t('authError'), t('invalidEmail'));
       return;
     }
 
-    if (!PASSWORD_PATTERN.test(password)) {
-      Alert.alert(t('authError'), t('passwordPolicyHint'));
-      return;
-    }
-
-    if (password !== passwordConfirm) {
-      Alert.alert(t('authError'), t('passwordsDoNotMatch'));
+    if (!password) {
+      Alert.alert(t('authError'), t('passwordRequired'));
       return;
     }
 
     setIsSubmitting(true);
     try {
-      const response = await registerWithEmail({
-        name: trimmedName,
-        email: trimmedEmail,
+      const response = await loginWithEmail({
+        email: email.trim().toLowerCase(),
         password,
       });
 
@@ -66,23 +52,12 @@ export default function RegisterScreen() {
       if (!didPersistSession) {
         return;
       }
-
       router.replace('/(tabs)');
     } catch (error: unknown) {
-      const status =
-        typeof error === 'object' &&
-        error !== null &&
-        'response' in error &&
-        typeof (error as { response?: { status?: number } }).response?.status === 'number'
-          ? (error as { response?: { status?: number } }).response?.status
-          : null;
-
-      if (status === 409) {
-        Alert.alert(t('authError'), t('emailAlreadyExists'));
-      } else if (isApiNetworkError(error)) {
+      if (isApiNetworkError(error)) {
         Alert.alert(t('authError'), `${t('apiConnectionFailed')}\n${getApiBaseUrl()}`);
       } else {
-        Alert.alert(t('authError'), getApiErrorMessage(error) ?? t('registerFailed'));
+        Alert.alert(t('authError'), getApiErrorMessage(error) ?? t('loginFailed'));
       }
     } finally {
       setIsSubmitting(false);
@@ -92,13 +67,12 @@ export default function RegisterScreen() {
   return (
     <AppScreen scroll contentContainerStyle={styles.screenContent}>
       <View style={styles.header}>
-        <AppText variant="title">{t('signUpTitle')}</AppText>
+        <AppText variant="title">{t('signInTitle')}</AppText>
         <AppText variant="caption" color="textMuted" style={styles.headerSubtitle}>
-          {t('signUpSubtitle')}
+          {t('signInSubtitle')}
         </AppText>
       </View>
 
-      <AppInput label={t('nameLabel')} value={name} onChangeText={setName} />
       <AppInput
         label={t('emailLabel')}
         value={email}
@@ -114,24 +88,8 @@ export default function RegisterScreen() {
         secureTextEntry
         autoCapitalize="none"
       />
-      <AppInput
-        label={t('confirmPasswordLabel')}
-        value={passwordConfirm}
-        onChangeText={setPasswordConfirm}
-        secureTextEntry
-        autoCapitalize="none"
-      />
 
-      <AppText variant="caption" color="textMuted" style={styles.hint}>
-        {t('passwordPolicyHint')}
-      </AppText>
-
-      <AppButton
-        title={isSubmitting ? t('loading') : t('signUpTitle')}
-        variant="glass"
-        disabled={isAuthSubmitting}
-        onPress={() => void onRegister()}
-      />
+      <AppButton title={isSubmitting ? t('loading') : t('signInTitle')} variant="glass" disabled={isAuthSubmitting} onPress={() => void handleEmailLogin()} />
 
       <View style={styles.separator}>
         <AppText variant="caption" color="textMuted">
@@ -159,10 +117,10 @@ export default function RegisterScreen() {
 
       <View style={styles.footer}>
         <AppText variant="body" color="textSecondary">
-          {t('alreadyHaveAccount')}
+          {t('noAccountYet')}
         </AppText>
-        <Link href="/(auth)/login" asChild>
-          <AppButton title={t('signInTitle')} variant="ghost" />
+        <Link href="/(auth)/register" asChild>
+          <AppButton title={t('signUpTitle')} variant="ghost" />
         </Link>
       </View>
     </AppScreen>
@@ -180,16 +138,13 @@ const styles = StyleSheet.create({
   headerSubtitle: {
     marginTop: 8,
   },
-  hint: {
-    marginBottom: 12,
+  socialGroup: {
+    gap: 8,
   },
   separator: {
     alignItems: 'center',
     marginBottom: 10,
     marginTop: 18,
-  },
-  socialGroup: {
-    gap: 8,
   },
   footer: {
     marginTop: 14,

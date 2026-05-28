@@ -5,7 +5,7 @@ import { StyleSheet, View } from 'react-native';
 import { EventDetailsContent } from '@/features/events/components/event-details-content';
 import { EventShareModal } from '@/features/events/components/event-share-modal';
 import { useEventJoinActions } from '@/features/events/hooks/use-event-join-actions';
-import { AppButton, AppCard, AppHeader, AppScreen, AppText } from '@/components/primitives';
+import { AppButton, AppCard, AppScreen, AppText } from '@/components/primitives';
 import { useEventQuery } from '@/core/api/query-hooks';
 import { useI18n } from '@/core/i18n/use-i18n';
 import { useState } from 'react';
@@ -22,7 +22,6 @@ export default function EventDetailsScreen() {
   if (!event && !isLoading) {
     return (
       <AppScreen>
-        <AppHeader title={t('details')} subtitle={t('eventNotFound')} />
         <View style={styles.notFoundWrap}>
           <AppText variant="headline" style={styles.notFoundTitle}>
             {t('eventNotFound')}
@@ -49,8 +48,6 @@ export default function EventDetailsScreen() {
 
   return (
     <AppScreen scroll>
-      <AppHeader title={t('details')} subtitle={event ? event.where[locale] : t('details')} />
-
       {event ? (
         <>
           <AppCard variant="glass" style={styles.detailsCard}>

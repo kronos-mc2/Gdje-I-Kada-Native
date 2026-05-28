@@ -12,13 +12,13 @@ type MainTabName = 'index' | 'fyp' | 'calendar' | 'messages' | 'profile';
 
 const MAIN_TABS: {
   name: MainTabName;
-  labelKey: 'map' | 'fyp' | 'calendar' | 'messages' | 'profile';
+  labelKey: 'map' | 'fyp' | 'saved' | 'messages' | 'profile';
   icon: keyof typeof Ionicons.glyphMap;
   selectedIcon: keyof typeof Ionicons.glyphMap;
 }[] = [
   { name: 'index', labelKey: 'map', icon: 'map-outline', selectedIcon: 'map' },
   { name: 'fyp', labelKey: 'fyp', icon: 'compass-outline', selectedIcon: 'compass' },
-  { name: 'calendar', labelKey: 'calendar', icon: 'today-outline', selectedIcon: 'today' },
+  { name: 'calendar', labelKey: 'saved', icon: 'bookmark-outline', selectedIcon: 'bookmark' },
   { name: 'messages', labelKey: 'messages', icon: 'chatbubble-outline', selectedIcon: 'chatbubble' },
   { name: 'profile', labelKey: 'profile', icon: 'person-circle-outline', selectedIcon: 'person-circle' },
 ];
@@ -95,7 +95,14 @@ function TabButton({
         {unread ? <View style={[styles.unreadDot, { backgroundColor: theme.colors.mapAccent }]} /> : null}
         <Ionicons name={selected ? selectedIcon : icon} size={25} color={color} />
       </View>
-      <AppText variant="caption" color={selected ? 'textPrimary' : 'textMuted'} numberOfLines={1} style={styles.label}>
+      <AppText
+        variant="caption"
+        color={selected ? 'textPrimary' : 'textMuted'}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.82}
+        style={styles.label}
+      >
         {label}
       </AppText>
     </Pressable>
@@ -137,9 +144,10 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   label: {
-    maxWidth: 54,
-    fontSize: 10.5,
-    lineHeight: 14,
+    width: '100%',
+    maxWidth: 64,
+    fontSize: 10,
+    lineHeight: 13,
     textAlign: 'center',
   },
 });

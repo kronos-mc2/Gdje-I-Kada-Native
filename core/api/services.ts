@@ -30,6 +30,7 @@ import {
   OrganizerRatingPayload,
   Poll,
   ProfileActivity,
+  SavedEventsOverview,
   TicketCheckout,
   TicketCheckoutResult,
   Transaction,
@@ -59,6 +60,11 @@ export const fetchMyEvents = async (filter: MyEventsFilter = 'all'): Promise<App
 
 export const fetchLikedEvents = async (): Promise<AppEvent[]> => {
   const response = await apiClient.get<AppEvent[]>('/users/me/liked-events');
+  return response.data;
+};
+
+export const fetchSavedEventsOverview = async (): Promise<SavedEventsOverview> => {
+  const response = await apiClient.get<SavedEventsOverview>('/users/me/saved-events/overview');
   return response.data;
 };
 

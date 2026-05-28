@@ -31,6 +31,7 @@ import {
   fetchMyEvents,
   fetchNotificationPreferences,
   fetchProfileActivity,
+  fetchSavedEventsOverview,
   fetchTransactions,
   fetchUserUpcomingEvents,
   getOrCreateEventChatRoom,
@@ -91,6 +92,12 @@ export const useLikedEventsQuery = () =>
   useQuery({
     queryKey: queryKeys.likedEvents,
     queryFn: fetchLikedEvents,
+  });
+
+export const useSavedEventsOverviewQuery = () =>
+  useQuery({
+    queryKey: queryKeys.savedEventsOverview,
+    queryFn: fetchSavedEventsOverview,
   });
 
 export const useFeedPreferencesQuery = () =>
@@ -438,6 +445,7 @@ export const useJoinEventMutation = () => {
       queryClient.setQueryData(queryKeys.event(event.id), event);
       void queryClient.invalidateQueries({ queryKey: queryKeys.eventsRoot });
       void queryClient.invalidateQueries({ queryKey: queryKeys.myEventsRoot });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.savedEventsOverview });
       void queryClient.invalidateQueries({ queryKey: queryKeys.feedRoot });
       void queryClient.invalidateQueries({ queryKey: queryKeys.profileActivity });
     },
@@ -453,6 +461,7 @@ export const useLeaveEventMutation = () => {
       queryClient.setQueryData(queryKeys.event(event.id), event);
       void queryClient.invalidateQueries({ queryKey: queryKeys.eventsRoot });
       void queryClient.invalidateQueries({ queryKey: queryKeys.myEventsRoot });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.savedEventsOverview });
       void queryClient.invalidateQueries({ queryKey: queryKeys.feedRoot });
     },
   });
@@ -474,11 +483,13 @@ export const useLikeEventMutation = () => {
     onSuccess: (event) => {
       syncEventAcrossCaches(queryClient, event);
       void queryClient.invalidateQueries({ queryKey: queryKeys.likedEventsRoot });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.savedEventsOverview });
       void queryClient.invalidateQueries({ queryKey: queryKeys.profileActivity });
     },
     onError: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.feedRoot });
       void queryClient.invalidateQueries({ queryKey: queryKeys.likedEventsRoot });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.savedEventsOverview });
       void queryClient.invalidateQueries({ queryKey: queryKeys.profileActivity });
     },
   });
@@ -526,11 +537,13 @@ export const useUnlikeEventMutation = () => {
     onSuccess: (event) => {
       syncEventAcrossCaches(queryClient, event);
       void queryClient.invalidateQueries({ queryKey: queryKeys.likedEventsRoot });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.savedEventsOverview });
       void queryClient.invalidateQueries({ queryKey: queryKeys.profileActivity });
     },
     onError: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.feedRoot });
       void queryClient.invalidateQueries({ queryKey: queryKeys.likedEventsRoot });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.savedEventsOverview });
       void queryClient.invalidateQueries({ queryKey: queryKeys.profileActivity });
     },
   });
@@ -571,6 +584,7 @@ export const useRateOrganizerMutation = () => {
       syncEventAcrossCaches(queryClient, event);
       void queryClient.invalidateQueries({ queryKey: queryKeys.profileActivity });
       void queryClient.invalidateQueries({ queryKey: queryKeys.myEventsRoot });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.savedEventsOverview });
     },
   });
 };
@@ -584,6 +598,7 @@ export const useRateEventMutation = () => {
       syncEventAcrossCaches(queryClient, event);
       void queryClient.invalidateQueries({ queryKey: queryKeys.profileActivity });
       void queryClient.invalidateQueries({ queryKey: queryKeys.myEventsRoot });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.savedEventsOverview });
     },
   });
 };
@@ -603,6 +618,7 @@ export const useConfirmTicketCheckoutMutation = () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.transactions });
       void queryClient.invalidateQueries({ queryKey: queryKeys.profileActivity });
       void queryClient.invalidateQueries({ queryKey: queryKeys.myEventsRoot });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.savedEventsOverview });
       void queryClient.invalidateQueries({ queryKey: queryKeys.eventsRoot });
       void queryClient.invalidateQueries({ queryKey: queryKeys.feedRoot });
     },
@@ -620,6 +636,7 @@ function useParticipantMutation(
       void queryClient.invalidateQueries({ queryKey: queryKeys.eventParticipants(variables.eventId) });
       void queryClient.invalidateQueries({ queryKey: queryKeys.event(variables.eventId) });
       void queryClient.invalidateQueries({ queryKey: queryKeys.myEventsRoot });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.savedEventsOverview });
       void queryClient.invalidateQueries({ queryKey: queryKeys.eventsRoot });
     },
   });

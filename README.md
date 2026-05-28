@@ -24,7 +24,7 @@ Planirani glavni tabovi:
 
 1. `Mapa`
 2. `Discover`
-3. `Kalendar`
+3. `Saved`
 4. `Inbox`
 5. `Profil`
 
@@ -32,7 +32,7 @@ Trenutno stanje tabova:
 
 - Mapa je implementirana kao `app/(tabs)/index.tsx` i rendera `EventsMapExperience`.
 - Discover je implementiran kao postojeći `app/(tabs)/fyp.tsx`.
-- Kalendar je implementiran kao `app/(tabs)/calendar.tsx` i prikazuje joined-only mjesecni grid s event oznakama, searchom i povratkom na danas.
+- Saved je implementiran kao postojeći `app/(tabs)/calendar.tsx` tab route, ali korisnički se prikazuje kao `Saved`. Ima `Collection` i `Schedule` segment: Collection prikazuje lajkane evente, 3 najbliža buduća joined eventa i zadnje past evente sa `See all` ekranima, a Schedule prikazuje joined-only mjesečni grid s event točkicama po danima.
 - Kreiranje eventa otvara floating `+` na mapi kroz `app/create-event.tsx`.
 - Inbox je glavni tab kroz `app/(tabs)/messages.tsx`; chat screen je `app/chat/[id].tsx`.
 - `app/(tabs)/social.tsx` ostaje prototip/sekundarni ekran za conversations + friends, ali vise nije glavni tab.
@@ -123,6 +123,7 @@ Backend trenutno ima:
 - `DELETE /api/events/{id}/like`
 - `GET /api/users/me/events?filter=all|joined|created`
 - `GET /api/users/me/liked-events`
+- `GET /api/users/me/saved-events/overview`
 - `GET /api/users/me/feed-preferences`
 - `POST /api/users/me/feed-preferences`
 - `DELETE /api/users/me/feed-preferences/{preferenceId}`
@@ -243,7 +244,7 @@ Kad implementiras nove stvari, nadogradi postojece:
 
 FYP dio aplikacije sluzi za brz discovery kroz vertikalni Reels-style feed. Svaki reel je povezan s eventom. Korisnik moze lajkati, shareati i otvoriti detalje eventa. Feed se randomizira seed vrijednoscu pri ulasku u FYP, prikazuje samo buduce published evente dostupne korisniku, i koristi paginirani buffer umjesto ucitavanja svih eventova odjednom. Save/bookmark nije dio finalnog zahtjeva i treba ga ukloniti ili zamijeniti ako ostane iz starog prototipa.
 
-Kalendar prikazuje samo evente na koje se korisnik pridruzio. Rijesen je kao native mjesecni grid s oznakama eventova po danima, searchom prijavljenih eventova i listom eventova za odabrani dan.
+Saved zamjenjuje stari Kalendar tab. `Collection` prikazuje evente koje je korisnik lajkao, najbliže evente na koje stvarno ide i prošle evente, s istaknutim kratkim datumom i vremenom te zasebnim `See all` listama. `Schedule` zadržava joined-only mjesečni kalendar, ali oznake eventova na danima su točkice.
 
 Poruke podrzavaju privatne razgovore, grupe, event-specific grupe, pollove, friend request poruke u direct chatu i admin-only chat mod gdje samo admini pisu, a ostali mogu glasati na pollu. Nove text poruke se na backendu spremaju encrypted-at-rest AES-GCM-om; `MESSAGES_ENCRYPTION_SECRET` je preporuceni env secret, a lokalni fallback je postojeci JWT secret radi kompatibilnosti. Slanje poruke sada nakon spremanja na backendu salje Expo push notifikaciju svim ostalim clanovima sobe ako korisnik ima registriran push token, ukljucene preference za taj tip chata i nije muteao tu sobu.
 
@@ -262,7 +263,7 @@ Trenutno:
 - Auth hidratacija se radi kroz `useAuthStore.hydrateAuth()`.
 - Auth hidratacija prvo cita novi stabilni SecureStore zapis, zatim legacy SecureStore zapis i na kraju AsyncStorage mirror. Validna legacy/fallback sesija se migrira natrag u primarni SecureStore zapis.
 - `useAuthStore.setAuth()` i `clearAuth()` resetiraju React Query session cache kroz `core/query/session-query-state.ts`, tako da se liked events, chatovi, join/like state i ostali per-user API podaci ne prenose izmedu korisnika nakon logout/login/register bez restarta aplikacije.
-- Ako app nakon ranije prijave zavrsi na loginu jer spremljena sesija nije ucitana, login ekran prikazuje modal s dijagnostikom storage izvora. Ako login API prodje, ali spremanje sesije padne, korisnik dobiva poseban modal za persistence problem.
+- Ako app nakon ranije prijave zavrsi u auth flowu jer spremljena sesija nije ucitana, pocetni auth/login ekran prikazuje modal s dijagnostikom storage izvora. Ako login API prodje, ali spremanje sesije padne, korisnik dobiva poseban modal za persistence problem.
 - `QueryClientProvider`, `SafeAreaProvider`, `AppThemeProvider` i `GestureHandlerRootView` su globalni wrapperi.
 
 Tab navigacija je u `Gdje-I-Kada-Native/app/(tabs)/_layout.tsx`.
@@ -456,12 +457,13 @@ Sto fali:
 
 Postoji:
 
-- `app/(auth)/index.tsx` login.
+- `app/(auth)/index.tsx` pocetni auth izbor s app ikonom, `Gdje i Kada`, Sign In/Sign Up akcijama i social loginom.
+- `app/(auth)/login.tsx` email/password prijava bez welcome carda.
 - `app/(auth)/register.tsx` registracija.
 - Email/password login i register.
 - Google id token auth preko native `@react-native-google-signin/google-signin`; browser `expo-auth-session` tok je uklonjen jer custom redirect URI nije potreban za Android native login.
 - Apple sign in preko `expo-apple-authentication`.
-- Login screen koristi `features/auth/components/social-auth-button.tsx` za isti app-styled social button na Googleu i Appleu; tekst dolazi iz app i18n-a, pa ne ovisi o sistemskom jeziku native gumba.
+- Auth screenovi koriste `features/auth/hooks/use-social-auth.ts` i `features/auth/components/social-auth-button.tsx` za isti app-styled social button na Googleu i Appleu; tekst dolazi iz app i18n-a, pa ne ovisi o sistemskom jeziku native gumba.
 - Token se sprema u SecureStore.
 
 Backend:

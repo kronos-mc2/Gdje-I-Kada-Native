@@ -58,8 +58,8 @@ export default function TabLayout() {
 
         <NativeTabs.Trigger name="calendar">
           <NativeTabs.Trigger.TabBar backgroundColor={theme.colors.surface} shadowColor={theme.colors.surface} disableTransparentOnScrollEdge />
-          <Icon sf={{ default: 'calendar.badge.clock', selected: 'calendar.badge.clock' }} androidSrc={<VectorIcon family={Ionicons} name="today-outline" />} />
-          <Label>{t('calendar')}</Label>
+          <Icon sf={{ default: 'bookmark', selected: 'bookmark.fill' }} androidSrc={<VectorIcon family={Ionicons} name="bookmark-outline" />} />
+          <Label>{t('saved')}</Label>
         </NativeTabs.Trigger>
 
         <NativeTabs.Trigger name="messages">
