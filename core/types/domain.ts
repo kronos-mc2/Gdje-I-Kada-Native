@@ -50,6 +50,29 @@ export type FeedQueryParams = {
   cursor?: string;
   limit?: number;
   seed?: string;
+  from?: string;
+  to?: string;
+  lat?: number;
+  lng?: number;
+  radiusKm?: number;
+  query?: string;
+  tags?: string;
+  attendanceModes?: string;
+  scope?: 'all' | 'friends';
+  sort?: 'default' | 'trending';
+};
+
+export type FypFeedPreset = 'forYou' | 'tonight' | 'weekend' | 'trending' | 'friends';
+export type FypLocationMode = 'current' | 'city' | 'country';
+
+export type FypFeedFilter = {
+  preset: FypFeedPreset;
+  locationMode: FypLocationMode;
+  city: string;
+  cityPlaceId?: string;
+  country: string;
+  countryPlaceId?: string;
+  attendanceModes: EventAttendanceMode[];
 };
 
 export type MyEventsFilter = 'all' | 'joined' | 'created';
@@ -261,6 +284,16 @@ export type UpdateProfilePayload = {
   name: string;
   bio?: string;
   avatarUrl?: string;
+  avatarImage?: LocalEventImage;
+};
+
+export type ChangePasswordPayload = {
+  currentPassword: string;
+  newPassword: string;
+};
+
+export type DeleteAccountPayload = {
+  currentPassword?: string;
 };
 
 export type Transaction = {

@@ -51,6 +51,7 @@ export default function ChatRoomScreen() {
   const messageListRef = useRef<FlatList<ChatListItem>>(null);
   const initialScrollRoomRef = useRef<string | null>(null);
   const pendingInitialScrollRef = useRef(false);
+  const pendingOwnMessageScrollRef = useRef(false);
   const { data, isLoading } = useChatRoomQuery(roomId);
   const sendMessageMutation = useSendChatMessageMutation();
   const [body, setBody] = useState('');
@@ -60,6 +61,7 @@ export default function ChatRoomScreen() {
   const room = data?.room;
   const messages = data?.messages ?? [];
   const chatItems = useMemo(() => buildChatListItems(messages, locale, t), [messages, locale, t]);
+  const latestMessage = messages.length > 0 ? messages[messages.length - 1] : null;
   const isInitialLoading = isLoading && !data;
   const canWrite = room ? room.type === 'direct' || !room.adminOnly || room.myRole === 'owner' || room.myRole === 'admin' : false;
   const androidComposerBottomInset = Platform.OS === 'android' ? keyboardState.bottomInset : 0;
@@ -68,8 +70,27 @@ export default function ChatRoomScreen() {
   useEffect(() => {
     initialScrollRoomRef.current = null;
     pendingInitialScrollRef.current = false;
+    pendingOwnMessageScrollRef.current = false;
     setVisibleDateLabel(null);
   }, [roomId]);
+
+  useEffect(() => {
+    if (!pendingOwnMessageScrollRef.current || !latestMessage?.mine) {
+      return;
+    }
+
+    pendingOwnMessageScrollRef.current = false;
+    const scrollToSentMessage = () => messageListRef.current?.scrollToEnd({ animated: true });
+    const immediateScroll = setTimeout(scrollToSentMessage, 0);
+    const layoutScroll = setTimeout(scrollToSentMessage, 80);
+    const settledScroll = setTimeout(scrollToSentMessage, 220);
+
+    return () => {
+      clearTimeout(immediateScroll);
+      clearTimeout(layoutScroll);
+      clearTimeout(settledScroll);
+    };
+  }, [latestMessage?.id, latestMessage?.mine]);
 
   const performInitialScroll = useCallback((attempt = 0) => {
     if (!roomId || initialScrollRoomRef.current === roomId || !pendingInitialScrollRef.current || messages.length === 0) {
@@ -126,16 +147,19 @@ export default function ChatRoomScreen() {
   }, [messages.length, performInitialScroll, roomId]);
 
   const handleViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: Array<{ item?: ChatListItem }> }) => {
+    const firstVisibleItem = viewableItems.find((viewableItem) => viewableItem.item)?.item;
+    if (firstVisibleItem?.type === 'date') {
+      setVisibleDateLabel(null);
+      return;
+    }
+
     const firstVisibleMessage = viewableItems.find((viewableItem) => viewableItem.item?.type === 'message')?.item;
     if (firstVisibleMessage?.type === 'message') {
       setVisibleDateLabel(formatChatDateLabel(firstVisibleMessage.message.createdAt, locale, t));
       return;
     }
 
-    const firstVisibleDate = viewableItems.find((viewableItem) => viewableItem.item?.type === 'date')?.item;
-    if (firstVisibleDate?.type === 'date') {
-      setVisibleDateLabel(firstVisibleDate.label);
-    }
+    setVisibleDateLabel(null);
   }).current;
 
   const sendMessage = async () => {
@@ -145,9 +169,11 @@ export default function ChatRoomScreen() {
     }
 
     try {
+      pendingOwnMessageScrollRef.current = true;
       setBody('');
       await sendMessageMutation.mutateAsync({ roomId, body: text });
     } catch {
+      pendingOwnMessageScrollRef.current = false;
       setBody(text);
       Alert.alert(t('messageSendFailed'));
     }

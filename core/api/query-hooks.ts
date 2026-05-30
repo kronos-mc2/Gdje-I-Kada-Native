@@ -3,6 +3,7 @@ import { InfiniteData, useInfiniteQuery, useMutation, useQuery, useQueryClient }
 import { queryKeys } from '@/core/api/query-keys';
 import {
   confirmTicketCheckout,
+  changePassword,
   addEventMedia,
   approveEventParticipant,
   blockEventParticipant,
@@ -15,6 +16,7 @@ import {
   deleteFeedPreference,
   deleteEvent,
   deleteEventMedia,
+  deleteAccount,
   fetchChatMessages,
   fetchChatPeople,
   fetchChatRoom,
@@ -55,7 +57,7 @@ import {
   updateChatRoom,
   votePoll,
 } from '@/core/api/services';
-import { AppEvent, ChatRoomDetail, EventQueryParams, FeedPage, Friend, MyEventsFilter, Poll, UserProfile } from '@/core/types/domain';
+import { AppEvent, ChatRoomDetail, EventQueryParams, FeedPage, FeedQueryParams, Friend, MyEventsFilter, Poll, UserProfile } from '@/core/types/domain';
 import { useAuthStore } from '@/core/store/auth-store';
 
 export const CHAT_PEOPLE_SEARCH_MIN_LENGTH = 2;
@@ -154,7 +156,17 @@ export const useRegisterPushTokenMutation = () =>
     mutationFn: registerPushToken,
   });
 
-export const useFeedInfiniteQuery = (limit = 5, seed?: string) =>
+export const useChangePasswordMutation = () =>
+  useMutation({
+    mutationFn: changePassword,
+  });
+
+export const useDeleteAccountMutation = () =>
+  useMutation({
+    mutationFn: deleteAccount,
+  });
+
+export const useFeedInfiniteQuery = (limit = 5, seed?: string, params?: Omit<FeedQueryParams, 'cursor' | 'limit' | 'seed'>) =>
   useInfiniteQuery<
     FeedPage,
     Error,
@@ -162,8 +174,8 @@ export const useFeedInfiniteQuery = (limit = 5, seed?: string) =>
     ReturnType<typeof queryKeys.feed>,
     string | undefined
   >({
-    queryKey: queryKeys.feed(limit, seed),
-    queryFn: ({ pageParam }) => fetchFeed({ cursor: pageParam, limit, seed }),
+    queryKey: queryKeys.feed(limit, seed, params),
+    queryFn: ({ pageParam }) => fetchFeed({ ...params, cursor: pageParam, limit, seed }),
     initialPageParam: undefined,
     getNextPageParam: (page) => (page.hasMore ? page.nextCursor : undefined),
   });

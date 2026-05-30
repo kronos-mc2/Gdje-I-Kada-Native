@@ -1,5 +1,7 @@
 import { Coordinates, Locale } from '@/core/types/domain';
 
+export type LocationSearchType = 'city' | 'country';
+
 export type LocationSearchResult = {
   id: string;
   title: string;
@@ -13,6 +15,7 @@ export type LocationSearchRequest = {
   locale: Locale;
   limit?: number;
   proximity?: Coordinates;
+  types?: LocationSearchType[];
   signal?: AbortSignal;
 };
 

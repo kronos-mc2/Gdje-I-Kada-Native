@@ -1,10 +1,18 @@
-import { LocationSearchProvider, LocationSearchRequest, LocationSearchResult } from '@/services/locationSearch/types';
+import type {
+  LocationSearchProvider,
+  LocationSearchRequest,
+  LocationSearchResult,
+  LocationSearchType,
+} from '@/services/locationSearch/types';
 
 type NominatimResult = {
   place_id: number;
   display_name: string;
   lat: string;
   lon: string;
+  category?: string;
+  class?: string;
+  type?: string;
   address?: Record<string, string | undefined>;
 };
 
@@ -27,6 +35,80 @@ const firstValue = (address: Record<string, string | undefined> | undefined, key
   }
 
   return keys.map((key) => address[key]?.trim()).find((value): value is string => Boolean(value));
+};
+
+const uniqueParts = (parts: Array<string | undefined>) =>
+  parts.filter((part, index, values): part is string => Boolean(part) && values.indexOf(part) === index);
+
+const isCityResult = (item: NominatimResult) => {
+  if (firstValue(item.address, ['city', 'town', 'village', 'municipality'])) {
+    return true;
+  }
+
+  return (
+    (item.category ?? item.class) === 'place' &&
+    Boolean(item.type && ['city', 'town', 'village', 'municipality'].includes(item.type))
+  );
+};
+
+const isCountryResult = (item: NominatimResult) => {
+  const category = item.category ?? item.class;
+  return (category === 'boundary' && item.type === 'administrative') || item.type === 'country';
+};
+
+const matchesTypes = (item: NominatimResult, types?: LocationSearchType[]) => {
+  if (!types?.length) {
+    return true;
+  }
+
+  return (types.includes('city') && isCityResult(item)) || (types.includes('country') && isCountryResult(item));
+};
+
+const featureTypeForTypes = (types?: LocationSearchType[]) => {
+  if (!types || types.length !== 1) {
+    return undefined;
+  }
+
+  return types[0];
+};
+
+const composeCityDisplay = (item: NominatimResult) => {
+  const title = firstValue(item.address, ['city', 'town', 'village', 'municipality']);
+  if (!title) {
+    return parseDisplayName(item.display_name);
+  }
+
+  return {
+    title,
+    subtitle: uniqueParts([
+      firstValue(item.address, ['county', 'state_district']),
+      firstValue(item.address, ['state']),
+      firstValue(item.address, ['country']),
+    ]).join(', '),
+  };
+};
+
+const composeCountryDisplay = (item: NominatimResult) => {
+  const title = firstValue(item.address, ['country']);
+  if (!title) {
+    return parseDisplayName(item.display_name);
+  }
+
+  return {
+    title,
+    subtitle: firstValue(item.address, ['country_code'])?.toUpperCase() ?? '',
+  };
+};
+
+const composeDisplay = (item: NominatimResult, types?: LocationSearchType[]) => {
+  if (types?.length === 1 && types[0] === 'city') {
+    return composeCityDisplay(item);
+  }
+  if (types?.length === 1 && types[0] === 'country') {
+    return composeCountryDisplay(item);
+  }
+
+  return composeAddressDisplay(item);
 };
 
 const composeAddressDisplay = (item: NominatimResult) => {
@@ -61,7 +143,14 @@ export class NominatimLocationSearchProvider implements LocationSearchProvider {
     } = {},
   ) {}
 
-  async search({ query, locale, limit = 8, proximity, signal }: LocationSearchRequest): Promise<LocationSearchResult[]> {
+  async search({
+    query,
+    locale,
+    limit = 8,
+    proximity,
+    types,
+    signal,
+  }: LocationSearchRequest): Promise<LocationSearchResult[]> {
     const normalizedQuery = query.trim();
 
     if (normalizedQuery.length < MIN_QUERY_LENGTH) {
@@ -76,6 +165,11 @@ export class NominatimLocationSearchProvider implements LocationSearchProvider {
       limit: String(limit),
       'accept-language': locale,
     });
+
+    const featureType = featureTypeForTypes(types);
+    if (featureType) {
+      params.set('featureType', featureType);
+    }
 
     if (proximity && Number.isFinite(proximity.latitude) && Number.isFinite(proximity.longitude)) {
       const delta = 0.35;
@@ -103,8 +197,8 @@ export class NominatimLocationSearchProvider implements LocationSearchProvider {
 
     const payload = (await response.json()) as NominatimResult[];
 
-    return payload.map((item) => {
-      const display = composeAddressDisplay(item);
+    return payload.filter((item) => matchesTypes(item, types)).map((item) => {
+      const display = composeDisplay(item, types);
 
       return {
         id: String(item.place_id),

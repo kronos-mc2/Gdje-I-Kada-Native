@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 
 import { AppText } from '@/components/primitives';
 import { useI18n } from '@/core/i18n/use-i18n';
@@ -17,7 +17,9 @@ type ActionButtonProps = Readonly<{
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
   value?: string;
+  showValue?: boolean;
   active?: boolean;
+  style?: StyleProp<ViewStyle>;
   onPress: () => void;
 }>;
 
@@ -28,12 +30,13 @@ export function FypReelActions({ liked, likeCount, onToggleLike, onOpenShare, on
     <View style={styles.actions}>
       <ActionButton
         icon={liked ? 'heart' : 'heart-outline'}
-        label={liked ? t('unlike') : t('like')}
+        label={liked ? t('unfavorite') : t('favorite')}
         value={formatCompactCount(likeCount)}
+        showValue
         active={liked}
         onPress={onToggleLike}
       />
-      <ActionButton icon="paper-plane-outline" label={t('shareEvent')} onPress={onOpenShare} />
+      <ActionButton icon="paper-plane-outline" label={t('shareEvent')} style={styles.shareAction} onPress={onOpenShare} />
       <ActionButton icon="remove-circle-outline" label={t('notInterested')} onPress={onNotInterested} />
     </View>
   );
@@ -43,21 +46,30 @@ function ActionButton({
   icon,
   label,
   value,
+  showValue = false,
   active = false,
+  style,
   onPress,
 }: ActionButtonProps) {
   const { theme } = useAppTheme();
 
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={label} style={({ pressed }) => [styles.actionWrap, { opacity: pressed ? 0.76 : 1 }]} onPress={onPress}>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      style={({ pressed }) => [styles.actionWrap, style, { opacity: pressed ? 0.76 : 1 }]}
+      onPress={onPress}
+    >
       <View style={[styles.actionIconWrap, { borderColor: theme.colors.border, backgroundColor: theme.colors.overlay }]}>
         <Ionicons name={icon} size={25} color={active ? theme.colors.mapAccent : theme.colors.textPrimary} />
       </View>
-      {value ? (
+      {showValue && value ? (
         <AppText variant="caption" style={styles.actionValue}>
           {value}
         </AppText>
-      ) : null}
+      ) : (
+        <View style={styles.actionValueSpacer} />
+      )}
     </Pressable>
   );
 }
@@ -73,13 +85,16 @@ function formatCompactCount(value: number) {
 const styles = StyleSheet.create({
   actions: {
     alignItems: 'center',
-    gap: 14,
+    gap: 0,
     paddingBottom: 8,
   },
   actionWrap: {
     alignItems: 'center',
-    gap: 6,
+    gap: 4,
     minWidth: 54,
+  },
+  shareAction: {
+    marginTop: 19,
   },
   actionIconWrap: {
     width: 50,
@@ -90,6 +105,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   actionValue: {
+    color: '#FFFFFF',
     textAlign: 'center',
+  },
+  actionValueSpacer: {
+    height: 18,
   },
 });

@@ -12,6 +12,8 @@ type FypReelVideoLayerProps = Readonly<{
 
 type ExpoVideoModule = typeof import('expo-video');
 
+const DISABLED_FULLSCREEN_OPTIONS = { enable: false } as const;
+
 let expoVideoModule: ExpoVideoModule | null = null;
 let hasLoggedMissingExpoVideo = false;
 
@@ -67,7 +69,7 @@ export function FypReelVideoLayer({ videoSource, isActive, isMuted }: FypReelVid
       style={StyleSheet.absoluteFill}
       contentFit="cover"
       nativeControls={false}
-      allowsFullscreen={false}
+      fullscreenOptions={DISABLED_FULLSCREEN_OPTIONS}
       useExoShutter={false}
     />
   );

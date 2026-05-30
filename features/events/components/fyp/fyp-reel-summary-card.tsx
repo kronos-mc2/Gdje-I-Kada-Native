@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { AppCard, AppText } from '@/components/primitives';
+import { AppText } from '@/components/primitives';
 import { useI18n } from '@/core/i18n/use-i18n';
 import { useAppTheme } from '@/core/theme';
 import { AppEvent, Locale } from '@/core/types/domain';
@@ -11,6 +11,8 @@ import { ProfileAvatar } from '@/features/profile/components/profile-avatar';
 type FypReelSummaryCardProps = Readonly<{
   event: AppEvent;
   locale: Locale;
+  activeMediaIndex: number;
+  mediaPageCount: number;
   onOpenDetails: () => void;
 }>;
 
@@ -19,25 +21,38 @@ type MetaItemProps = Readonly<{
   label: string;
 }>;
 
-export function FypReelSummaryCard({ event, locale, onOpenDetails }: FypReelSummaryCardProps) {
+export function FypReelSummaryCard({ event, locale, activeMediaIndex, mediaPageCount, onOpenDetails }: FypReelSummaryCardProps) {
   const { t } = useI18n();
   const { theme } = useAppTheme();
   const organizerName = event.creatorName ?? t('organizerFallback');
 
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={t('details')} onPress={onOpenDetails} style={({ pressed }) => ({ opacity: pressed ? 0.9 : 1 })}>
-      <AppCard variant="glass" style={styles.card}>
-        <View style={styles.handleWrap}>
-          <View style={[styles.chevronBadge, { borderColor: theme.colors.border, backgroundColor: theme.colors.overlay }]}>
-            <Ionicons name="chevron-up" size={16} color={theme.colors.textSecondary} />
+      <View style={styles.content}>
+        <View style={styles.badgeRow}>
+          <View style={[styles.dateBadge, { backgroundColor: theme.colors.mapAccentSoft }]}>
+            <AppText variant="caption" style={styles.badgeText} numberOfLines={1}>
+              {formatEventDay(event.whenISO, locale)}
+            </AppText>
           </View>
+          {event.joinedByMe ? (
+            <View style={[styles.dateBadge, { backgroundColor: theme.colors.overlay, borderColor: theme.colors.mapAccent, borderWidth: 1 }]}>
+              <AppText variant="caption" color="mapAccent" numberOfLines={1}>
+                {t('joinedBadge')}
+              </AppText>
+            </View>
+          ) : null}
         </View>
 
-        <View style={styles.headerRow}>
-          <ProfileAvatar name={organizerName} avatarUrl={event.creatorAvatarUrl} size={34} />
+        <AppText variant="title" numberOfLines={2} style={styles.title}>
+          {event.title[locale]}
+        </AppText>
+
+        <View style={styles.organizerRow}>
+          <ProfileAvatar name={organizerName} avatarUrl={event.creatorAvatarUrl} size={28} />
           <View style={styles.titleBlock}>
-            <AppText variant="bodyStrong" numberOfLines={1}>
-              {event.title[locale]}
+            <AppText variant="caption" color="textSecondary" numberOfLines={1}>
+              {organizerName}
             </AppText>
             <AppText variant="caption" color="textSecondary" numberOfLines={1}>
               {event.where[locale]}
@@ -50,11 +65,35 @@ export function FypReelSummaryCard({ event, locale, onOpenDetails }: FypReelSumm
         </AppText>
 
         <View style={styles.metaRow}>
-          <MetaItem icon="calendar-outline" label={formatEventDay(event.whenISO, locale)} />
           <MetaItem icon="time-outline" label={formatEventTime(event.whenISO, locale)} />
+          <MetaItem icon="location-outline" label={event.where[locale]} />
           <MetaItem icon="people-outline" label={`${event.participantCount} ${t('participants')}`} />
         </View>
-      </AppCard>
+
+        <View style={[styles.detailsButton, { borderColor: theme.colors.mapAccent, backgroundColor: theme.colors.mapAccent }]}>
+          <Ionicons name="map-outline" size={18} color="#FFFFFF" />
+          <AppText variant="bodyStrong" style={styles.detailsButtonText}>
+            {t('detailsCta')}
+          </AppText>
+          <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
+        </View>
+
+        {mediaPageCount > 1 ? (
+          <View style={styles.mediaIndicatorRow}>
+            {Array.from({ length: mediaPageCount }).map((_, index) => (
+              <View
+                key={`media-indicator-${event.id}-${index}`}
+                style={[
+                  styles.mediaIndicator,
+                  {
+                    backgroundColor: index === activeMediaIndex ? theme.colors.mapAccent : 'rgba(240, 240, 240, 0.34)',
+                  },
+                ]}
+              />
+            ))}
+          </View>
+        ) : null}
+      </View>
     </Pressable>
   );
 }
@@ -73,40 +112,44 @@ function MetaItem({ icon, label }: MetaItemProps) {
 }
 
 const styles = StyleSheet.create({
-  card: {
-    flex: 1,
-    paddingTop: 9,
-    paddingHorizontal: 12,
-    paddingBottom: 12,
+  content: {
+    gap: 9,
+    paddingBottom: 2,
   },
-  handleWrap: {
+  badgeRow: {
     alignItems: 'center',
-    marginBottom: 7,
-  },
-  chevronBadge: {
-    width: 32,
-    height: 20,
-    borderRadius: 999,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  dateBadge: {
+    alignSelf: 'flex-start',
+    borderRadius: 4,
+    minHeight: 22,
+    justifyContent: 'center',
+    paddingHorizontal: 7,
+  },
+  badgeText: {
+    color: '#FFFFFF',
+  },
+  title: {
+    color: '#FFFFFF',
+  },
+  organizerRow: {
     alignItems: 'center',
+    flexDirection: 'row',
     gap: 10,
   },
   titleBlock: {
     flex: 1,
   },
   about: {
-    marginTop: 9,
+    color: 'rgba(240, 240, 240, 0.82)',
   },
   metaRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 7,
-    marginTop: 11,
   },
   metaItem: {
     maxWidth: '100%',
@@ -120,5 +163,35 @@ const styles = StyleSheet.create({
   },
   metaText: {
     flexShrink: 1,
+  },
+  detailsButton: {
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    borderRadius: 999,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 10,
+    minHeight: 44,
+    minWidth: 190,
+    paddingHorizontal: 18,
+  },
+  detailsButtonText: {
+    color: '#FFFFFF',
+    flex: 1,
+    textAlign: 'center',
+  },
+  mediaIndicatorRow: {
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    gap: 7,
+    justifyContent: 'center',
+    marginLeft: 18,
+    marginTop: 2,
+  },
+  mediaIndicator: {
+    borderRadius: 999,
+    height: 4,
+    width: 18,
   },
 });

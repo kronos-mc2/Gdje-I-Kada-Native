@@ -13,9 +13,11 @@ import {
   useUnlikeEventMutation,
 } from '@/core/api/query-hooks';
 import { useI18n } from '@/core/i18n/use-i18n';
+import { useAppStore } from '@/core/store/app-store';
 import { useAppTheme } from '@/core/theme';
 import { AppEvent } from '@/core/types/domain';
 import { EventShareModal } from '@/features/events/components/event-share-modal';
+import { FypDiscoverHeader } from '@/features/events/components/fyp/fyp-discover-header';
 import { FypEventDetailsSheet } from '@/features/events/components/fyp/fyp-event-details-sheet';
 import {
   getEstimatedFypTabBarHeight,
@@ -24,6 +26,7 @@ import {
   getFypViewportHeight,
 } from '@/features/events/components/fyp/fyp-layout';
 import { FypReelSlide } from '@/features/events/components/fyp/fyp-reel-slide';
+import { createFypFeedParams } from '@/features/events/fyp/fyp-feed-filters';
 
 const isValidFeedEvent = (event: AppEvent | null | undefined): event is AppEvent => Boolean(event?.id);
 const createFeedSeed = () => `${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -37,9 +40,18 @@ export default function FypScreen() {
   const tabBarHeight = useContext(BottomTabBarHeightContext) ?? getEstimatedFypTabBarHeight(insets);
   const { height, width } = useWindowDimensions();
   const [feedSeed, setFeedSeed] = useState(createFeedSeed);
+  const fypFeedFilter = useAppStore((state) => state.fypFeedFilter);
+  const setFypFeedFilter = useAppStore((state) => state.setFypFeedFilter);
+  const userLocation = useAppStore((state) => state.userLocation);
+  const nearbyRadiusKm = useAppStore((state) => state.nearbyRadiusKm);
+  const feedParams = useMemo(
+    () => createFypFeedParams(fypFeedFilter, userLocation, nearbyRadiusKm),
+    [feedSeed, fypFeedFilter, nearbyRadiusKm, userLocation],
+  );
   const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage, refetch, isRefetching } = useFeedInfiniteQuery(
     FEED_PAGE_SIZE,
     feedSeed,
+    feedParams,
   );
   const likeEventMutation = useLikeEventMutation();
   const unlikeEventMutation = useUnlikeEventMutation();
@@ -51,6 +63,7 @@ export default function FypScreen() {
   const [activeEventId, setActiveEventId] = useState<string | null>(null);
   const [isFeedMuted, setIsFeedMuted] = useState(false);
   const recordedImpressionIdsRef = useRef<Set<string>>(new Set());
+  const hasMountedFilterRef = useRef(false);
   const itemHeight = getFypViewportHeight(height, tabBarHeight);
   const slideBottomInset = getFypBottomContentInset(insets);
   const detailBottomInset = getFypDetailBottomInset();
@@ -80,6 +93,17 @@ export default function FypScreen() {
       setFeedSeed(createFeedSeed());
     }, []),
   );
+
+  useEffect(() => {
+    if (!hasMountedFilterRef.current) {
+      hasMountedFilterRef.current = true;
+      return;
+    }
+
+    recordedImpressionIdsRef.current.clear();
+    setActiveEventId(null);
+    setFeedSeed(createFeedSeed());
+  }, [fypFeedFilter]);
 
   const onToggleLike = (event: AppEvent) => {
     if (event.likedByMe) {
@@ -204,6 +228,8 @@ export default function FypScreen() {
           ListFooterComponent={renderFooter}
         />
       )}
+
+      <FypDiscoverHeader filter={fypFeedFilter} topInset={insets.top} onFilterChange={setFypFeedFilter} />
 
       {selectedEvent ? (
         <FypEventDetailsSheet

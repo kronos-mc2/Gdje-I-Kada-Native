@@ -2,6 +2,7 @@ import { Image } from 'expo-image';
 import { StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/primitives';
+import { getAuthenticatedImageSource } from '@/core/events/event-cover';
 import { useAppTheme } from '@/core/theme';
 
 type ProfileAvatarProps = Readonly<{
@@ -16,7 +17,7 @@ export function ProfileAvatar({ name, avatarUrl, size = 96 }: ProfileAvatarProps
   const initialFontSize = Math.max(12, Math.round(size * 0.42));
 
   if (avatarUrl) {
-    return <Image source={{ uri: avatarUrl }} style={[styles.avatar, { width: size, height: size, borderRadius: size / 2 }]} contentFit="cover" />;
+    return <Image source={getAuthenticatedImageSource(avatarUrl)} style={[styles.avatar, { width: size, height: size, borderRadius: size / 2 }]} contentFit="cover" />;
   }
 
   return (

@@ -5,7 +5,7 @@ export const queryKeys = {
   myEventsRoot: ['my-events'] as const,
   myEvents: (filter: string) => ['my-events', filter] as const,
   feedRoot: ['feed'] as const,
-  feed: (limit: number, seed?: string) => ['feed', { limit, seed: seed ?? '' }] as const,
+  feed: (limit: number, seed?: string, params?: unknown) => ['feed', { limit, seed: seed ?? '', params: params ?? {} }] as const,
   likedEventsRoot: ['liked-events'] as const,
   likedEvents: ['liked-events'] as const,
   savedEventsOverview: ['saved-events-overview'] as const,
@@ -25,11 +25,17 @@ export const queryKeys = {
   chatMessagesRoot: ['chat-messages'] as const,
   chatMessages: (roomId: string) => ['chat-messages', roomId] as const,
   chatPeople: (query?: string) => ['chat-people', { query: query ?? '' }] as const,
-  locationSearch: (query: string, locale: string, proximity?: { latitude: number; longitude: number } | null) =>
+  locationSearch: (
+    query: string,
+    locale: string,
+    proximity?: { latitude: number; longitude: number } | null,
+    types?: readonly string[],
+  ) =>
     [
       'location-search',
       locale,
       query,
+      types?.join(',') ?? '',
       proximity
         ? {
             latitude: Number(proximity.latitude.toFixed(3)),

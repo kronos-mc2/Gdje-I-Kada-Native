@@ -15,7 +15,7 @@ export default function TransactionsScreen() {
     <AppScreen scroll>
       <View style={styles.header}>
         <AppIconButton icon="arrow-back" onPress={() => router.back()} />
-        <AppText variant="headline">{t('transactionHistory')}</AppText>
+        <AppText variant="headline">{t('myTickets')}</AppText>
         <View style={styles.headerSpacer} />
       </View>
 

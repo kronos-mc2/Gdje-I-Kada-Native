@@ -44,7 +44,13 @@ export default function ProfileScreen() {
       </View>
 
       <AppCard variant="glass" style={styles.menuCard}>
-        <ProfileMenuRow icon="settings-outline" title={t('settings')} onPress={() => router.push('/profile/settings')} />
+        <ProfileMenuRow icon="heart-outline" title={t('likedEvents')} subtitle={t('likedEventsSubtitle')} onPress={() => router.push('/profile/liked')} />
+        <ProfileMenuRow
+          icon="ticket-outline"
+          title={t('myTickets')}
+          subtitle={t('transactionHistorySubtitle')}
+          onPress={() => router.push('/profile/transactions')}
+        />
         <ProfileMenuRow
           icon="time-outline"
           title={t('activityHistory')}
@@ -57,13 +63,7 @@ export default function ProfileScreen() {
           subtitle={t('createdEventsSubtitle')}
           onPress={() => router.push('/profile/created-events')}
         />
-        <ProfileMenuRow
-          icon="receipt-outline"
-          title={t('transactionHistory')}
-          subtitle={t('transactionHistorySubtitle')}
-          onPress={() => router.push('/profile/transactions')}
-        />
-        <ProfileMenuRow icon="heart-outline" title={t('likedEvents')} subtitle={t('likedEventsSubtitle')} onPress={() => router.push('/profile/liked')} />
+        <ProfileMenuRow icon="settings-outline" title={t('settings')} onPress={() => router.push('/profile/settings')} />
       </AppCard>
 
       <View style={styles.sectionHeader}>

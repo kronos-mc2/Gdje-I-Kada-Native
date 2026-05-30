@@ -50,7 +50,7 @@ export function ChatRoomRow({ room, onPress }: ChatRoomRowProps) {
             {room.lastMessage || room.subtitle}
           </AppText>
           {room.unreadCount > 0 ? (
-            <View style={[styles.unreadBadge, { backgroundColor: theme.colors.surfaceElevated, borderColor: theme.colors.border }]}>
+            <View style={[styles.unreadBadge, { backgroundColor: theme.colors.mapAccent, borderColor: theme.colors.mapAccent }]}>
               <AppText variant="caption">{room.unreadCount}</AppText>
             </View>
           ) : null}

@@ -8,6 +8,7 @@ import {
   ChatPerson,
   ChatRoom,
   ChatRoomDetail,
+  ChangePasswordPayload,
   Conversation,
   CreateChatRoomPayload,
   CreateEventPayload,
@@ -16,6 +17,7 @@ import {
   EventMediaPayload,
   EventParticipant,
   CreatePollPayload,
+  DeleteAccountPayload,
   EventQueryParams,
   EventRatingPayload,
   FeedPage,
@@ -163,8 +165,24 @@ export const blockEventParticipant = async ({
 };
 
 export const updateProfile = async (payload: UpdateProfilePayload): Promise<UserProfile> => {
+  if (payload.avatarImage) {
+    const { avatarImage, ...profilePayload } = payload;
+    const formData = new FormData();
+    formData.append('profile', JSON.stringify(profilePayload));
+    formData.append('avatar', toFormDataFile(avatarImage));
+    return sendMultipart<UserProfile>('PATCH', '/users/me/profile', formData);
+  }
+
   const response = await apiClient.patch<UserProfile>('/users/me/profile', payload);
   return response.data;
+};
+
+export const changePassword = async (payload: ChangePasswordPayload): Promise<void> => {
+  await apiClient.post('/users/me/password', payload);
+};
+
+export const deleteAccount = async (payload: DeleteAccountPayload): Promise<void> => {
+  await apiClient.delete('/users/me/account', { data: payload });
 };
 
 export const fetchProfileActivity = async (): Promise<ProfileActivity> => {
@@ -418,7 +436,9 @@ const uploadEventVideoFile = async ({ eventId, video }: { eventId: string; video
   }
 };
 
-const postMultipart = async <T>(path: string, formData: FormData): Promise<T> =>
+const postMultipart = async <T>(path: string, formData: FormData): Promise<T> => sendMultipart('POST', path, formData);
+
+const sendMultipart = async <T>(method: 'POST' | 'PATCH', path: string, formData: FormData): Promise<T> =>
   new Promise((resolve, reject) => {
     const token = useAuthStore.getState().accessToken;
     const xhr = new XMLHttpRequest();
@@ -438,7 +458,7 @@ const postMultipart = async <T>(path: string, formData: FormData): Promise<T> =>
       xhr.abort();
     }, MULTIPART_UPLOAD_TIMEOUT_MS);
 
-    xhr.open('POST', `${getApiBaseUrl()}${path}`);
+    xhr.open(method, `${getApiBaseUrl()}${path}`);
     xhr.timeout = MULTIPART_UPLOAD_TIMEOUT_MS;
     if (token) {
       xhr.setRequestHeader('Authorization', `Bearer ${token}`);

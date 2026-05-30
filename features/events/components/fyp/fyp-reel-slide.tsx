@@ -3,15 +3,14 @@ import { Image } from 'expo-image';
 import { GestureResponderEvent, NativeScrollEvent, NativeSyntheticEvent, ScrollView, StyleSheet, View } from 'react-native';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { AppCard, AppText } from '@/components/primitives';
 import { getEventImageSources, getEventVideoSource, isAuthenticatedImageSource } from '@/core/events/event-cover';
-import { useI18n } from '@/core/i18n/use-i18n';
 import { useAppTheme } from '@/core/theme';
 import { AppEvent, Locale } from '@/core/types/domain';
-import { formatEventDay } from '@/core/utils/date';
 import { FypReelActions } from '@/features/events/components/fyp/fyp-reel-actions';
 import { FypReelSummaryCard } from '@/features/events/components/fyp/fyp-reel-summary-card';
 import { FypReelVideoLayer, canRenderFypVideo } from '@/features/events/components/fyp/fyp-reel-video-layer';
+
+const BOTTOM_SCRIM_SOURCE = require('../../../../assets/images/fyp-bottom-scrim.png');
 
 type FypReelSlideProps = Readonly<{
   event: AppEvent;
@@ -48,7 +47,6 @@ export function FypReelSlide({
   onOpenShare,
   onNotInterested,
 }: FypReelSlideProps) {
-  const { t } = useI18n();
   const { theme } = useAppTheme();
   const [activeMediaIndex, setActiveMediaIndex] = useState(0);
   const [feedback, setFeedback] = useState<'heart' | 'muted' | 'unmuted' | null>(null);
@@ -171,20 +169,6 @@ export function FypReelSlide({
               />
             ))}
           </ScrollView>
-          <View style={[styles.imagePageDots, { top: topInset + 86 }]}>
-            {Array.from({ length: pageCount }).map((_, index) => (
-              <View
-                key={`media-page-${event.id}-${index}`}
-                style={[
-                  styles.imagePageDot,
-                  {
-                    backgroundColor: index === activeMediaIndex ? theme.colors.textPrimary : theme.colors.surfaceElevated,
-                    borderColor: theme.colors.border,
-                  },
-                ]}
-              />
-            ))}
-          </View>
         </>
       ) : hasVideo && videoSource ? (
         <>
@@ -219,26 +203,17 @@ export function FypReelSlide({
         </View>
       ) : null}
 
-      <View style={[styles.topBadgeWrap, { paddingTop: topInset + 10 }]}>
-        <AppCard variant="glass" style={styles.topBadge}>
-          <View style={styles.topBadgeRow}>
-            <AppText variant="bodyStrong" numberOfLines={1}>
-              {formatEventDay(event.whenISO, locale)}
-            </AppText>
-            {event.joinedByMe ? (
-              <View style={[styles.joinedBadge, { backgroundColor: theme.colors.mapAccentSoft, borderColor: theme.colors.mapAccent }]}>
-                <AppText variant="caption" color="mapAccent">
-                  {t('joinedBadge')}
-                </AppText>
-              </View>
-            ) : null}
-          </View>
-        </AppCard>
-      </View>
+      <BottomScrim />
 
       <View style={[styles.bottomContent, { paddingBottom: bottomInset }]}>
         <View style={styles.summaryColumn}>
-          <FypReelSummaryCard event={event} locale={locale} onOpenDetails={() => onOpenDetails(event)} />
+          <FypReelSummaryCard
+            event={event}
+            locale={locale}
+            activeMediaIndex={activeMediaIndex}
+            mediaPageCount={pageCount}
+            onOpenDetails={() => onOpenDetails(event)}
+          />
         </View>
         <FypReelActions
           liked={Boolean(event.likedByMe)}
@@ -248,6 +223,14 @@ export function FypReelSlide({
           onNotInterested={() => onNotInterested(event)}
         />
       </View>
+    </View>
+  );
+}
+
+function BottomScrim() {
+  return (
+    <View pointerEvents="none" style={styles.scrim}>
+      <Image source={BOTTOM_SCRIM_SOURCE} style={StyleSheet.absoluteFill} contentFit="fill" cachePolicy="memory-disk" />
     </View>
   );
 }
@@ -269,50 +252,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: 116,
   },
-  topBadgeWrap: {
-    position: 'absolute',
-    left: 16,
-    right: 16,
-    top: 0,
-    alignItems: 'flex-start',
-  },
-  topBadge: {
-    minWidth: 130,
-    maxWidth: 260,
-    paddingHorizontal: 13,
-    paddingVertical: 11,
-  },
-  topBadgeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginTop: 3,
-  },
-  joinedBadge: {
-    borderWidth: 1,
-    borderRadius: 999,
-    paddingHorizontal: 9,
-    paddingVertical: 4,
-  },
-  imagePageDots: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 6,
-    justifyContent: 'center',
+  scrim: {
+    bottom: 0,
+    height: '62%',
     left: 0,
     position: 'absolute',
     right: 0,
   },
-  imagePageDot: {
-    borderRadius: 999,
-    borderWidth: StyleSheet.hairlineWidth,
-    height: 6,
-    width: 6,
-  },
   bottomContent: {
     position: 'absolute',
-    left: 14,
-    right: 14,
+    left: 18,
+    right: 16,
     bottom: 0,
     flexDirection: 'row',
     alignItems: 'flex-end',

@@ -7,6 +7,7 @@ import { getAsyncStorage } from '@/core/utils/async-storage';
 import {
   Coordinates,
   EventFilter,
+  FypFeedFilter,
   EventsView,
   Locale,
   LocationConsent,
@@ -24,6 +25,7 @@ type AppStore = {
   locationSource: LocationSource;
   notificationPermissionPrompted: boolean;
   nearbyRadiusKm: number;
+  fypFeedFilter: FypFeedFilter;
   fypEntranceCoordinates: Coordinates | null;
   setLocale: (locale: Locale) => void;
   setThemePreference: (themePreference: ThemePreference) => void;
@@ -37,11 +39,12 @@ type AppStore = {
   setLocationSource: (source: LocationSource) => void;
   setNotificationPermissionPrompted: (prompted: boolean) => void;
   setNearbyRadiusKm: (radiusKm: number) => void;
+  setFypFeedFilter: (filter: FypFeedFilter) => void;
 };
 
 type PersistedAppStore = Pick<
   AppStore,
-  'locale' | 'themePreference' | 'locationConsent' | 'notificationPermissionPrompted' | 'nearbyRadiusKm'
+  'locale' | 'themePreference' | 'locationConsent' | 'notificationPermissionPrompted' | 'nearbyRadiusKm' | 'fypFeedFilter'
 >;
 
 const clampNearbyRadiusKm = (radiusKm: number) => {
@@ -50,6 +53,48 @@ const clampNearbyRadiusKm = (radiusKm: number) => {
   }
 
   return Math.min(20, Math.max(1, Math.round(radiusKm)));
+};
+
+const DEFAULT_FYP_FEED_FILTER: FypFeedFilter = {
+  preset: 'forYou',
+  locationMode: 'current',
+  city: '',
+  cityPlaceId: undefined,
+  country: '',
+  countryPlaceId: undefined,
+  attendanceModes: [],
+};
+
+const normalizeFypFeedFilter = (filter?: Partial<FypFeedFilter> | null): FypFeedFilter => {
+  const locationMode = filter?.locationMode ?? DEFAULT_FYP_FEED_FILTER.locationMode;
+  const city = filter?.city ?? DEFAULT_FYP_FEED_FILTER.city;
+  const cityPlaceId = filter?.cityPlaceId;
+  const country = filter?.country ?? DEFAULT_FYP_FEED_FILTER.country;
+  const countryPlaceId = filter?.countryPlaceId;
+  const hasSelectedCity = Boolean(city.trim() && cityPlaceId);
+  const hasSelectedCountry = Boolean(country.trim() && countryPlaceId);
+
+  if ((locationMode === 'city' && !hasSelectedCity) || (locationMode === 'country' && !hasSelectedCountry)) {
+    return {
+      ...DEFAULT_FYP_FEED_FILTER,
+      preset: filter?.preset ?? DEFAULT_FYP_FEED_FILTER.preset,
+      attendanceModes: Array.isArray(filter?.attendanceModes)
+        ? filter.attendanceModes
+        : DEFAULT_FYP_FEED_FILTER.attendanceModes,
+    };
+  }
+
+  return {
+    preset: filter?.preset ?? DEFAULT_FYP_FEED_FILTER.preset,
+    locationMode,
+    city,
+    cityPlaceId,
+    country,
+    countryPlaceId,
+    attendanceModes: Array.isArray(filter?.attendanceModes)
+      ? filter.attendanceModes
+      : DEFAULT_FYP_FEED_FILTER.attendanceModes,
+  };
 };
 
 export const useAppStore = create<AppStore>()(
@@ -65,6 +110,7 @@ export const useAppStore = create<AppStore>()(
       locationSource: 'default',
       notificationPermissionPrompted: false,
       nearbyRadiusKm: 10,
+      fypFeedFilter: DEFAULT_FYP_FEED_FILTER,
       fypEntranceCoordinates: null,
       setLocale: (locale) => set({ locale }),
       setThemePreference: (themePreference) => set({ themePreference }),
@@ -92,10 +138,13 @@ export const useAppStore = create<AppStore>()(
       setNearbyRadiusKm: (nearbyRadiusKm) => {
         set({ nearbyRadiusKm: clampNearbyRadiusKm(nearbyRadiusKm) });
       },
+      setFypFeedFilter: (fypFeedFilter) => {
+        set({ fypFeedFilter: normalizeFypFeedFilter(fypFeedFilter) });
+      },
     }),
     {
       name: 'gdje-i-kada-app-store',
-      version: 4,
+      version: 6,
       storage: createJSONStorage(() => getAsyncStorage()),
       migrate: (persistedState): PersistedAppStore => {
         if (!persistedState || typeof persistedState !== 'object') {
@@ -105,6 +154,7 @@ export const useAppStore = create<AppStore>()(
             locationConsent: 'unknown',
             notificationPermissionPrompted: false,
             nearbyRadiusKm: 10,
+            fypFeedFilter: DEFAULT_FYP_FEED_FILTER,
           };
         }
 
@@ -116,6 +166,7 @@ export const useAppStore = create<AppStore>()(
           locationConsent: state.locationConsent ?? 'unknown',
           notificationPermissionPrompted: state.notificationPermissionPrompted ?? false,
           nearbyRadiusKm: clampNearbyRadiusKm(state.nearbyRadiusKm ?? 10),
+          fypFeedFilter: normalizeFypFeedFilter(state.fypFeedFilter),
         };
       },
       partialize: (state) => ({
@@ -124,6 +175,7 @@ export const useAppStore = create<AppStore>()(
         locationConsent: state.locationConsent,
         notificationPermissionPrompted: state.notificationPermissionPrompted,
         nearbyRadiusKm: state.nearbyRadiusKm,
+        fypFeedFilter: state.fypFeedFilter,
       }),
     },
   ),

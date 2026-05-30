@@ -55,7 +55,7 @@ export function getAuthenticatedImageSource(uri?: string | null): AuthenticatedI
   }
 
   const token = useAuthStore.getState().accessToken;
-  if (!token || !isApiMediaUri(normalizedUri)) {
+  if (!token || !isApiAuthenticatedMediaUri(normalizedUri)) {
     return { uri: normalizedUri };
   }
 
@@ -103,12 +103,18 @@ const resolveApiPath = (path: string) => {
   return `${apiOrigin}${normalizedPath}`;
 };
 
-const isApiMediaUri = (uri: string) => {
+const isApiAuthenticatedMediaUri = (uri: string) => {
   try {
     const apiUrl = new URL(getApiBaseUrl());
     const mediaUrl = new URL(uri);
     const apiPath = apiUrl.pathname.replace(/\/+$/, '');
-    return mediaUrl.origin === apiUrl.origin && mediaUrl.pathname.startsWith(`${apiPath}/events/`) && mediaUrl.pathname.includes('/media/');
+    if (mediaUrl.origin !== apiUrl.origin) {
+      return false;
+    }
+    return (
+      (mediaUrl.pathname.startsWith(`${apiPath}/events/`) && mediaUrl.pathname.includes('/media/')) ||
+      (mediaUrl.pathname.startsWith(`${apiPath}/users/`) && mediaUrl.pathname.endsWith('/avatar/content'))
+    );
   } catch {
     return false;
   }

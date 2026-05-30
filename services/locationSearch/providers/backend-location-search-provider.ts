@@ -1,10 +1,21 @@
 import { apiClient } from '@/core/api/http-client';
-import { LocationSearchProvider, LocationSearchRequest, LocationSearchResult } from '@/services/locationSearch/types';
+import type {
+  LocationSearchProvider,
+  LocationSearchRequest,
+  LocationSearchResult,
+} from '@/services/locationSearch/types';
 
 export class BackendLocationSearchProvider implements LocationSearchProvider {
   constructor(private readonly fallbackProvider?: LocationSearchProvider) {}
 
-  async search({ query, locale, limit = 6, proximity, signal }: LocationSearchRequest): Promise<LocationSearchResult[]> {
+  async search({
+    query,
+    locale,
+    limit = 6,
+    proximity,
+    types,
+    signal,
+  }: LocationSearchRequest): Promise<LocationSearchResult[]> {
     try {
       const response = await apiClient.get<LocationSearchResult[]>('/locations/search', {
         signal,
@@ -14,6 +25,7 @@ export class BackendLocationSearchProvider implements LocationSearchProvider {
           limit,
           lat: proximity?.latitude,
           lng: proximity?.longitude,
+          types: types?.join(','),
         },
       });
 
@@ -31,6 +43,7 @@ export class BackendLocationSearchProvider implements LocationSearchProvider {
       locale,
       limit,
       proximity,
+      types,
       signal,
     });
   }

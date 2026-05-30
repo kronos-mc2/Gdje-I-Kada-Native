@@ -38,12 +38,13 @@ export function ThemeToggle({ value, onChange }: ThemeToggleProps) {
               styles.option,
               {
                 borderRadius: theme.tokens.radius.sm,
-                backgroundColor: selected ? theme.colors.surfaceElevated : 'transparent',
+                borderColor: selected ? theme.colors.mapAccent : 'transparent',
+                backgroundColor: selected ? theme.colors.mapAccentSoft : 'transparent',
                 opacity: pressed ? 0.8 : 1,
               },
             ]}
           >
-            <AppText variant="label" style={{ color: selected ? theme.colors.textPrimary : theme.colors.textSecondary }}>
+            <AppText variant="label" style={{ color: selected ? theme.colors.mapAccent : theme.colors.textSecondary }}>
               {getThemeLabel(option, t)}
             </AppText>
           </Pressable>
@@ -62,6 +63,7 @@ const styles = StyleSheet.create({
   },
   option: {
     flex: 1,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 36,

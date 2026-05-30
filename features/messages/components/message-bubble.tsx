@@ -22,6 +22,7 @@ export function MessageBubble({ message, locale, onOpenEvent }: MessageBubblePro
   const voteMutation = useVotePollMutation();
   const respondFriendRequestMutation = useRespondFriendRequestMutation();
   const alignSelf = message.mine ? 'flex-end' : 'flex-start';
+  const alignItems = message.mine ? 'flex-end' : 'flex-start';
   const bubbleColor = message.mine ? theme.colors.surfaceElevated : theme.colors.surface;
 
   const vote = (pollId: string, optionId: string, allowMultiple: boolean, currentOptionIds: string[]) => {
@@ -33,7 +34,7 @@ export function MessageBubble({ message, locale, onOpenEvent }: MessageBubblePro
   };
 
   return (
-    <View style={[styles.wrapper, { alignSelf }]}>
+    <View style={[styles.wrapper, { alignItems, alignSelf }]}>
       {!message.mine && message.senderName ? (
         <View style={styles.senderRow}>
           <ProfileAvatar name={message.senderName} avatarUrl={message.senderAvatarUrl} size={24} />
@@ -181,7 +182,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   sender: {
-    flex: 1,
+    flexShrink: 1,
   },
   senderRow: {
     flexDirection: 'row',

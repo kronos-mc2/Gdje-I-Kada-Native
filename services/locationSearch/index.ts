@@ -7,6 +7,7 @@ export type {
   LocationSearchProvider,
   LocationSearchRequest,
   LocationSearchResult,
+  LocationSearchType,
 } from '@/services/locationSearch/types';
 
 const directNominatimProvider = new NominatimLocationSearchProvider({

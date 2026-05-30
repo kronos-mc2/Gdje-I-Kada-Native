@@ -1,6 +1,6 @@
 # Gdje i Kada - projektna dokumentacija
 
-Status dokumenta: 2026-05-28
+Status dokumenta: 2026-05-30
 Projekt se ne radi ispocetka. Postojeci React Native/Expo frontend i Spring Boot backend ostaju baza, a nove funkcionalnosti se nadograduju na vec postojece klase, rute, storeove, hookove i dizajn sustav.
 
 Radimo mobilnu event aplikaciju "Gdje i Kada" za iOS i Android. Frontend je React Native kroz Expo Router, backend je Spring Boot s PostgreSQL bazom. Nemoj kretati ispocetka. Prvo procitaj postojeci kod i nadogradi ga prema lokalnim patternima.
@@ -36,7 +36,7 @@ Trenutno stanje tabova:
 - Kreiranje eventa otvara floating `+` na mapi kroz `app/create-event.tsx`.
 - Inbox je glavni tab kroz `app/(tabs)/messages.tsx`; chat screen je `app/chat/[id].tsx`.
 - `app/(tabs)/social.tsx` ostaje prototip/sekundarni ekran za conversations + friends, ali vise nije glavni tab.
-- Profil je implementiran kao `app/(tabs)/profile.tsx`; sada je activity/profile hub s avatarom, imenom, bio tekstom, edit profilom, activity historyjem, liked historyjem, transaction historyjem i odvojenim settings screenom.
+- Profil je implementiran kao `app/(tabs)/profile.tsx`; sada je activity/profile hub s avatarom, imenom, bio tekstom, edit profilom, liked historyjem, Moje ulaznice, activity historyjem, event managementom i odvojenim settings screenom.
 
 Postojece frontend tehnologije i patterni:
 
@@ -56,13 +56,13 @@ Postojece frontend tehnologije i patterni:
 - Theme: `AppThemeProvider`, `createAppTheme`, `palette`, `tokens`, `ThemeToggle`. Centralna paleta je ogranicena na Rich Black `#111114`, Off White `#F0F0F0`, Gunmetal Gray `#2A2D33`, Charcoal Gray `#3A3C40`, Graphite `#191B1E`, Cool Gray `#6F7072`, uz postojeci purple accent za map/app akcente.
 - Kalendar grid: `react-native-calendars` za cross-platform mjesecni prikaz bez dodatnog native linkinga.
 - iOS glass: `expo-glass-effect` i `expo-blur` se vec koriste u `EventDetailSheet` i `MapSearchBar.ios.tsx`; shared `GlassSurface` daje `GlassView` kad je Liquid Glass API dostupan, a `BlurView` + themed tint fallback inace. `AppCard`, `AppButton`, `AppHeader` i `AppIconButton` koriste taj shared surface da iOS ne povuce defaultnu sistemsku sivu. Event detail sheetovi koriste tamniji/konkretniji glass fallback i scrollable content da se donji detalji uvijek mogu dohvatiti.
-- Push obavijesti: `expo-notifications` registrira Expo push token za autentificiranog korisnika kad je permission vec odobren, kad korisnik to rucno zatrazi u `Preferences > Notifications`, ili jednom pri prvom ulasku nakon prijave kroz first-run permission prompt. Frontend salje i trenutni HR/EN locale uz token, backend lokalizira fallback body za poruke/pollove/event share, Android koristi `messages` notification channel s purple accent bojom, a tap na push otvara odgovarajuci chat. Ako korisnik ima aktivnu websocket sesiju u aplikaciji, backend ne salje Expo push za novu chat poruku, a frontend prikazuje in-app modal koji vodi u chat; unread poruke se dodatno vide kao purple dot na Inbox ikoni. Android Expo Go runtime se eksplicitno odbija jer ne podrzava push u SDK 54; EAS development, test/internal i production buildovi idu kroz isti token registration flow.
+- Push obavijesti: `expo-notifications` registrira Expo push token za autentificiranog korisnika kad je permission vec odobren, kad korisnik to rucno zatrazi u `Settings > Notifications`, ili jednom pri prvom ulasku nakon prijave kroz first-run permission prompt. Frontend salje i trenutni HR/EN locale uz token, backend lokalizira fallback body za poruke/pollove/event share, Android koristi `messages` notification channel s purple accent bojom, a tap na push otvara odgovarajuci chat. Ako korisnik ima aktivnu websocket sesiju u aplikaciji, backend ne salje Expo push za novu chat poruku, a frontend prikazuje in-app modal koji vodi u chat; unread poruke se dodatno vide kao purple dot na Inbox ikoni. Android Expo Go runtime se eksplicitno odbija jer ne podrzava push u SDK 54; EAS development, test/internal i production buildovi idu kroz isti token registration flow.
 - Expo push `projectId` dolazi iz `EXPO_PUBLIC_EAS_PROJECT_ID` i izlozen je u app configu kao `extra.eas.projectId`; `test` EAS profile ga postavlja kroz `eas.json`, a test build bez stvarnog projectId-a faila config provjeru. Android FCM ima dva filea: EAS FCM V1 service account key sluzi Expo serveru za slanje push poruka, a `google-services.json` mora biti ugradjen u Android app da se Firebase inicializira na uredaju. Test Firebase app config za package `com.anonymous.GdjeIKadaNative.test` moze biti EAS file env var `GOOGLE_SERVICES_JSON`, lokalni ignorirani `./google-services.json`, `GOOGLE_SERVICES_JSON_PATH` ili, za lokalni checked-in native Android flavor, `android/app/src/qa/google-services.json`; produkcijski config kasnije ide u odgovarajuci prod file. Firebase private key/service account JSON ostaje ignoriran i ne commita se.
 - Karte:
   - iOS: `components/map/event-map-surface.ios.tsx` koristi `react-native-maps` / MapKit.
   - Android: `components/map/event-map-surface.android.tsx` koristi `@maplibre/maplibre-react-native` i prikazuje pojedinacne event pinove bez clusteriranja.
   - Shared API: `components/map/event-map.tsx`, `components/map/types.ts`, `MapMarkerBadge`, `EventDetailSheet`.
-  - Mapa ima floating nearby preview sheet s manjim horizontalnim cardovima, strelicom za zatvaranje/ponovno otvaranje i `See all` prikazom svih ucitanih eventova u gradu s dva eventa po redu sortiranih po udaljenosti, radius korisnik mijenja u `Preferences` od 1 do 20 km, a pinovi se grupiraju samo kad vise eventova ima potpuno istu adresu/koordinatu.
+  - Mapa ima floating nearby preview sheet s manjim horizontalnim cardovima, strelicom za zatvaranje/ponovno otvaranje i `See all` prikazom svih ucitanih eventova u gradu s dva eventa po redu sortiranih po udaljenosti, radius korisnik mijenja direktno u `Settings` od 1 do 20 km, a pinovi se grupiraju samo kad vise eventova ima potpuno istu adresu/koordinatu.
 - Lokacija: `features/events/hooks/use-map-location-bootstrap.ts` odmah trazi native foreground permission kad se mapa otvori, koristi `expo-location`, Android MapLibre fallback i IP/capital fallback; `locationSource` se ne persistira jer se stvarna `userLocation` namjerno ponovno dohvaća na cold startu.
 - Search po eventima na mapi: `features/events/hooks/use-event-map-search.ts`, `MapSearchBar`, `MapSearchResults`. Search pokriva naslov, lokaciju, adresu i tagove; filter gumb u search baru otvara modal za datum/tagove, a ispod su horizontalni brzi filteri.
 - Frontend unit testovi: Jest kroz `jest-expo`, trenutno pokrivaju `selectEvents`, date formatting i location search servise/providere.
@@ -101,7 +101,7 @@ Backend trenutno ima:
 - `POST /api/auth/apple`
 - `GET /api/auth/me`
 - `GET /api/events?from=&to=&lat=&lng=&radiusKm=&query=&tags=&attendanceModes=`
-- `GET /api/locations/search?query=&locale=&limit=&lat=&lng=`
+- `GET /api/locations/search?query=&locale=&limit=&lat=&lng=&types=`
 - `GET /api/events/{id}`
 - `POST /api/events`
 - `PATCH /api/events/{id}`
@@ -129,13 +129,17 @@ Backend trenutno ima:
 - `DELETE /api/users/me/feed-preferences/{preferenceId}`
 - `GET /api/users/{userId}/events/upcoming`
 - `PATCH /api/users/me/profile`
+- `PATCH /api/users/me/profile` multipart `profile` JSON + `avatar`
+- `GET /api/users/{userId}/avatar/content`
+- `POST /api/users/me/password`
+- `DELETE /api/users/me/account`
 - `GET /api/users/me/activity`
 - `GET /api/users/me/transactions`
 - `GET /api/users/me/notifications/preferences`
 - `PATCH /api/users/me/notifications/preferences`
 - `POST /api/users/me/notifications/push-tokens`
 - `DELETE /api/users/me/notifications/push-tokens?token=`
-- `GET /api/feed?cursor=&limit=&seed=`
+- `GET /api/feed?cursor=&limit=&seed=&from=&to=&lat=&lng=&radiusKm=&query=&tags=&attendanceModes=&scope=&sort=`
 - `POST /api/feed/impressions`
 - `GET /api/social/friends`
 - `GET /api/social/events/{eventId}/share-recipients`
@@ -211,7 +215,9 @@ Trenutna baza:
   - `auth_provider` (`local`, `google`, `apple`)
   - `bio` iz `V7__profile_activity.sql`
   - `avatar_url` iz `V7__profile_activity.sql`
+  - avatar storage metadata, `account_status`, `deletion_requested_at`, `deletion_scheduled_at`, `deleted_at` iz `V19__profile_avatar_password_account_deletion.sql`
   - `created_at`, `updated_at`
+- `account_deletion_recoveries` iz `V19__profile_avatar_password_account_deletion.sql`
 - `event_ticket_products` iz `V8__tickets_payments.sql`
 - `ticket_orders` iz `V8__tickets_payments.sql`
 - `payments` iz `V8__tickets_payments.sql`
@@ -227,7 +233,7 @@ Trenutni event model:
 - Service: `EventService`.
 - Mapper: `EventMapper` i `EventMapper.xml`.
 
-Event trenutno podrzava naslov, lokaciju, adresu, opis, start/end datum, coordinates, entrance coordinates, entry instructions, katalogizirane tagove iz 5 kategorija s najvise 2 taga po kategoriji, creator user id, creator name/avatar za organizer prikaz, visibility `public/friends`, attendance mode `open/waitlist/paid`, cijenu za paid evente, capacity, status, `sourceUrl` za vanjske/importirane evente, event i organizer rating agregate, `likeCount`, `likedByMe`, participant count, `waitlistCount`, `joinedByMe`, `attendanceStatus` i `canJoin`. Friends-only eventi se na mapi, FYP-u, detailsu i authenticated media endpointu vide samo kreatoru i prihvacenim prijateljima kreatora; neprijatelji ne dobivaju ni event ni media. Create flow u frontendu koristi jedan naziv/lokaciju/opis bez odvojenih HR/EN polja, a backend `CreateEventRequest` prihvaca canonical `title`, `where`, `about`, `entryInstructions` i `tags` te ih mirror-a u postojece HR/EN stupce radi kompatibilnosti. Adresa u create flowu bira se kroz backend `GET /api/locations/search` autocomplete; odabrani rezultat postaje canonical event coordinate, a entrance pin je opcionalna zasebna koordinata. Step 5 u create flowu je obavezan media korak: korisnik mora dodati barem jednu JPG/PNG sliku, najvise 5 slika, svaka do 5 MB i barem 640x640 px; opcionalno moze dodati jedan MP4/MOV/M4V video do 10 MB. Frontend kreira event multipart requestom s `event` JSON-om i obaveznim `images`, a opcionalni video odmah nakon toga salje kao raw binary upload kroz `expo-file-system` na `/api/events/{id}/media/video`, bez RN `FormData` multiparta za video. Backend sprema media kroz S3-compatible storage provider i `event_media` metadata ukljucujuci originalni naziv filea. Uploaded media URL-ovi u DTO-u pokazuju na authenticated backend endpoint `/api/events/{eventId}/media/{mediaId}/content`; za video backend moze vratiti i `/content/{filename}` varijantu s ekstenzijom radi iOS AVPlayer detekcije. Frontend centralno dodaje Bearer header za prikaz slika i videa, pa friends-only media ne treba public MinIO bucket. External URL media ostaje legacy/public-only put i ne dopusta se za friends-only evente. Video se ne prikazuje na mapi ni event bubbleima; Discover/FYP prikazuje video kao prvu stranicu media pagera ako postoji, a slike su dostupne horizontalnim scrollom. Video se pauzira kad event nije aktivan ili kad korisnik ode na sliku, jedan tap po sredini Discovera toggla globalni mute za feed, a double tap samo lajka event. Vanjski source URL se ne lijepi u opis; detail UI ga prikazuje skroz na dnu kao `Izvor`/`Open page` akciju bez ispisivanja linka. Detail summary prikazuje organizer AVG rating, broj sudionika, klikabilni tags cell bez hashtagova i klikabilnu lokaciju s udaljenosti od korisnika; tap na lokaciju otvara native maps, a puna adresa je u detail redovima. Create i owner manage screen imaju fullscreen image preview s pinch/double-tap zoomom te odvojene video i image media sekcije. Vlasnik eventa kroz profil ima Created Events ekran i manage ekran za izmjenu osnovnih detalja, upload/brisanje videa i slika, pregled/prihvacanje waitliste, micanje sudionika i blokiranje korisnika s neplacenih eventova. Backend za to koristi owner-only endpointove `PATCH/DELETE /api/events/{id}`, media endpointove, participant endpointove, `event_blocks` i in-app `app_notifications`. Join/leave i like/unlike rade kroz backend, a join je onemogucen za prosle evente. Feed i detail endpointi vracaju `event_media` za reels/detail prikaz. FYP `Not interested` preference spremaju se server-side po eventu, kreatoru ili tagu i filtriraju discovery za tog korisnika; tag akcije se prikazuju bez hashtag prefixa. FYP impressions se spremaju po korisniku/eventu kroz `event_feed_impressions`; eventi koji su se vise puta prikazali bez interakcije padaju nize u feed rankingu, a like/join/share/not-interested oznacavaju interakciju. Korisnik koji je bio prijavljen na prosli/zavrseni event moze ocijeniti organizatora, a taj AVG rating se prikazuje u event detailsima. Paid join ide kroz Stripe-named provider stub: `POST /api/events/{eventId}/ticket-checkout` kreira order/payment, `POST /api/ticket-orders/{orderId}/confirm` potvrdjuje stub payment, zapisuje transaction i tek tada join-a event. Real Stripe React Native SDK/PaymentSheet nije dodan jer ova promjena ne pokrece native build.
+Event trenutno podrzava naslov, lokaciju, adresu, opis, start/end datum, coordinates, entrance coordinates, entry instructions, katalogizirane tagove iz 5 kategorija s najvise 2 taga po kategoriji, creator user id, creator name/avatar za organizer prikaz, visibility `public/friends`, attendance mode `open/waitlist/paid`, cijenu za paid evente, capacity, status, `sourceUrl` za vanjske/importirane evente, event i organizer rating agregate, `likeCount`, `likedByMe`, participant count, `waitlistCount`, `joinedByMe`, `attendanceStatus` i `canJoin`. Friends-only eventi se na mapi, FYP-u, detailsu i authenticated media endpointu vide samo kreatoru i prihvacenim prijateljima kreatora; neprijatelji ne dobivaju ni event ni media. Create flow u frontendu koristi jedan naziv/lokaciju/opis bez odvojenih HR/EN polja, a backend `CreateEventRequest` prihvaca canonical `title`, `where`, `about`, `entryInstructions` i `tags` te ih mirror-a u postojece HR/EN stupce radi kompatibilnosti. Adresa u create flowu bira se kroz backend `GET /api/locations/search` autocomplete; odabrani rezultat postaje canonical event coordinate, a entrance pin je opcionalna zasebna koordinata. Step 5 u create flowu je obavezan media korak: korisnik mora dodati barem jednu JPG/PNG sliku, najvise 5 slika, svaka do 5 MB i barem 640x640 px; opcionalno moze dodati jedan MP4/MOV/M4V video do 10 MB. Frontend kreira event multipart requestom s `event` JSON-om i obaveznim `images`, a opcionalni video odmah nakon toga salje kao raw binary upload kroz `expo-file-system` na `/api/events/{id}/media/video`, bez RN `FormData` multiparta za video. Backend sprema media kroz S3-compatible storage provider i `event_media` metadata ukljucujuci originalni naziv filea. Uploaded media URL-ovi u DTO-u pokazuju na authenticated backend endpoint `/api/events/{eventId}/media/{mediaId}/content`; za video backend moze vratiti i `/content/{filename}` varijantu s ekstenzijom radi iOS AVPlayer detekcije. Frontend centralno dodaje Bearer header za prikaz slika i videa, pa friends-only media ne treba public MinIO bucket. External URL media ostaje legacy/public-only put i ne dopusta se za friends-only evente. Video se ne prikazuje na mapi ni event bubbleima; Discover/FYP prikazuje video kao prvu stranicu media pagera ako postoji, a slike su dostupne horizontalnim scrollom. Discover feed sada prima persistirani filter iz Zustand storea: trenutna lokacija koristi `lat/lng/radiusKm`, grad ili drzava biraju se kroz Nominatim city/country autocomplete, spremaju se tek nakon klika na prijedlog i samo tada salju kao `query`, preset `Friends` salje `scope=friends`, `Trending` salje `sort=trending`, a `Tonight/Weekend` salju `from/to`. Video se pauzira kad event nije aktivan ili kad korisnik ode na sliku, jedan tap po sredini Discovera toggla globalni mute za feed, a double tap samo lajka event. Vanjski source URL se ne lijepi u opis; detail UI ga prikazuje skroz na dnu kao `Izvor`/`Open page` akciju bez ispisivanja linka. Detail summary prikazuje organizer AVG rating, broj sudionika, klikabilni tags cell bez hashtagova i klikabilnu lokaciju s udaljenosti od korisnika; tap na lokaciju otvara native maps, a puna adresa je u detail redovima. Create i owner manage screen imaju fullscreen image preview s pinch/double-tap zoomom te odvojene video i image media sekcije. Vlasnik eventa kroz profil ima Created Events ekran i manage ekran za izmjenu osnovnih detalja, upload/brisanje videa i slika, pregled/prihvacanje waitliste, micanje sudionika i blokiranje korisnika s neplacenih eventova. Backend za to koristi owner-only endpointove `PATCH/DELETE /api/events/{id}`, media endpointove, participant endpointove, `event_blocks` i in-app `app_notifications`. Join/leave i like/unlike rade kroz backend, a join je onemogucen za prosle evente. Feed i detail endpointi vracaju `event_media` za reels/detail prikaz. FYP `Not interested` preference spremaju se server-side po eventu, kreatoru ili tagu i filtriraju discovery za tog korisnika; tag akcije se prikazuju bez hashtag prefixa. FYP impressions se spremaju po korisniku/eventu kroz `event_feed_impressions`; eventi koji su se vise puta prikazali bez interakcije padaju nize u feed rankingu, a like/join/share/not-interested oznacavaju interakciju. Korisnik koji je bio prijavljen na prosli/zavrseni event moze ocijeniti organizatora, a taj AVG rating se prikazuje u event detailsima. Paid join ide kroz Stripe-named provider stub: `POST /api/events/{eventId}/ticket-checkout` kreira order/payment, `POST /api/ticket-orders/{orderId}/confirm` potvrdjuje stub payment, zapisuje transaction i tek tada join-a event. Real Stripe React Native SDK/PaymentSheet nije dodan jer ova promjena ne pokrece native build.
 
 Kad implementiras nove stvari, nadogradi postojece:
 
@@ -242,13 +248,13 @@ Kad implementiras nove stvari, nadogradi postojece:
 
 "Gdje i Kada" je social discovery aplikacija za evente. Korisnik otvara aplikaciju i odmah vidi evente oko sebe na mapi. Moze pretrazivati evente, filtrirati ih po datumu i tipu, otvoriti detalje, vidjeti gdje je tocno ulaz, joinati event, eventualno kupiti ulaznicu, uci u event grupu i kasnije rateati organizatora.
 
-FYP dio aplikacije sluzi za brz discovery kroz vertikalni Reels-style feed. Svaki reel je povezan s eventom. Korisnik moze lajkati, shareati i otvoriti detalje eventa. Feed se randomizira seed vrijednoscu pri ulasku u FYP, prikazuje samo buduce published evente dostupne korisniku, i koristi paginirani buffer umjesto ucitavanja svih eventova odjednom. Save/bookmark nije dio finalnog zahtjeva i treba ga ukloniti ili zamijeniti ako ostane iz starog prototipa.
+FYP dio aplikacije sluzi za brz discovery kroz vertikalni Reels-style feed. Svaki reel je povezan s eventom. Korisnik moze lajkati, shareati i otvoriti detalje eventa. Feed se randomizira seed vrijednoscu pri ulasku u FYP, prikazuje samo buduce published evente dostupne korisniku, koristi paginirani buffer umjesto ucitavanja svih eventova odjednom i filtrira se kroz spremljeni Discover filter. Default je trenutna lokacija/radius, a korisnik moze spremiti grad ili drzavu odabranu iz OpenStreetMap/Nominatim autocompletea kao FYP lokaciju te koristiti presete `For you`, `Tonight`, `Weekend`, `Trending` i `Friends`.
 
 Saved zamjenjuje stari Kalendar tab. `Collection` prikazuje evente koje je korisnik lajkao, najbliže evente na koje stvarno ide i prošle evente, s istaknutim kratkim datumom i vremenom te zasebnim `See all` listama. `Schedule` zadržava joined-only mjesečni kalendar, ali oznake eventova na danima su točkice.
 
 Poruke podrzavaju privatne razgovore, grupe, event-specific grupe, pollove, friend request poruke u direct chatu i admin-only chat mod gdje samo admini pisu, a ostali mogu glasati na pollu. Nove text poruke se na backendu spremaju encrypted-at-rest AES-GCM-om; `MESSAGES_ENCRYPTION_SECRET` je preporuceni env secret, a lokalni fallback je postojeci JWT secret radi kompatibilnosti. Slanje poruke sada nakon spremanja na backendu salje Expo push notifikaciju svim ostalim clanovima sobe ako korisnik ima registriran push token, ukljucene preference za taj tip chata i nije muteao tu sobu.
 
-Profil prikazuje korisnikovu aktivnost: joined eventove, liked reels/evente, transaction history i rating flow za zavrsene evente. Profil ima editiranje imena, bio teksta i avatar URL-a. Postavke su odvojeni ekran otvoren iz profila; tamo su jezik, tema, `Preferences` ulaz i odjava. `Preferences > Notifications` trenutno sadrzi push permission/registration CTA te odvojene togglove za privatne poruke i grupne/event chatove. `Preferences > FYP preferences` prikazuje `Not interested` stavke grupirane po eventima, kreatorima i tagovima.
+Profil prikazuje korisnikovu aktivnost i meni redom: Lajkani eventi, Moje ulaznice, Povijest aktivnosti, Upravljanje eventima i Postavke. Profil ima editiranje imena, bio teksta i upload profilne slike do 5 MB; iOS HEIC se na frontendu priprema kao PNG prije uploada. Postavke su odvojeni ekran otvoren iz profila; tamo su direktno jezik, tema, radijus mape, obavijesti, FYP postavke i Racun. Racun je zaseban ekran za promjenu lozinke, brisanje profila i odjavu. Brisanje profila odmah anonimizira javni identitet u `Deleted user`, uklanja osobne detalje/avatar/push i preference podatke, ali zadrzava public evente, recenzije, poruke i history bez osobnih podataka. Recovery je moguc 30 dana automatski ponovnom prijavom, nakon cega backend scheduled purge brise recovery i social identity podatke. `Settings > Notifications` trenutno sadrzi push permission/registration CTA te odvojene togglove za privatne poruke i grupne/event chatove. `Settings > FYP preferences` prikazuje `Not interested` stavke grupirane po eventima, kreatorima i tagovima.
 
 ## Frontend dokumentacija
 
@@ -345,9 +351,9 @@ Sto fali za finalni zahtjev:
 Postoji:
 
 - Screen: `app/(tabs)/fyp.tsx`.
-- Query: `useFeedInfiniteQuery()` prema `GET /api/feed?cursor=&limit=&seed=`.
+- Query: `useFeedInfiniteQuery()` prema `GET /api/feed?cursor=&limit=&seed=&from=&to=&lat=&lng=&radiusKm=&query=&tags=&attendanceModes=&scope=&sort=`.
 - Media helpers: `core/events/event-cover.ts`.
-- Reels slide UI: public compatibility export `features/events/components/fyp-reel-slide.tsx`, stvarna implementacija u `features/events/components/fyp/` (`fyp-reel-slide`, summary card, action rail, video layer, layout helpers).
+- Reels slide UI: public compatibility export `features/events/components/fyp-reel-slide.tsx`, stvarna implementacija u `features/events/components/fyp/` (`fyp-discover-header`, `fyp-reel-slide`, summary, action rail, video layer, layout helpers) i filter helper u `features/events/fyp/fyp-feed-filters.ts`.
 - FYP details sheet: `features/events/components/fyp/fyp-event-details-sheet.tsx`.
 - Share modal: `features/events/components/event-share-modal.tsx`.
 - Video playback: `expo-video` (`VideoView`, `useVideoPlayer`) s preload prozorom oko aktivnog itema; ako trenutni native build nema `ExpoVideo` modul, FYP ostaje na poster fallbacku bez crasha dok se ne rebuilda app.
@@ -356,15 +362,15 @@ Trenutno ponasanje:
 
 - Vertikalni `FlatList` s `pagingEnabled`, `snapToInterval`, `onViewableItemsChanged` i `fetchNextPage()`.
 - Feed je server-side paginiran cursorom i vraca `items`, `nextCursor`, `hasMore`; frontend koristi page size 8 i `FlatList` preload prozor oko aktivnog reela da ne ucitava sve evente odjednom.
-- Feed se randomizira novim seed vrijednostima pri ulasku u FYP, prikazuje samo buduce published evente dostupne korisniku, ukljucuje friends-only evente neovisno o lokaciji i salje `POST /api/feed/impressions` kad reel postane aktivan.
+- Feed se randomizira novim seed vrijednostima pri ulasku u FYP, prikazuje samo buduce published evente dostupne korisniku i salje `POST /api/feed/impressions` kad reel postane aktivan. `For you` koristi spremljenu FYP lokaciju, `Tonight` i `Weekend` dodaju date range, `Trending` sortira po sudionicima/lajkovima, a `Friends` ogranicava feed na evente kreatora koji su prihvaceni prijatelji korisnika.
 - Svaki event koristi prvu `event_media` sliku kao primarni poster izvor na mapi, detaljima, profilu i FYP-u. Random helper cover fallback je uklonjen; event bez media dobiva neutralan placeholder.
 - FYP za evente s vise slika prikazuje horizontalni image pager sa stranicama unutar istog reela; event s jednom slikom ostaje staticki full-bleed poster.
 - Android FYP viewport oduzima stvarnu native tab bar visinu iz `BottomTabBarHeightContext`, ali media blago podvuce ispod ruba da ne ostane crni razmak iznad toolbara; sam card/action rail ostaju dignuti iznad taba. iOS zadrzava full-bleed media i podize overlay iznad translucent taba.
-- FYP media se prikazuje bez globalnog tamnog scrim overlaya; top badge prikazuje samo datum i joined status kad postoji.
-- Donji FYP overlay je kompaktan: organizer avatar/name, title, lokacija, kratak opis i kratki datum/vrijeme/sudionici; like i share su odvojeni u desnom action railu.
+- FYP ima Discover header preko media sloja s preset tabovima `For you`, `Tonight`, `Weekend`, `Trending`, `Friends`, filter gumbom i aktivnim location/type chipovima.
+- FYP media je full-bleed, a donji tekst sjedi na transparent-to-black scrim sloju radi kontrasta bez zasebne kartice. Donji overlay prikazuje datum/joined badge, title, organizatora, lokaciju, opis, vrijeme/sudionike i purple details CTA; save/like, share i not-interested ostaju u desnom action railu.
 - Like je server-side preko `POST/DELETE /api/events/{id}/like`; React Query optimisticno patcha feed/detail/profile cache.
 - Bookmark/save UI je uklonjen.
-- Details iz FYP-a otvaraju FYP-specific bottom sheet unutar native modala, s handle barom i scrollable `EventDetailsContent`; modal ide preko native tab bara, a Android modal root je wrapan u `GestureHandlerRootView` radi stabilnog drag-down gesturea. Summary card je tappable i ima chevron-up indikator. Map screen i dalje koristi map `EventDetailSheet`.
+- Details iz FYP-a otvaraju FYP-specific bottom sheet unutar native modala, s handle barom i scrollable `EventDetailsContent`; modal ide preko native tab bara, a Android modal root je wrapan u `GestureHandlerRootView` radi stabilnog drag-down gesturea. Donji summary/CTA je tappable. Map screen i dalje koristi map `EventDetailSheet`.
 - Share otvara centered modal s scrollable avatar bubble gridom prijatelja. Odabir je multi-select i jednim gumbom salje event u direct chatove odabranih ljudi kroz `POST /api/messages/chat-rooms/{id}/share-event`; backend dodatno odbija friends-only share ako target room sadrzi korisnika koji nije prijatelj kreatora. Native share ostaje samo za non-friends evente.
 - Profil prikazuje liked history preko `GET /api/users/me/liked-events`.
 
@@ -439,18 +445,18 @@ Postoji:
 
 - Screen: `app/(tabs)/profile.tsx`.
 - Profil je activity/profile hub, a settings su odvojeni u `app/profile/settings.tsx`.
-- Edit profila je u `app/profile/edit.tsx` i sprema ime, bio i avatar URL preko `PATCH /api/users/me/profile`.
+- Edit profila je u `app/profile/edit.tsx` i sprema ime, bio i avatar upload preko `PATCH /api/users/me/profile`; multipart verzija salje `profile` JSON i `avatar` file.
 - Activity history je u `app/profile/activity.tsx` i koristi `GET /api/users/me/activity`.
 - Created Events je u `app/profile/created-events.tsx`, a owner manage ekran u `app/profile/event/[id].tsx`; koriste `GET /api/users/me/events?filter=created`, owner event update/delete/media/participants endpointove i prikazuju waitlist count.
 - Liked history je u `app/profile/liked.tsx`.
-- Transaction history je u `app/profile/transactions.tsx` i koristi `GET /api/users/me/transactions`.
+- Moje ulaznice su u `app/profile/transactions.tsx` i koriste `GET /api/users/me/transactions`.
 - Rating za prosle evente ide preko `POST /api/events/{id}/ratings/full` i sprema odvojenu ocjenu/komentar za event i organizatora.
 - Activity screen prikazuje in-app obavijesti za approve/remove/block promjene attendance statusa.
 - Odjava je premjestena u settings, zove `clearAuth()`, resetira session query cache i vraca na auth flow.
 
 Sto fali:
 
-- Stvarni avatar upload/storage provider; trenutno se sprema avatar URL.
+- Real Stripe RN PaymentSheet integracija kad se predje sa stub checkouta na produkcijska placanja.
 - Puni paid transaction/payment flow iz Faze 9.
 
 ### Auth
@@ -527,7 +533,7 @@ Frontend API URL:
 `EventController`:
 
 - `GET /api/events?from=&to=&lat=&lng=&radiusKm=&query=&tags=&attendanceModes=` -> `EventService.getEvents(...)`
-- `GET /api/feed?cursor=&limit=&seed=` -> `EventService.getFeed(...)`
+- `GET /api/feed?cursor=&limit=&seed=&from=&to=&lat=&lng=&radiusKm=&query=&tags=&attendanceModes=&scope=&sort=` -> `EventService.getFeed(...)`
 - `POST /api/feed/impressions` -> `EventService.recordFeedImpression(...)`
 - `GET /api/social/events/{eventId}/share-recipients` -> `SocialService.getShareableFriendsForEvent(...)`
 - `GET /api/users/me/liked-events` -> `EventService.getLikedEvents(...)`
@@ -664,7 +670,7 @@ Push notification strategija:
 - Token model: `user_push_tokens` po korisniku, Expo push tokenu, platformi, opcionalnom deviceId-u i HR/EN localeu; token se obnavlja na loginu/manual enableu i invalidira na logoutu ili Expo `DeviceNotRegistered` odgovoru.
 - Kanali: trenutno `messages` za direct/group/event chat; kasnije se mogu dodati event reminders, payment receipt i post-event organizer rating prompt.
 - Backend write path: push se salje nakon canonical REST slanja chat poruke/event sharea/polla, ne iz WebSocket listenera.
-- Android testiranje: push se moze testirati na pravom Android uredaju u instaliranom EAS test/internal APK-u nakon sto `Preferences > Notifications` vrati Expo push token i backend spremi token. Ako registracija padne, ekran prikazuje konkretan native/FCM error uz lokaliziranu poruku umjesto genericke "wrong device/build" poruke.
+- Android testiranje: push se moze testirati na pravom Android uredaju u instaliranom EAS test/internal APK-u nakon sto `Settings > Notifications` vrati Expo push token i backend spremi token. Ako registracija padne, ekran prikazuje konkretan native/FCM error uz lokaliziranu poruku umjesto genericke "wrong device/build" poruke.
 - Android Firebase config: `Default FirebaseApp is not initialized` znaci da APK nije dobio ispravan `google-services.json` ili Google Services Gradle plugin nije obradio taj file. Test build koristi package `com.anonymous.GdjeIKadaNative.test`, zato Firebase file mora biti od tog Android appa, a EAS build treba biti napravljen ponovno nakon dodavanja filea.
 
 Messages:
@@ -788,7 +794,7 @@ Kod dokazivanja ili objasnjavanja projekta moze se referencirati:
 Eventi:
 
 - `GET /api/events?from=&to=&lat=&lng=&radiusKm=&query=&tags=&attendanceModes=`
-- `GET /api/locations/search?query=&locale=&limit=&lat=&lng=`
+- `GET /api/locations/search?query=&locale=&limit=&lat=&lng=&types=`
 - `GET /api/events/{id}`
 - `POST /api/events`
 - `PATCH /api/events/{id}`
@@ -801,7 +807,7 @@ Eventi:
 
 Feed:
 
-- `GET /api/feed?cursor=&limit=&seed=`
+- `GET /api/feed?cursor=&limit=&seed=&from=&to=&lat=&lng=&radiusKm=&query=&tags=&attendanceModes=&scope=&sort=`
 - `POST /api/feed/impressions`
 - `POST /api/events/{id}/like`
 - `DELETE /api/events/{id}/like`
@@ -827,6 +833,10 @@ Profile:
 
 - `GET /api/auth/me`
 - `PATCH /api/users/me/profile`
+- `PATCH /api/users/me/profile` multipart `profile` JSON + `avatar`
+- `GET /api/users/{userId}/avatar/content`
+- `POST /api/users/me/password`
+- `DELETE /api/users/me/account`
 - `GET /api/users/me/activity`
 - `GET /api/users/me/transactions`
 - `GET /api/users/me/notifications/preferences`
