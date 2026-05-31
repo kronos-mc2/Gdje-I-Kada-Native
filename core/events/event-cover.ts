@@ -52,9 +52,18 @@ export const getEventVideoUri = (event?: Pick<AppEvent, 'media'> | null) => {
   return videoMedia ? normalizeEventMediaUri(videoMedia.url) : undefined;
 };
 
-export const getEventVideoSource = (event?: Pick<AppEvent, 'media'> | null) => {
-  const uri = getEventVideoUri(event);
-  return uri ? getAuthenticatedImageSource(uri) : undefined;
+export const getEventVideoSource = (event?: Pick<AppEvent, 'id' | 'media' | 'cacheVersion' | 'updatedAt'> | null) => {
+  const videoMedia = getEventVideoMedia(event);
+  if (!videoMedia) {
+    return undefined;
+  }
+
+  const uri = normalizeEventMediaUri(videoMedia.url);
+  if (!uri) {
+    return undefined;
+  }
+
+  return getAuthenticatedImageSource(uri, `event-video-${videoMedia.id}-${event?.cacheVersion ?? event?.updatedAt ?? event?.id ?? 'v1'}`);
 };
 
 export function getAuthenticatedImageSource(uri: string): AuthenticatedImageSource;

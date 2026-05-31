@@ -55,7 +55,7 @@ export function FypReelSlide({
   const lastTapAtRef = useRef(0);
   const singleTapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const imageSources = useMemo(() => getEventImageSources(event), [event]);
-  const videoSource = getEventVideoSource(event);
+  const videoSource = useMemo(() => getEventVideoSource(event), [event]);
   const hasVideo = Boolean(videoSource);
   const pageCount = imageSources.length + (hasVideo ? 1 : 0);
   const shouldRenderVideo = Boolean(videoSource) && shouldPreload && canRenderFypVideo();

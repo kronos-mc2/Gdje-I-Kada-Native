@@ -1,7 +1,8 @@
 import type { VideoSource } from 'expo-video';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { StyleSheet } from 'react-native';
 
+import { useCachedVideoSource } from '@/core/cache/video-cache';
 import { isAuthenticatedImageSource, type AuthenticatedImageSource } from '@/core/events/event-cover';
 
 type FypReelVideoLayerProps = Readonly<{
@@ -35,20 +36,53 @@ export function canRenderFypVideo() {
 
 export function FypReelVideoLayer({ videoSource, isActive, isMuted }: FypReelVideoLayerProps) {
   const videoModule = requireExpoVideoModule();
+  const cachedVideoSource = useCachedVideoSource(videoSource);
+  const lastLoadedSourceRef = useRef<string | null>(null);
   const source = useMemo<VideoSource>(
     () => ({
-      uri: videoSource.uri,
-      headers: videoSource.headers,
+      uri: cachedVideoSource.uri,
+      headers: cachedVideoSource.localFile ? undefined : cachedVideoSource.headers,
       contentType: 'progressive',
-      useCaching: !isAuthenticatedImageSource(videoSource),
+      useCaching: !cachedVideoSource.localFile && !isAuthenticatedImageSource(cachedVideoSource),
     }),
-    [videoSource.headers, videoSource.uri],
+    [cachedVideoSource.headers, cachedVideoSource.localFile, cachedVideoSource.uri],
   );
-  const player = videoModule.useVideoPlayer(source, (videoPlayer) => {
+  const sourceSignature = useMemo(() => JSON.stringify(source), [source]);
+  const player = videoModule.useVideoPlayer(null, (videoPlayer) => {
     videoPlayer.loop = true;
     videoPlayer.muted = isMuted;
   });
   const ExpoVideoView = videoModule.VideoView;
+
+  useEffect(() => {
+    let cancelled = false;
+    if (lastLoadedSourceRef.current === sourceSignature) {
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    lastLoadedSourceRef.current = sourceSignature;
+    void player
+      .replaceAsync(source)
+      .then(() => {
+        if (cancelled) {
+          return;
+        }
+        player.loop = true;
+        player.muted = isMuted;
+        if (isActive) {
+          player.play();
+        } else {
+          player.pause();
+        }
+      })
+      .catch(() => undefined);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isActive, isMuted, player, source, sourceSignature]);
 
   useEffect(() => {
     if (isActive) {
@@ -70,6 +104,7 @@ export function FypReelVideoLayer({ videoSource, isActive, isMuted }: FypReelVid
       contentFit="cover"
       nativeControls={false}
       fullscreenOptions={DISABLED_FULLSCREEN_OPTIONS}
+      surfaceType="textureView"
       useExoShutter={false}
     />
   );

@@ -10,6 +10,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { ChatRealtimeListener } from '@/core/api/chat-realtime-listener';
+import { useVideoCacheLifecycle } from '@/core/cache/video-cache';
 import { PushNotificationRegistrar } from '@/core/notifications/push-notification-registrar';
 import { queryClient } from '@/core/query/query-client';
 import { useAuthStore } from '@/core/store/auth-store';
@@ -33,6 +34,7 @@ function RootNavigator() {
   const isAuthRoute = rootSegment === '(auth)';
   const shouldRedirectToTabs = hydrated && isAuthenticated && (isAuthRoute || !rootSegment);
   const shouldRedirectToAuth = hydrated && !isAuthenticated && !isAuthRoute;
+  useVideoCacheLifecycle();
 
   useEffect(() => {
     void hydrateAuth();
