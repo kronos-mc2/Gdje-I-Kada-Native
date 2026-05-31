@@ -1,6 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { Image } from 'expo-image';
 import { useEffect, useState } from 'react';
-import { Image, Platform, StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 
 import type { AuthenticatedImageSource } from '@/core/events/event-cover';
 import { useAppTheme } from '@/core/theme';
@@ -81,6 +82,8 @@ export function MapMarkerBadge({
                   key={`${source.uri}:${index}`}
                   source={source}
                   style={styles.multiImage}
+                  contentFit="cover"
+                  cachePolicy="memory-disk"
                   onLoad={() => onImageLoad?.()}
                   onError={() => {
                     setImageFailed(true);
@@ -93,6 +96,8 @@ export function MapMarkerBadge({
             <Image
               source={visibleSources[0]}
               style={styles.image}
+              contentFit="cover"
+              cachePolicy="memory-disk"
               onLoad={() => onImageLoad?.()}
               onError={() => {
                 setImageFailed(true);

@@ -38,6 +38,9 @@ export function MapFilterModal({
   const { t } = useI18n();
   const { theme } = useAppTheme();
   const defaultCalendarStyles = useDefaultStyles(theme.isDark ? 'dark' : 'light');
+  const bodyFontFamily = theme.tokens.typography.body.fontFamily;
+  const captionFontFamily = theme.tokens.typography.caption.fontFamily;
+  const labelFontFamily = theme.tokens.typography.label.fontFamily;
   const [tab, setTab] = useState<FilterTab>('date');
   const [tagQuery, setTagQuery] = useState('');
   const [datePickerMode, setDatePickerMode] = useState<DatePickerMode>('day');
@@ -48,26 +51,59 @@ export function MapFilterModal({
     () => ({
       ...defaultCalendarStyles,
       header: { ...defaultCalendarStyles.header, marginBottom: 8 },
-      month_selector_label: { ...defaultCalendarStyles.month_selector_label, color: theme.colors.textPrimary, fontWeight: '700' as const },
-      year_selector_label: { ...defaultCalendarStyles.year_selector_label, color: theme.colors.textPrimary, fontWeight: '700' as const },
-      weekday_label: { ...defaultCalendarStyles.weekday_label, color: theme.colors.textMuted, fontWeight: '700' as const },
+      month_selector_label: {
+        ...defaultCalendarStyles.month_selector_label,
+        color: theme.colors.textPrimary,
+        fontFamily: labelFontFamily,
+        fontWeight: '700' as const,
+      },
+      year_selector_label: {
+        ...defaultCalendarStyles.year_selector_label,
+        color: theme.colors.textPrimary,
+        fontFamily: labelFontFamily,
+        fontWeight: '700' as const,
+      },
+      month_label: { ...defaultCalendarStyles.month_label, fontFamily: bodyFontFamily },
+      year_label: { ...defaultCalendarStyles.year_label, fontFamily: bodyFontFamily },
+      time_selector_label: { ...defaultCalendarStyles.time_selector_label, fontFamily: labelFontFamily },
+      time_label: { ...defaultCalendarStyles.time_label, fontFamily: labelFontFamily },
+      weekday_label: {
+        ...defaultCalendarStyles.weekday_label,
+        color: theme.colors.textMuted,
+        fontFamily: captionFontFamily,
+        fontWeight: '700' as const,
+      },
       day: { ...defaultCalendarStyles.day, borderRadius: 8 },
-      day_label: { ...defaultCalendarStyles.day_label, color: theme.colors.textPrimary },
-      outside_label: { ...defaultCalendarStyles.outside_label, color: theme.colors.textMuted, opacity: 0.46 },
+      day_label: { ...defaultCalendarStyles.day_label, color: theme.colors.textPrimary, fontFamily: bodyFontFamily },
+      outside_label: { ...defaultCalendarStyles.outside_label, color: theme.colors.textMuted, fontFamily: bodyFontFamily, opacity: 0.46 },
       today: { ...defaultCalendarStyles.today, borderColor: theme.colors.mapAccent, borderWidth: 1 },
-      today_label: { ...defaultCalendarStyles.today_label, color: theme.colors.mapAccent },
+      today_label: { ...defaultCalendarStyles.today_label, color: theme.colors.mapAccent, fontFamily: labelFontFamily },
       selected: { ...defaultCalendarStyles.selected, backgroundColor: theme.colors.mapAccent, borderRadius: 8 },
-      selected_label: { ...defaultCalendarStyles.selected_label, color: '#FFFFFF', fontWeight: '700' as const },
+      selected_label: { ...defaultCalendarStyles.selected_label, color: '#FFFFFF', fontFamily: labelFontFamily, fontWeight: '700' as const },
       range_fill: { ...defaultCalendarStyles.range_fill, backgroundColor: theme.colors.mapAccentSoft },
       range_start: { ...defaultCalendarStyles.range_start, backgroundColor: theme.colors.mapAccent, borderRadius: 8 },
-      range_start_label: { ...defaultCalendarStyles.range_start_label, color: '#FFFFFF', fontWeight: '700' as const },
+      range_start_label: { ...defaultCalendarStyles.range_start_label, color: '#FFFFFF', fontFamily: labelFontFamily, fontWeight: '700' as const },
       range_end: { ...defaultCalendarStyles.range_end, backgroundColor: theme.colors.mapAccent, borderRadius: 8 },
-      range_end_label: { ...defaultCalendarStyles.range_end_label, color: '#FFFFFF', fontWeight: '700' as const },
-      range_middle_label: { ...defaultCalendarStyles.range_middle_label, color: theme.colors.textPrimary, fontWeight: '600' as const },
+      range_end_label: { ...defaultCalendarStyles.range_end_label, color: '#FFFFFF', fontFamily: labelFontFamily, fontWeight: '700' as const },
+      range_middle_label: {
+        ...defaultCalendarStyles.range_middle_label,
+        color: theme.colors.textPrimary,
+        fontFamily: labelFontFamily,
+        fontWeight: '600' as const,
+      },
       button_prev_image: { ...defaultCalendarStyles.button_prev_image, tintColor: theme.colors.mapAccent },
       button_next_image: { ...defaultCalendarStyles.button_next_image, tintColor: theme.colors.mapAccent },
     }),
-    [defaultCalendarStyles, theme.colors.mapAccent, theme.colors.mapAccentSoft, theme.colors.textMuted, theme.colors.textPrimary],
+    [
+      bodyFontFamily,
+      captionFontFamily,
+      defaultCalendarStyles,
+      labelFontFamily,
+      theme.colors.mapAccent,
+      theme.colors.mapAccentSoft,
+      theme.colors.textMuted,
+      theme.colors.textPrimary,
+    ],
   );
 
   useEffect(() => {

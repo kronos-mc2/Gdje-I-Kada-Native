@@ -284,6 +284,7 @@ export default function ChatRoomScreen() {
                   backgroundColor: theme.colors.surface,
                   borderColor: theme.colors.border,
                   color: theme.colors.textPrimary,
+                  fontFamily: theme.tokens.typography.body.fontFamily,
                 },
               ]}
             />
@@ -427,7 +428,15 @@ function PollComposerModal({ visible, roomId, onClose }: { visible: boolean; roo
               onChangeText={setQuestion}
               placeholder={t('pollQuestion')}
               placeholderTextColor={theme.colors.textMuted}
-              style={[styles.modalInput, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border, color: theme.colors.textPrimary }]}
+              style={[
+                styles.modalInput,
+                {
+                  backgroundColor: theme.colors.surface,
+                  borderColor: theme.colors.border,
+                  color: theme.colors.textPrimary,
+                  fontFamily: theme.tokens.typography.body.fontFamily,
+                },
+              ]}
             />
 
             {options.map((option, index) => {
@@ -497,6 +506,7 @@ function PollOptionInput({
   onBlur: () => void;
   onMove: (direction: 'up' | 'down') => void;
 }) {
+  const { theme } = useAppTheme();
   const panResponder = useMemo(
     () =>
       PanResponder.create({
@@ -525,7 +535,7 @@ function PollOptionInput({
         onBlur={onBlur}
         placeholder={placeholder}
         placeholderTextColor={placeholderTextColor}
-        style={[styles.pollOptionInput, { color }]}
+        style={[styles.pollOptionInput, { color, fontFamily: theme.tokens.typography.body.fontFamily }]}
       />
     </View>
   );

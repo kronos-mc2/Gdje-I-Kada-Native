@@ -74,7 +74,7 @@ export function MapSearchBar({
           onBlur={onBlur}
           placeholder={placeholder}
           placeholderTextColor={theme.colors.textMuted}
-          style={[styles.input, { color: theme.colors.textPrimary }]}
+          style={[styles.input, { color: theme.colors.textPrimary, fontFamily: theme.tokens.typography.body.fontFamily }]}
           returnKeyType="search"
           autoCapitalize="none"
           autoCorrect={false}

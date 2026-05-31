@@ -1,10 +1,12 @@
 import * as FileSystem from 'expo-file-system/legacy';
 
 import { apiClient, getApiBaseUrl } from '@/core/api/http-client';
+import { localCache } from '@/core/cache/local-cache';
 import { useAuthStore } from '@/core/store/auth-store';
 import {
   AppEvent,
   ChatMessage,
+  ChatMessagesQueryParams,
   ChatPerson,
   ChatRoom,
   ChatRoomDetail,
@@ -16,6 +18,7 @@ import {
   CreateFriendRequestPayload,
   EventMediaPayload,
   EventParticipant,
+  EventCacheState,
   CreatePollPayload,
   DeleteAccountPayload,
   EventQueryParams,
@@ -47,11 +50,26 @@ const VIDEO_UPLOAD_TIMEOUT_MS = 90_000;
 
 export const fetchEvents = async (params?: EventQueryParams): Promise<AppEvent[]> => {
   const response = await apiClient.get<AppEvent[]>('/events', { params });
+  void localCache.saveEvents(response.data).catch(() => undefined);
   return response.data;
 };
 
 export const fetchEventById = async (eventId: string): Promise<AppEvent> => {
+  const cachedEvent = await localCache.getEvent(eventId).catch(() => null);
+  if (cachedEvent?.cacheVersion) {
+    const state = await fetchEventCacheState(eventId).catch(() => null);
+    if (state?.cacheVersion === cachedEvent.cacheVersion) {
+      return cachedEvent;
+    }
+  }
+
   const response = await apiClient.get<AppEvent>(`/events/${eventId}`);
+  void localCache.saveEvent(response.data).catch(() => undefined);
+  return response.data;
+};
+
+export const fetchEventCacheState = async (eventId: string): Promise<EventCacheState> => {
+  const response = await apiClient.get<EventCacheState>(`/events/${eventId}/cache-state`);
   return response.data;
 };
 
@@ -264,6 +282,7 @@ export const confirmTicketCheckout = async ({
 
 export const fetchFeed = async (params?: FeedQueryParams): Promise<FeedPage> => {
   const response = await apiClient.get<FeedPage>('/feed', { params });
+  void localCache.saveEvents(response.data.items).catch(() => undefined);
   return response.data;
 };
 
@@ -308,13 +327,35 @@ export const fetchChatRooms = async (query?: string): Promise<ChatRoom[]> => {
 };
 
 export const fetchChatRoom = async (roomId: string): Promise<ChatRoomDetail> => {
-  const response = await apiClient.get<ChatRoomDetail>(`/messages/chat-rooms/${roomId}`);
-  return response.data;
+  const cachedDetail = await localCache.getChatRoomDetail(roomId).catch(() => null);
+  const afterMessageId = cachedDetail?.messages.length ? cachedDetail.messages[cachedDetail.messages.length - 1].id : undefined;
+  const response = await apiClient.get<ChatRoomDetail>(`/messages/chat-rooms/${roomId}`, {
+    params: afterMessageId ? { afterMessageId } : undefined,
+  });
+  const mergedDetail = cachedDetail
+    ? {
+        room: response.data.room,
+        messages: mergeChatMessages(cachedDetail.messages, response.data.messages),
+      }
+    : response.data;
+  void localCache.saveChatRoomDetail(mergedDetail).catch(() => undefined);
+  return mergedDetail;
 };
 
-export const fetchChatMessages = async (roomId: string): Promise<ChatMessage[]> => {
-  const response = await apiClient.get<ChatMessage[]>(`/messages/chat-rooms/${roomId}/messages`);
-  return response.data;
+export const fetchChatMessages = async (roomId: string, params?: ChatMessagesQueryParams): Promise<ChatMessage[]> => {
+  const afterMessageId = params?.afterMessageId ?? (await localCache.getLatestChatMessageId(roomId).catch(() => null)) ?? undefined;
+  const response = await apiClient.get<ChatMessage[]>(`/messages/chat-rooms/${roomId}/messages`, {
+    params: {
+      ...params,
+      afterMessageId,
+    },
+  });
+  await localCache.saveChatMessages(roomId, response.data).catch(() => undefined);
+  if (!afterMessageId) {
+    return response.data;
+  }
+
+  return (await localCache.getChatRoomDetail(roomId).catch(() => null))?.messages ?? response.data;
 };
 
 export const fetchChatPeople = async (query?: string): Promise<ChatPerson[]> => {
@@ -546,4 +587,22 @@ export const unlikeEvent = async (eventId: string): Promise<AppEvent> => {
 export const shareEventToConversation = async (conversationId: string, eventId: string): Promise<ChatMessage> => {
   const response = await apiClient.post<ChatMessage>(`/messages/chat-rooms/${conversationId}/share-event`, { eventId });
   return response.data;
+};
+
+const mergeChatMessages = (currentMessages: ChatMessage[], incomingMessages: ChatMessage[]) => {
+  if (incomingMessages.length === 0) {
+    return currentMessages;
+  }
+
+  const messagesById = new Map<string, ChatMessage>();
+  for (const message of currentMessages) {
+    messagesById.set(message.id, message);
+  }
+  for (const message of incomingMessages) {
+    messagesById.set(message.id, message);
+  }
+  return Array.from(messagesById.values()).sort((left, right) => {
+    const dateCompare = Date.parse(left.createdAt) - Date.parse(right.createdAt);
+    return dateCompare === 0 ? left.id.localeCompare(right.id) : dateCompare;
+  });
 };

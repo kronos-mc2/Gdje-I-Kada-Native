@@ -10,7 +10,6 @@ import {
   getAuthenticatedImageSource,
   getEventImageMedia,
   getEventPosterSource,
-  isAuthenticatedImageSource,
 } from '@/core/events/event-cover';
 import { useI18n } from '@/core/i18n/use-i18n';
 import { useAppStore } from '@/core/store/app-store';
@@ -153,7 +152,7 @@ export function EventDetailsContent({
                   source={source}
                   style={[styles.galleryImage, { backgroundColor: theme.colors.surfaceElevated }]}
                   contentFit="cover"
-                  cachePolicy={isAuthenticatedImageSource(source) ? 'memory' : 'memory-disk'}
+                  cachePolicy="memory-disk"
                 />
               ))}
             </GestureScrollView>

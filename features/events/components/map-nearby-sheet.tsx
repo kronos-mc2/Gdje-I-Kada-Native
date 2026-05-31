@@ -1,6 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { Image } from 'expo-image';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Image, PanResponder, Platform, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Animated, PanResponder, Platform, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 
 import { AppText } from '@/components/primitives';
 import { useLikeEventMutation, useUnlikeEventMutation } from '@/core/api/query-hooks';
@@ -333,7 +334,7 @@ function NearbyEventCard({
     >
       <View style={[styles.imageWrap, compact ? styles.imageWrapCompact : null]}>
         {posterSource ? (
-          <Image source={posterSource} style={styles.image} />
+          <Image source={posterSource} style={styles.image} contentFit="cover" cachePolicy="memory-disk" />
         ) : (
           <View style={[styles.imageFallback, { backgroundColor: theme.colors.surfaceElevated }]}>
             <Ionicons name="calendar-outline" size={compact ? 18 : 24} color={theme.colors.textMuted} />

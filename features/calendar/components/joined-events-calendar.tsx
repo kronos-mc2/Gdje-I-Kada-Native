@@ -126,10 +126,16 @@ export function JoinedEventsCalendar({ events, onOpenEvent }: JoinedEventsCalend
   const hasSearch = searchQuery.trim().length > 0;
   const today = todayDateKey();
   const accentColors = useMemo(() => createCalendarAccentColors(theme), [theme]);
+  const captionFontFamily = theme.tokens.typography.caption.fontFamily;
+  const headlineFontFamily = theme.tokens.typography.headline.fontFamily;
   const calendarTheme = useMemo(
     () => ({
       backgroundColor: 'transparent',
       calendarBackground: 'transparent',
+      textDayFontFamily: captionFontFamily,
+      textMonthFontFamily: headlineFontFamily,
+      textDayHeaderFontFamily: captionFontFamily,
+      todayButtonFontFamily: captionFontFamily,
       textSectionTitleColor: theme.colors.textMuted,
       textDisabledColor: theme.colors.textMuted,
       textInactiveColor: theme.colors.textMuted,
@@ -152,7 +158,7 @@ export function JoinedEventsCalendar({ events, onOpenEvent }: JoinedEventsCalend
         },
       },
     }),
-    [accentColors.primary, theme.colors.textMuted, theme.colors.textPrimary],
+    [accentColors.primary, captionFontFamily, headlineFontFamily, theme.colors.textMuted, theme.colors.textPrimary],
   );
 
   useEffect(() => {
@@ -305,7 +311,7 @@ export function JoinedEventsCalendar({ events, onOpenEvent }: JoinedEventsCalend
             placeholderTextColor={theme.colors.textMuted}
             autoCapitalize="none"
             autoCorrect={false}
-            style={[styles.searchInput, { color: theme.colors.textPrimary }]}
+            style={[styles.searchInput, { color: theme.colors.textPrimary, fontFamily: theme.tokens.typography.body.fontFamily }]}
           />
         </View>
       ) : null}
@@ -600,6 +606,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   todayText: {
+    fontFamily: 'Lexend_800ExtraBold',
     fontWeight: '800',
   },
   searchWrap: {
@@ -636,6 +643,7 @@ const styles = StyleSheet.create({
     borderRadius: 7,
     overflow: 'hidden',
     textAlign: 'center',
+    fontFamily: 'Lexend_800ExtraBold',
     fontWeight: '800',
   },
   eventMarks: {

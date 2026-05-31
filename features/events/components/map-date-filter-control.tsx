@@ -24,6 +24,9 @@ export function MapDateFilterControl({ dateFilter, locale, canUseLiquidGlass, on
   const { t } = useI18n();
   const { theme } = useAppTheme();
   const defaultCalendarStyles = useDefaultStyles(theme.isDark ? 'dark' : 'light');
+  const bodyFontFamily = theme.tokens.typography.body.fontFamily;
+  const captionFontFamily = theme.tokens.typography.caption.fontFamily;
+  const labelFontFamily = theme.tokens.typography.label.fontFamily;
   const [isPickerVisible, setIsPickerVisible] = useState(false);
   const [draftMode, setDraftMode] = useState<DraftMode>('day');
   const [draftFromISO, setDraftFromISO] = useState(() => toDateKey(new Date()));
@@ -41,16 +44,35 @@ export function MapDateFilterControl({ dateFilter, locale, canUseLiquidGlass, on
       month_selector_label: {
         ...defaultCalendarStyles.month_selector_label,
         color: theme.colors.textPrimary,
+        fontFamily: labelFontFamily,
         fontWeight: '700' as const,
       },
       year_selector_label: {
         ...defaultCalendarStyles.year_selector_label,
         color: theme.colors.textPrimary,
+        fontFamily: labelFontFamily,
         fontWeight: '700' as const,
+      },
+      month_label: {
+        ...defaultCalendarStyles.month_label,
+        fontFamily: bodyFontFamily,
+      },
+      year_label: {
+        ...defaultCalendarStyles.year_label,
+        fontFamily: bodyFontFamily,
+      },
+      time_selector_label: {
+        ...defaultCalendarStyles.time_selector_label,
+        fontFamily: labelFontFamily,
+      },
+      time_label: {
+        ...defaultCalendarStyles.time_label,
+        fontFamily: labelFontFamily,
       },
       weekday_label: {
         ...defaultCalendarStyles.weekday_label,
         color: theme.colors.textMuted,
+        fontFamily: captionFontFamily,
         fontWeight: '700' as const,
       },
       day: {
@@ -60,10 +82,12 @@ export function MapDateFilterControl({ dateFilter, locale, canUseLiquidGlass, on
       day_label: {
         ...defaultCalendarStyles.day_label,
         color: theme.colors.textPrimary,
+        fontFamily: bodyFontFamily,
       },
       outside_label: {
         ...defaultCalendarStyles.outside_label,
         color: theme.colors.textMuted,
+        fontFamily: bodyFontFamily,
         opacity: 0.46,
       },
       today: {
@@ -74,6 +98,7 @@ export function MapDateFilterControl({ dateFilter, locale, canUseLiquidGlass, on
       today_label: {
         ...defaultCalendarStyles.today_label,
         color: theme.colors.mapAccent,
+        fontFamily: labelFontFamily,
       },
       selected: {
         ...defaultCalendarStyles.selected,
@@ -83,6 +108,7 @@ export function MapDateFilterControl({ dateFilter, locale, canUseLiquidGlass, on
       selected_label: {
         ...defaultCalendarStyles.selected_label,
         color: '#FFFFFF',
+        fontFamily: labelFontFamily,
         fontWeight: '700' as const,
       },
       range_fill: {
@@ -97,6 +123,7 @@ export function MapDateFilterControl({ dateFilter, locale, canUseLiquidGlass, on
       range_start_label: {
         ...defaultCalendarStyles.range_start_label,
         color: '#FFFFFF',
+        fontFamily: labelFontFamily,
         fontWeight: '700' as const,
       },
       range_end: {
@@ -107,11 +134,13 @@ export function MapDateFilterControl({ dateFilter, locale, canUseLiquidGlass, on
       range_end_label: {
         ...defaultCalendarStyles.range_end_label,
         color: '#FFFFFF',
+        fontFamily: labelFontFamily,
         fontWeight: '700' as const,
       },
       range_middle_label: {
         ...defaultCalendarStyles.range_middle_label,
         color: theme.colors.textPrimary,
+        fontFamily: labelFontFamily,
         fontWeight: '600' as const,
       },
       button_prev_image: {
@@ -123,7 +152,16 @@ export function MapDateFilterControl({ dateFilter, locale, canUseLiquidGlass, on
         tintColor: theme.colors.mapAccent,
       },
     }),
-    [defaultCalendarStyles, theme.colors.mapAccent, theme.colors.mapAccentSoft, theme.colors.textMuted, theme.colors.textPrimary],
+    [
+      bodyFontFamily,
+      captionFontFamily,
+      defaultCalendarStyles,
+      labelFontFamily,
+      theme.colors.mapAccent,
+      theme.colors.mapAccentSoft,
+      theme.colors.textMuted,
+      theme.colors.textPrimary,
+    ],
   );
 
   const openPicker = () => {

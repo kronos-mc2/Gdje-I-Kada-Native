@@ -5,6 +5,7 @@ import { AppEvent, EventMedia } from '@/core/types/domain';
 export type AuthenticatedImageSource = {
   uri: string;
   headers?: Record<string, string>;
+  cacheKey?: string;
 };
 
 export const getEventPrimaryMedia = (event?: Pick<AppEvent, 'media'> | null): EventMedia | undefined => event?.media?.[0];
@@ -18,7 +19,12 @@ export const getEventImageUris = (event?: Pick<AppEvent, 'media'> | null): strin
     .filter((uri): uri is string => Boolean(uri));
 
 export const getEventImageSources = (event?: Pick<AppEvent, 'media'> | null): AuthenticatedImageSource[] =>
-  getEventImageUris(event).map((uri) => getAuthenticatedImageSource(uri));
+  getEventImageMedia(event).map((media) =>
+    getAuthenticatedImageSource(
+      media.thumbnailUrl ?? media.url,
+      media.thumbnailUrl ? `event-media-${media.id}-thumbnail` : `event-media-${media.id}`,
+    ),
+  ).filter((source): source is AuthenticatedImageSource => Boolean(source));
 
 export const getEventVideoMedia = (event?: Pick<AppEvent, 'media'> | null): EventMedia | undefined =>
   event?.media?.find((media) => media.mediaType === 'video');
@@ -32,8 +38,13 @@ export const getEventPosterUri = (event: Pick<AppEvent, 'media'>) => {
 };
 
 export const getEventPosterSource = (event: Pick<AppEvent, 'media'>) => {
-  const uri = getEventPosterUri(event);
-  return uri ? getAuthenticatedImageSource(uri) : undefined;
+  const firstImage = getEventImageMedia(event)[0];
+  return firstImage
+    ? getAuthenticatedImageSource(
+        firstImage.thumbnailUrl ?? firstImage.url,
+        firstImage.thumbnailUrl ? `event-media-${firstImage.id}-thumbnail` : `event-media-${firstImage.id}`,
+      )
+    : undefined;
 };
 
 export const getEventVideoUri = (event?: Pick<AppEvent, 'media'> | null) => {
@@ -47,8 +58,9 @@ export const getEventVideoSource = (event?: Pick<AppEvent, 'media'> | null) => {
 };
 
 export function getAuthenticatedImageSource(uri: string): AuthenticatedImageSource;
-export function getAuthenticatedImageSource(uri?: string | null): AuthenticatedImageSource | undefined;
-export function getAuthenticatedImageSource(uri?: string | null): AuthenticatedImageSource | undefined {
+export function getAuthenticatedImageSource(uri: string, cacheKey?: string): AuthenticatedImageSource;
+export function getAuthenticatedImageSource(uri?: string | null, cacheKey?: string): AuthenticatedImageSource | undefined;
+export function getAuthenticatedImageSource(uri?: string | null, cacheKey?: string): AuthenticatedImageSource | undefined {
   const normalizedUri = normalizeEventMediaUri(uri);
   if (!normalizedUri) {
     return undefined;
@@ -56,11 +68,12 @@ export function getAuthenticatedImageSource(uri?: string | null): AuthenticatedI
 
   const token = useAuthStore.getState().accessToken;
   if (!token || !isApiAuthenticatedMediaUri(normalizedUri)) {
-    return { uri: normalizedUri };
+    return { uri: normalizedUri, cacheKey };
   }
 
   return {
     uri: normalizedUri,
+    cacheKey,
     headers: {
       Authorization: `Bearer ${token}`,
     },

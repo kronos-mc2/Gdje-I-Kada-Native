@@ -57,7 +57,7 @@ export default function MessagesScreen() {
           onChangeText={setQuery}
           placeholder={t('searchMessages')}
           placeholderTextColor={theme.colors.textMuted}
-          style={[styles.searchInput, { color: theme.colors.textPrimary }]}
+          style={[styles.searchInput, { color: theme.colors.textPrimary, fontFamily: theme.tokens.typography.body.fontFamily }]}
           autoCorrect={false}
         />
       </View>
@@ -229,7 +229,7 @@ function NewChatModal({ visible, onClose }: { visible: boolean; onClose: () => v
               onChangeText={setQuery}
               placeholder={t('searchPeople')}
               placeholderTextColor={theme.colors.textMuted}
-              style={[styles.searchInput, { color: theme.colors.textPrimary }]}
+              style={[styles.searchInput, { color: theme.colors.textPrimary, fontFamily: theme.tokens.typography.body.fontFamily }]}
               autoCorrect={false}
             />
           </View>

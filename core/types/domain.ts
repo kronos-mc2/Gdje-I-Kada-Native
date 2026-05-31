@@ -103,6 +103,8 @@ export type AppEvent = {
   capacity?: number;
   status?: EventStatus;
   sourceUrl?: string;
+  updatedAt?: string;
+  cacheVersion?: string;
   eventRatingAverage?: number;
   eventRatingCount?: number;
   organizerRatingAverage?: number;
@@ -122,6 +124,17 @@ export type FeedPage = {
   items: AppEvent[];
   nextCursor?: string;
   hasMore: boolean;
+};
+
+export type EventCacheState = {
+  id: string;
+  cacheVersion: string;
+  updatedAt?: string;
+};
+
+export type ChatMessagesQueryParams = {
+  afterMessageId?: string;
+  limit?: number;
 };
 
 export type SavedEventsOverview = {

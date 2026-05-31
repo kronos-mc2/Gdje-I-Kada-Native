@@ -17,7 +17,14 @@ export function ProfileAvatar({ name, avatarUrl, size = 96 }: ProfileAvatarProps
   const initialFontSize = Math.max(12, Math.round(size * 0.42));
 
   if (avatarUrl) {
-    return <Image source={getAuthenticatedImageSource(avatarUrl)} style={[styles.avatar, { width: size, height: size, borderRadius: size / 2 }]} contentFit="cover" />;
+    return (
+      <Image
+        source={getAuthenticatedImageSource(avatarUrl)}
+        style={[styles.avatar, { width: size, height: size, borderRadius: size / 2 }]}
+        contentFit="cover"
+        cachePolicy="memory-disk"
+      />
+    );
   }
 
   return (

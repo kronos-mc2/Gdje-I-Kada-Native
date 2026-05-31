@@ -3,7 +3,7 @@ import { Image } from 'expo-image';
 import { GestureResponderEvent, NativeScrollEvent, NativeSyntheticEvent, ScrollView, StyleSheet, View } from 'react-native';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { getEventImageSources, getEventVideoSource, isAuthenticatedImageSource } from '@/core/events/event-cover';
+import { getEventImageSources, getEventVideoSource } from '@/core/events/event-cover';
 import { useAppTheme } from '@/core/theme';
 import { AppEvent, Locale } from '@/core/types/domain';
 import { FypReelActions } from '@/features/events/components/fyp/fyp-reel-actions';
@@ -153,7 +153,7 @@ export function FypReelSlide({
                     source={imageSources[0]}
                     style={StyleSheet.absoluteFill}
                     contentFit="cover"
-                    cachePolicy={isAuthenticatedImageSource(imageSources[0]) ? 'memory' : 'memory-disk'}
+                    cachePolicy="memory-disk"
                   />
                 ) : null}
                 {shouldRenderVideo && videoSource ? <FypReelVideoLayer videoSource={videoSource} isActive={videoIsFocused} isMuted={isMuted} /> : null}
@@ -165,7 +165,7 @@ export function FypReelSlide({
                 source={source}
                 style={{ width, height }}
                 contentFit="cover"
-                cachePolicy={isAuthenticatedImageSource(source) ? 'memory' : 'memory-disk'}
+                cachePolicy="memory-disk"
               />
             ))}
           </ScrollView>
@@ -177,7 +177,7 @@ export function FypReelSlide({
               source={imageSources[0]}
               style={StyleSheet.absoluteFill}
               contentFit="cover"
-              cachePolicy={isAuthenticatedImageSource(imageSources[0]) ? 'memory' : 'memory-disk'}
+              cachePolicy="memory-disk"
             />
           ) : null}
           {shouldRenderVideo ? <FypReelVideoLayer videoSource={videoSource} isActive={videoIsFocused} isMuted={isMuted} /> : null}
@@ -187,7 +187,7 @@ export function FypReelSlide({
           source={imageSources[0]}
           style={StyleSheet.absoluteFill}
           contentFit="cover"
-          cachePolicy={isAuthenticatedImageSource(imageSources[0]) ? 'memory' : 'memory-disk'}
+          cachePolicy="memory-disk"
         />
       ) : null}
 
