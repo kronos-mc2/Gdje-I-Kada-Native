@@ -78,6 +78,12 @@ Aktivna dopuna:
 
 2026-05-31 - Napravljeno: Android Discover/FYP layout fix za uredaje s povecanim system display/font sizeom. Header title/chipovi i donji reel tekst sada imaju lokalne `maxFontSizeMultiplier` capove, chipovi imaju stabilnu visinu, a bottom clearance se racuna iz stvarne floating tab visine umjesto starog veceg hardkodanog lifta. Backend nije mijenjan jer je regresija bila u frontend layoutu. Datoteke: `app/(tabs)/fyp.tsx`, `features/events/components/fyp/fyp-layout.ts`, `features/events/components/fyp/fyp-discover-header.tsx`, `features/events/components/fyp/fyp-reel-summary-card.tsx`, `features/events/components/fyp/fyp-reel-actions.tsx`, `README.md`, `FAZE.md`. Testovi/build/typecheck nisu pokretani po dogovoru.
 
+2026-05-31 - Napravljeno: Discover/FYP summary overlay vise ne prikazuje vrijeme, adresu i sudionike kao chip/bubble elemente, nego kao plain tekst odvojen znakom `|`. Event tagovi su premjesteni u zaseban bubble red ispod meta teksta; prikazuje se najvise 5 tagova, a sesti bubble prikazuje overflow u obliku `+N`. Backend nije mijenjan jer feed DTO vec vraca `address` i `tags`. Datoteke: `features/events/components/fyp/fyp-reel-summary-card.tsx`, `README.md`, `FAZE.md`. Testovi/build/typecheck nisu pokretani po dogovoru.
+
+2026-05-31 - Napravljeno: Discover/FYP nakon kraja filtriranog feeda za `For you`, `Trending` i `Friends` automatski nastavlja opustenim fallback feedom po 2 eventa, bez lokacijskog/tip/preset ogranicenja, ali i dalje samo za future published dostupne evente uz Not interested i block pravila. `Tonight` i `Weekend` ostaju striktno vezani uz svoj date range i nemaju fallback. Backend `GET /api/feed` dobio je opcionalni `excludeEventIds` parametar da fallback ne ponavlja vec prikazane filtrirane evente. Datoteke: backend `EventController`, `EventService`, `EventMapper`, `EventMapper.xml`; frontend `app/(tabs)/fyp.tsx`, `core/api/query-hooks.ts`, `core/types/domain.ts`, `README.md`, `FAZE.md`; backend dokumentacija `backend/README.md`. Testovi/build/typecheck nisu pokretani po dogovoru.
+
+2026-05-31 - Dopuna: feed duplicati su rijeseni na backendu i frontendu. Backend cursor sada nosi vec vracene event id-jeve i iskljucuje ih iz iducih stranica, jer `POST /api/feed/impressions` tokom scrolla mijenja ranking i stari `OFFSET` je mogao vratiti isti event ponovno. Frontend dodatno dedupe-a primarni, fallback i spojeni feed po event `id`. Testovi/build/typecheck nisu pokretani po dogovoru; pokrenut je samo `git diff --check`.
+
 ## Faza 0 - Dokumentacija i smjer
 
 Status: Rijeseno

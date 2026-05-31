@@ -31,7 +31,20 @@ import { createFypFeedParams } from '@/features/events/fyp/fyp-feed-filters';
 const isValidFeedEvent = (event: AppEvent | null | undefined): event is AppEvent => Boolean(event?.id);
 const createFeedSeed = () => `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 const FEED_PAGE_SIZE = 8;
+const FALLBACK_FEED_PAGE_SIZE = 2;
 const NOT_INTERESTED_NAV_CLEARANCE = 28;
+
+function dedupeEventsById(events: AppEvent[]) {
+  const seenEventIds = new Set<string>();
+  return events.filter((event) => {
+    if (seenEventIds.has(event.id)) {
+      return false;
+    }
+
+    seenEventIds.add(event.id);
+    return true;
+  });
+}
 
 export default function FypScreen() {
   const { t, locale } = useI18n();
@@ -48,7 +61,15 @@ export default function FypScreen() {
     () => createFypFeedParams(fypFeedFilter, userLocation, nearbyRadiusKm),
     [feedSeed, fypFeedFilter, nearbyRadiusKm, userLocation],
   );
-  const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage, refetch, isRefetching } = useFeedInfiniteQuery(
+  const {
+    data,
+    isLoading,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+    refetch,
+    isRefetching,
+  } = useFeedInfiniteQuery(
     FEED_PAGE_SIZE,
     feedSeed,
     feedParams,
@@ -67,14 +88,62 @@ export default function FypScreen() {
   const itemHeight = getFypViewportHeight(height, tabBarHeight);
   const slideBottomInset = getFypBottomContentInset(insets, tabBarHeight);
   const detailBottomInset = getFypDetailBottomInset();
-  const feedEvents = useMemo(
+  const primaryFeedEvents = useMemo(
     () =>
-      data?.pages.flatMap((page) => {
-        const pageItems = Array.isArray(page?.items) ? page.items : [];
-        return pageItems.filter(isValidFeedEvent);
-      }) ?? [],
+      dedupeEventsById(
+        data?.pages.flatMap((page) => {
+          const pageItems = Array.isArray(page?.items) ? page.items : [];
+          return pageItems.filter(isValidFeedEvent);
+        }) ?? [],
+      ),
     [data],
   );
+  const primaryFeedEventIds = useMemo(() => primaryFeedEvents.map((event) => event.id), [primaryFeedEvents]);
+  const fallbackEnabled = Boolean(
+    !isLoading &&
+      !hasNextPage &&
+      fypFeedFilter.preset !== 'tonight' &&
+      fypFeedFilter.preset !== 'weekend',
+  );
+  const fallbackFeedParams = useMemo(
+    () => ({
+      excludeEventIds: primaryFeedEventIds.join(','),
+    }),
+    [primaryFeedEventIds],
+  );
+  const {
+    data: fallbackData,
+    isLoading: isFallbackLoading,
+    isFetchingNextPage: isFetchingFallbackNextPage,
+    hasNextPage: hasFallbackNextPage,
+    fetchNextPage: fetchFallbackNextPage,
+    refetch: refetchFallback,
+    isRefetching: isFallbackRefetching,
+  } = useFeedInfiniteQuery(
+    FALLBACK_FEED_PAGE_SIZE,
+    `${feedSeed}-fallback`,
+    fallbackFeedParams,
+    { enabled: fallbackEnabled },
+  );
+  const fallbackFeedEvents = useMemo(
+    () =>
+      dedupeEventsById(
+        fallbackData?.pages.flatMap((page) => {
+          const pageItems = Array.isArray(page?.items) ? page.items : [];
+          return pageItems.filter(isValidFeedEvent);
+        }) ?? [],
+      ),
+    [fallbackData],
+  );
+  const feedEvents = useMemo(
+    () => dedupeEventsById([...primaryFeedEvents, ...fallbackFeedEvents]),
+    [fallbackFeedEvents, primaryFeedEvents],
+  );
+  const isFetchingAnyNextPage =
+    isFetchingNextPage || isFetchingFallbackNextPage || (fallbackEnabled && isFallbackLoading);
+  const hasAnyNextPage = Boolean(hasNextPage || (fallbackEnabled && hasFallbackNextPage));
+  const isInitialLoading = isLoading || (fallbackEnabled && primaryFeedEvents.length === 0 && isFallbackLoading);
+  const isRefreshing = isRefetching || isFallbackRefetching;
   const activeIndex = Math.max(0, feedEvents.findIndex((event) => event.id === activeEventId));
   const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
     const firstVisible = viewableItems.find((item) => item.isViewable)?.item as AppEvent | undefined;
@@ -145,7 +214,7 @@ export default function FypScreen() {
   }, [activeEventId, recordFeedImpressionMutation]);
 
   const renderFooter = () => {
-    if (isFetchingNextPage) {
+    if (isFetchingAnyNextPage) {
       return (
         <View style={styles.footer}>
           <ActivityIndicator color={theme.colors.textSecondary} />
@@ -153,7 +222,7 @@ export default function FypScreen() {
       );
     }
 
-    if (!hasNextPage && feedEvents.length > 0) {
+    if (!hasAnyNextPage && feedEvents.length > 0) {
       return (
         <View style={styles.footer}>
           <AppText variant="caption" color="textMuted">
@@ -168,7 +237,7 @@ export default function FypScreen() {
 
   return (
     <SafeAreaView edges={['left', 'right']} style={[styles.screen, { backgroundColor: theme.colors.background }]}>
-      {isLoading ? (
+      {isInitialLoading ? (
         <View style={styles.emptyWrap}>
           <ActivityIndicator color={theme.colors.textSecondary} />
           <AppText variant="body" color="textMuted" style={styles.loadingText}>
@@ -213,12 +282,20 @@ export default function FypScreen() {
           onEndReached={() => {
             if (hasNextPage && !isFetchingNextPage) {
               fetchNextPage().catch(() => undefined);
+              return;
+            }
+
+            if (fallbackEnabled && hasFallbackNextPage && !isFetchingFallbackNextPage) {
+              fetchFallbackNextPage().catch(() => undefined);
             }
           }}
           onRefresh={() => {
             refetch().catch(() => undefined);
+            if (fallbackEnabled) {
+              refetchFallback().catch(() => undefined);
+            }
           }}
-          refreshing={isRefetching}
+          refreshing={isRefreshing}
           viewabilityConfig={viewabilityConfig.current}
           onViewableItemsChanged={onViewableItemsChanged.current}
           initialNumToRender={2}

@@ -166,7 +166,12 @@ export const useDeleteAccountMutation = () =>
     mutationFn: deleteAccount,
   });
 
-export const useFeedInfiniteQuery = (limit = 5, seed?: string, params?: Omit<FeedQueryParams, 'cursor' | 'limit' | 'seed'>) =>
+export const useFeedInfiniteQuery = (
+  limit = 5,
+  seed?: string,
+  params?: Omit<FeedQueryParams, 'cursor' | 'limit' | 'seed'>,
+  options?: { enabled?: boolean },
+) =>
   useInfiniteQuery<
     FeedPage,
     Error,
@@ -176,6 +181,7 @@ export const useFeedInfiniteQuery = (limit = 5, seed?: string, params?: Omit<Fee
   >({
     queryKey: queryKeys.feed(limit, seed, params),
     queryFn: ({ pageParam }) => fetchFeed({ ...params, cursor: pageParam, limit, seed }),
+    enabled: options?.enabled ?? true,
     initialPageParam: undefined,
     getNextPageParam: (page) => (page.hasMore ? page.nextCursor : undefined),
   });

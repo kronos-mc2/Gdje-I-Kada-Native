@@ -50,6 +50,7 @@ export type FeedQueryParams = {
   cursor?: string;
   limit?: number;
   seed?: string;
+  excludeEventIds?: string;
   from?: string;
   to?: string;
   lat?: number;

@@ -17,15 +17,20 @@ type FypReelSummaryCardProps = Readonly<{
   onOpenDetails: () => void;
 }>;
 
-type MetaItemProps = Readonly<{
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-}>;
+const MAX_VISIBLE_TAG_BUBBLES = 5;
 
 export function FypReelSummaryCard({ event, locale, activeMediaIndex, mediaPageCount, onOpenDetails }: FypReelSummaryCardProps) {
   const { t } = useI18n();
   const { theme } = useAppTheme();
   const organizerName = event.creatorName ?? t('organizerFallback');
+  const addressLabel = event.address.trim() || event.where[locale];
+  const metaText = [
+    formatEventTime(event.whenISO, locale),
+    addressLabel,
+    `${event.participantCount} ${t('participants')}`,
+  ].join(' | ');
+  const visibleTags = (event.tags ?? []).slice(0, MAX_VISIBLE_TAG_BUBBLES);
+  const hiddenTagCount = Math.max((event.tags?.length ?? 0) - visibleTags.length, 0);
 
   return (
     <Pressable
@@ -92,11 +97,61 @@ export function FypReelSummaryCard({ event, locale, activeMediaIndex, mediaPageC
           {event.about[locale]}
         </AppText>
 
-        <View style={styles.metaRow}>
-          <MetaItem icon="time-outline" label={formatEventTime(event.whenISO, locale)} />
-          <MetaItem icon="location-outline" label={event.where[locale]} />
-          <MetaItem icon="people-outline" label={`${event.participantCount} ${t('participants')}`} />
-        </View>
+        <AppText
+          variant="caption"
+          color="textSecondary"
+          maxFontSizeMultiplier={FYP_REEL_TEXT_MAX_FONT_MULTIPLIER}
+          numberOfLines={2}
+          style={styles.metaText}
+        >
+          {metaText}
+        </AppText>
+
+        {visibleTags.length ? (
+          <View style={styles.tagRow}>
+            {visibleTags.map((tag) => (
+              <View
+                key={tag}
+                style={[
+                  styles.tagBubble,
+                  {
+                    borderColor: theme.colors.mapAccent,
+                    backgroundColor: theme.colors.mapAccentSoft,
+                  },
+                ]}
+              >
+                <AppText
+                  variant="caption"
+                  color="mapAccent"
+                  maxFontSizeMultiplier={FYP_REEL_TEXT_MAX_FONT_MULTIPLIER}
+                  numberOfLines={1}
+                  style={styles.tagText}
+                >
+                  {tag}
+                </AppText>
+              </View>
+            ))}
+            {hiddenTagCount > 0 ? (
+              <View
+                style={[
+                  styles.tagBubble,
+                  styles.tagOverflowBubble,
+                  { borderColor: theme.colors.border, backgroundColor: theme.colors.overlay },
+                ]}
+              >
+                <AppText
+                  variant="caption"
+                  color="textPrimary"
+                  maxFontSizeMultiplier={FYP_REEL_TEXT_MAX_FONT_MULTIPLIER}
+                  numberOfLines={1}
+                  style={styles.tagText}
+                >
+                  +{hiddenTagCount}
+                </AppText>
+              </View>
+            ) : null}
+          </View>
+        ) : null}
 
         <View
           style={[
@@ -141,27 +196,6 @@ export function FypReelSummaryCard({ event, locale, activeMediaIndex, mediaPageC
   );
 }
 
-function MetaItem({ icon, label }: MetaItemProps) {
-  const { theme } = useAppTheme();
-
-  return (
-    <View
-      style={[
-        styles.metaItem,
-        {
-          borderColor: theme.colors.border,
-          backgroundColor: theme.colors.overlay,
-        },
-      ]}
-    >
-      <Ionicons name={icon} size={13} color={theme.colors.textSecondary} />
-      <AppText variant="caption" maxFontSizeMultiplier={FYP_REEL_TEXT_MAX_FONT_MULTIPLIER} numberOfLines={1} style={styles.metaText}>
-        {label}
-      </AppText>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   content: {
     gap: 9,
@@ -197,22 +231,27 @@ const styles = StyleSheet.create({
   about: {
     color: 'rgba(240, 240, 240, 0.82)',
   },
-  metaRow: {
+  metaText: {
+    color: 'rgba(240, 240, 240, 0.78)',
+  },
+  tagRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 7,
   },
-  metaItem: {
-    maxWidth: '100%',
-    minHeight: 30,
-    borderWidth: 1,
-    borderRadius: 999,
-    paddingHorizontal: 9,
-    flexDirection: 'row',
+  tagBubble: {
     alignItems: 'center',
-    gap: 5,
+    borderRadius: 999,
+    borderWidth: 1,
+    justifyContent: 'center',
+    maxWidth: '100%',
+    minHeight: 28,
+    paddingHorizontal: 10,
   },
-  metaText: {
+  tagOverflowBubble: {
+    minWidth: 40,
+  },
+  tagText: {
     flexShrink: 1,
   },
   detailsButton: {
