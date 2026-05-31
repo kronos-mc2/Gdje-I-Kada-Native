@@ -8,6 +8,7 @@ import { MapSearchResults } from '@/components/search/map-search-results';
 import { useI18n } from '@/core/i18n/use-i18n';
 import { useAppTheme } from '@/core/theme';
 import { EventAttendanceMode, FypFeedFilter, FypFeedPreset, FypLocationMode } from '@/core/types/domain';
+import { FYP_CHIP_MAX_FONT_MULTIPLIER, FYP_HEADER_MAX_FONT_MULTIPLIER } from '@/features/events/components/fyp/fyp-layout';
 import { FYP_PRESET_KEYS } from '@/features/events/fyp/fyp-feed-filters';
 import { useLocationSearch } from '@/features/events/hooks/use-location-search';
 import { useKeyboardState } from '@/features/messages/hooks/use-keyboard-bottom-inset';
@@ -36,7 +37,7 @@ export function FypDiscoverHeader({ filter, topInset, onFilterChange }: FypDisco
     <>
       <View pointerEvents="box-none" style={[styles.header, { paddingTop: topInset + 8 }]}>
         <View style={styles.titleRow}>
-          <AppText variant="title" style={styles.titleText}>
+          <AppText variant="title" maxFontSizeMultiplier={FYP_HEADER_MAX_FONT_MULTIPLIER} numberOfLines={1} style={styles.titleText}>
             {t('fyp')}
           </AppText>
           <Pressable
@@ -109,7 +110,12 @@ function PresetChip({ preset, active, onPress }: { preset: FypFeedPreset; active
         },
       ]}
     >
-      <AppText variant="label" style={{ color: active ? '#FFFFFF' : theme.colors.textSecondary }}>
+      <AppText
+        variant="label"
+        maxFontSizeMultiplier={FYP_CHIP_MAX_FONT_MULTIPLIER}
+        numberOfLines={1}
+        style={{ color: active ? '#FFFFFF' : theme.colors.textSecondary }}
+      >
         {getPresetLabel(preset, t)}
       </AppText>
     </Pressable>
@@ -134,7 +140,7 @@ function Chip({ label, icon, active, onPress }: ChipProps) {
       ]}
     >
       {icon ? <Ionicons name={icon} size={14} color={chipTextColor} /> : null}
-      <AppText variant="label" numberOfLines={1} style={{ color: chipTextColor }}>
+      <AppText variant="label" maxFontSizeMultiplier={FYP_CHIP_MAX_FONT_MULTIPLIER} numberOfLines={1} style={{ color: chipTextColor }}>
         {label}
       </AppText>
     </Pressable>
@@ -410,10 +416,12 @@ const styles = StyleSheet.create({
   titleRow: {
     alignItems: 'center',
     flexDirection: 'row',
+    gap: 12,
     justifyContent: 'space-between',
   },
   titleText: {
     color: '#FFFFFF',
+    flexShrink: 1,
     textShadowColor: 'rgba(17, 17, 20, 0.45)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 8,
@@ -433,9 +441,9 @@ const styles = StyleSheet.create({
   },
   presetChip: {
     borderRadius: 999,
-    minHeight: 34,
-    paddingHorizontal: 14,
+    height: 34,
     justifyContent: 'center',
+    paddingHorizontal: 14,
   },
   filterContent: {
     gap: 8,
@@ -448,7 +456,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     flexDirection: 'row',
     gap: 6,
-    minHeight: 34,
+    height: 34,
+    maxWidth: 280,
     paddingHorizontal: 12,
     shadowColor: '#111114',
     shadowOffset: { width: 0, height: 3 },

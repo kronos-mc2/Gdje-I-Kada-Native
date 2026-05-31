@@ -6,6 +6,7 @@ import { useI18n } from '@/core/i18n/use-i18n';
 import { useAppTheme } from '@/core/theme';
 import { AppEvent, Locale } from '@/core/types/domain';
 import { formatEventDay, formatEventTime } from '@/core/utils/date';
+import { FYP_REEL_TEXT_MAX_FONT_MULTIPLIER } from '@/features/events/components/fyp/fyp-layout';
 import { ProfileAvatar } from '@/features/profile/components/profile-avatar';
 
 type FypReelSummaryCardProps = Readonly<{
@@ -27,40 +28,67 @@ export function FypReelSummaryCard({ event, locale, activeMediaIndex, mediaPageC
   const organizerName = event.creatorName ?? t('organizerFallback');
 
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={t('details')} onPress={onOpenDetails} style={({ pressed }) => ({ opacity: pressed ? 0.9 : 1 })}>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={t('details')}
+      onPress={onOpenDetails}
+      style={({ pressed }) => ({ opacity: pressed ? 0.9 : 1 })}
+    >
       <View style={styles.content}>
         <View style={styles.badgeRow}>
           <View style={[styles.dateBadge, { backgroundColor: theme.colors.mapAccentSoft }]}>
-            <AppText variant="caption" style={styles.badgeText} numberOfLines={1}>
+            <AppText variant="caption" maxFontSizeMultiplier={FYP_REEL_TEXT_MAX_FONT_MULTIPLIER} style={styles.badgeText} numberOfLines={1}>
               {formatEventDay(event.whenISO, locale)}
             </AppText>
           </View>
           {event.joinedByMe ? (
-            <View style={[styles.dateBadge, { backgroundColor: theme.colors.overlay, borderColor: theme.colors.mapAccent, borderWidth: 1 }]}>
-              <AppText variant="caption" color="mapAccent" numberOfLines={1}>
+            <View
+              style={[
+                styles.dateBadge,
+                {
+                  backgroundColor: theme.colors.overlay,
+                  borderColor: theme.colors.mapAccent,
+                  borderWidth: 1,
+                },
+              ]}
+            >
+              <AppText variant="caption" color="mapAccent" maxFontSizeMultiplier={FYP_REEL_TEXT_MAX_FONT_MULTIPLIER} numberOfLines={1}>
                 {t('joinedBadge')}
               </AppText>
             </View>
           ) : null}
         </View>
 
-        <AppText variant="title" numberOfLines={2} style={styles.title}>
+        <AppText
+          variant="title"
+          maxFontSizeMultiplier={FYP_REEL_TEXT_MAX_FONT_MULTIPLIER}
+          numberOfLines={2}
+          adjustsFontSizeToFit
+          minimumFontScale={0.86}
+          style={styles.title}
+        >
           {event.title[locale]}
         </AppText>
 
         <View style={styles.organizerRow}>
           <ProfileAvatar name={organizerName} avatarUrl={event.creatorAvatarUrl} size={28} />
           <View style={styles.titleBlock}>
-            <AppText variant="caption" color="textSecondary" numberOfLines={1}>
+            <AppText variant="caption" color="textSecondary" maxFontSizeMultiplier={FYP_REEL_TEXT_MAX_FONT_MULTIPLIER} numberOfLines={1}>
               {organizerName}
             </AppText>
-            <AppText variant="caption" color="textSecondary" numberOfLines={1}>
+            <AppText variant="caption" color="textSecondary" maxFontSizeMultiplier={FYP_REEL_TEXT_MAX_FONT_MULTIPLIER} numberOfLines={1}>
               {event.where[locale]}
             </AppText>
           </View>
         </View>
 
-        <AppText variant="caption" color="textSecondary" numberOfLines={2} style={styles.about}>
+        <AppText
+          variant="caption"
+          color="textSecondary"
+          maxFontSizeMultiplier={FYP_REEL_TEXT_MAX_FONT_MULTIPLIER}
+          numberOfLines={2}
+          style={styles.about}
+        >
           {event.about[locale]}
         </AppText>
 
@@ -70,9 +98,24 @@ export function FypReelSummaryCard({ event, locale, activeMediaIndex, mediaPageC
           <MetaItem icon="people-outline" label={`${event.participantCount} ${t('participants')}`} />
         </View>
 
-        <View style={[styles.detailsButton, { borderColor: theme.colors.mapAccent, backgroundColor: theme.colors.mapAccent }]}>
+        <View
+          style={[
+            styles.detailsButton,
+            {
+              borderColor: theme.colors.mapAccent,
+              backgroundColor: theme.colors.mapAccent,
+            },
+          ]}
+        >
           <Ionicons name="map-outline" size={18} color="#FFFFFF" />
-          <AppText variant="bodyStrong" style={styles.detailsButtonText}>
+          <AppText
+            variant="bodyStrong"
+            maxFontSizeMultiplier={FYP_REEL_TEXT_MAX_FONT_MULTIPLIER}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.82}
+            style={styles.detailsButtonText}
+          >
             {t('detailsCta')}
           </AppText>
           <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
@@ -102,9 +145,17 @@ function MetaItem({ icon, label }: MetaItemProps) {
   const { theme } = useAppTheme();
 
   return (
-    <View style={[styles.metaItem, { borderColor: theme.colors.border, backgroundColor: theme.colors.overlay }]}>
+    <View
+      style={[
+        styles.metaItem,
+        {
+          borderColor: theme.colors.border,
+          backgroundColor: theme.colors.overlay,
+        },
+      ]}
+    >
       <Ionicons name={icon} size={13} color={theme.colors.textSecondary} />
-      <AppText variant="caption" numberOfLines={1} style={styles.metaText}>
+      <AppText variant="caption" maxFontSizeMultiplier={FYP_REEL_TEXT_MAX_FONT_MULTIPLIER} numberOfLines={1} style={styles.metaText}>
         {label}
       </AppText>
     </View>

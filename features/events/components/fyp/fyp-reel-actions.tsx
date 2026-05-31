@@ -4,6 +4,7 @@ import { Pressable, StyleProp, StyleSheet, View, ViewStyle } from 'react-native'
 import { AppText } from '@/components/primitives';
 import { useI18n } from '@/core/i18n/use-i18n';
 import { useAppTheme } from '@/core/theme';
+import { FYP_REEL_TEXT_MAX_FONT_MULTIPLIER } from '@/features/events/components/fyp/fyp-layout';
 
 type FypReelActionsProps = Readonly<{
   liked: boolean;
@@ -64,7 +65,7 @@ function ActionButton({
         <Ionicons name={icon} size={25} color={active ? theme.colors.mapAccent : theme.colors.textPrimary} />
       </View>
       {showValue && value ? (
-        <AppText variant="caption" style={styles.actionValue}>
+        <AppText variant="caption" maxFontSizeMultiplier={FYP_REEL_TEXT_MAX_FONT_MULTIPLIER} numberOfLines={1} style={styles.actionValue}>
           {value}
         </AppText>
       ) : (

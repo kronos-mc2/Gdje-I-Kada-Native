@@ -370,6 +370,7 @@ Trenutno ponasanje:
 - FYP za evente s vise slika prikazuje horizontalni image pager sa stranicama unutar istog reela; event s jednom slikom ostaje staticki full-bleed poster.
 - Android FYP viewport oduzima stvarnu native tab bar visinu iz `BottomTabBarHeightContext`, ali media blago podvuce ispod ruba da ne ostane crni razmak iznad toolbara; sam card/action rail ostaju dignuti iznad taba. iOS zadrzava full-bleed media i podize overlay iznad translucent taba.
 - FYP ima Discover header preko media sloja s preset tabovima `For you`, `Tonight`, `Weekend`, `Trending`, `Friends`, filter gumbom i aktivnim location/type chipovima.
+- Android Discover overlay je otporan na povecani system display/font size: header title/chipovi i donji reel tekst imaju lokalni `maxFontSizeMultiplier`, chipovi imaju stabilnu visinu, a bottom clearance racuna stvarnu floating tab visinu umjesto starog vecog hardkodanog lifta.
 - FYP media je full-bleed, a donji tekst sjedi na transparent-to-black scrim sloju radi kontrasta bez zasebne kartice. Donji overlay prikazuje datum/joined badge, title, organizatora, lokaciju, opis, vrijeme/sudionike i purple details CTA; save/like, share i not-interested ostaju u desnom action railu.
 - Like je server-side preko `POST/DELETE /api/events/{id}/like`; React Query optimisticno patcha feed/detail/profile cache.
 - Bookmark/save UI je uklonjen.

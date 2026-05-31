@@ -65,7 +65,7 @@ export default function FypScreen() {
   const recordedImpressionIdsRef = useRef<Set<string>>(new Set());
   const hasMountedFilterRef = useRef(false);
   const itemHeight = getFypViewportHeight(height, tabBarHeight);
-  const slideBottomInset = getFypBottomContentInset(insets);
+  const slideBottomInset = getFypBottomContentInset(insets, tabBarHeight);
   const detailBottomInset = getFypDetailBottomInset();
   const feedEvents = useMemo(
     () =>

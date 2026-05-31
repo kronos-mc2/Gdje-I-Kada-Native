@@ -76,6 +76,8 @@ Aktivna dopuna:
 
 2026-05-31 - Dopuna: shared event details sada uz `Leave event` prikazuje ikon-only `Open messages` gumb za korisnike sa stvarnim `joined/approved` statusom, tako da mogu naknadno otvoriti ili kreirati event chat ako ga nisu otvorili odmah nakon joina. Gumb nije vidljiv korisnicima na waitlisti.
 
+2026-05-31 - Napravljeno: Android Discover/FYP layout fix za uredaje s povecanim system display/font sizeom. Header title/chipovi i donji reel tekst sada imaju lokalne `maxFontSizeMultiplier` capove, chipovi imaju stabilnu visinu, a bottom clearance se racuna iz stvarne floating tab visine umjesto starog veceg hardkodanog lifta. Backend nije mijenjan jer je regresija bila u frontend layoutu. Datoteke: `app/(tabs)/fyp.tsx`, `features/events/components/fyp/fyp-layout.ts`, `features/events/components/fyp/fyp-discover-header.tsx`, `features/events/components/fyp/fyp-reel-summary-card.tsx`, `features/events/components/fyp/fyp-reel-actions.tsx`, `README.md`, `FAZE.md`. Testovi/build/typecheck nisu pokretani po dogovoru.
+
 ## Faza 0 - Dokumentacija i smjer
 
 Status: Rijeseno
