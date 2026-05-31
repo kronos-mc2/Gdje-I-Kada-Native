@@ -7,7 +7,7 @@ import { AppButton, AppCard, AppIconButton, AppInput, AppScreen, AppText, Sectio
 import { useProfileActivityQuery, useRateOrganizerMutation } from '@/core/api/query-hooks';
 import { useI18n } from '@/core/i18n/use-i18n';
 import { useAppTheme } from '@/core/theme';
-import { AppEvent } from '@/core/types/domain';
+import { AppEvent, AppNotification } from '@/core/types/domain';
 import { ProfileEventRow } from '@/features/profile/components/profile-event-row';
 
 export default function ProfileActivityScreen() {
@@ -51,12 +51,15 @@ export default function ProfileActivityScreen() {
           </AppText>
         ) : (
           notifications.map((notification) => (
-            <View key={notification.id} style={styles.notificationRow}>
-              <AppText variant="bodyStrong">{notification.title}</AppText>
-              <AppText variant="caption" color="textMuted">
-                {notification.body}
-              </AppText>
-            </View>
+            <NotificationRow
+              key={notification.id}
+              notification={notification}
+              onPress={() => {
+                if (notification.eventId) {
+                  router.push({ pathname: '/event/[id]', params: { id: notification.eventId } });
+                }
+              }}
+            />
           ))
         )}
       </AppCard>
@@ -72,6 +75,42 @@ export default function ProfileActivityScreen() {
         )}
       </AppCard>
     </AppScreen>
+  );
+}
+
+function NotificationRow({ notification, onPress }: { notification: AppNotification; onPress: () => void }) {
+  const { theme } = useAppTheme();
+  const content = (
+    <>
+      <AppText variant="bodyStrong">{notification.title}</AppText>
+      <AppText variant="caption" color="textMuted">
+        {notification.body}
+      </AppText>
+    </>
+  );
+
+  if (!notification.eventId) {
+    return <View style={styles.notificationRow}>{content}</View>;
+  }
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={notification.title}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.notificationRow,
+        styles.notificationButton,
+        {
+          borderColor: theme.colors.border,
+          backgroundColor: theme.colors.surfaceElevated,
+          opacity: pressed ? 0.76 : 1,
+        },
+      ]}
+    >
+      <View style={styles.notificationCopy}>{content}</View>
+      <Ionicons name="chevron-forward" size={18} color={theme.colors.textMuted} />
+    </Pressable>
   );
 }
 
@@ -191,6 +230,19 @@ const styles = StyleSheet.create({
   },
   notificationRow: {
     gap: 4,
+  },
+  notificationButton: {
+    alignItems: 'center',
+    borderRadius: 14,
+    borderWidth: 1,
+    flexDirection: 'row',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  notificationCopy: {
+    flex: 1,
+    gap: 4,
+    minWidth: 0,
   },
   rateButton: {
     minWidth: 118,

@@ -314,6 +314,7 @@ export function EventMapSurface({
                 count={marker.count}
                 dateBadge={marker.dateBadge}
                 isFriendsOnly={marker.isFriendsOnly}
+                isJoinedByMe={marker.isJoinedByMe}
                 onImageLoad={() => {
                   annotationRefs.current[markerKey]?.refresh?.();
                   setTimeout(() => {

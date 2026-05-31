@@ -103,6 +103,7 @@ export function EventMapSurface({
               count={marker.count}
               dateBadge={marker.dateBadge}
               isFriendsOnly={marker.isFriendsOnly}
+              isJoinedByMe={marker.isJoinedByMe}
             />
           </Marker>
         ))}

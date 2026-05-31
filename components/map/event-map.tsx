@@ -69,6 +69,7 @@ export function EventMap({
         dateBadge: group.length === 1 ? getEventDateBadge(firstEvent.startAt, locale) : null,
         isSelected: group.some((event) => selectedEventId === event.id),
         isFriendsOnly: group.some((event) => event.visibility === 'friends'),
+        isJoinedByMe: group.some((event) => event.attendanceStatus === 'joined' || event.attendanceStatus === 'approved'),
       }];
     });
   }, [events, locale, selectedEventId]);

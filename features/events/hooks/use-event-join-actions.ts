@@ -13,7 +13,10 @@ export function useEventJoinActions(event?: AppEvent | null) {
   const joinEventMutation = useJoinEventMutation();
   const leaveEventMutation = useLeaveEventMutation();
   const eventChatMutation = useGetOrCreateEventChatRoomMutation();
-  const isJoined = event?.joinedByMe === true;
+  const isActiveAttendance = event?.attendanceStatus === 'joined' || event?.attendanceStatus === 'approved';
+  const isWaitlisted = event?.attendanceStatus === 'waitlisted';
+  const canLeave = isActiveAttendance || isWaitlisted;
+  const canOpenEventChat = isActiveAttendance;
   const promptForEventChat = useCallback(
     (joinedEvent: AppEvent) => {
       Alert.alert(t('eventJoined'), t('joinEventChatPrompt'), [
@@ -39,8 +42,14 @@ export function useEventJoinActions(event?: AppEvent | null) {
     onJoined: promptForEventChat,
   });
   const isJoinPending = joinEventMutation.isPending || leaveEventMutation.isPending || isPaidJoinPending;
-  const isJoinDisabled = !event || (!isJoined && event.canJoin === false) || isJoinPending;
-  const joinButtonTitle = !isJoined && event?.attendanceMode === 'paid' ? t('buyTicket') : isJoined ? t('leaveEvent') : t('joinEvent');
+  const isJoinDisabled = !event || (!canLeave && event.canJoin === false) || isJoinPending;
+  const joinButtonTitle = isWaitlisted
+    ? t('leaveWaitlist')
+    : !canLeave && event?.attendanceMode === 'paid'
+      ? t('buyTicket')
+      : canLeave
+        ? t('leaveEvent')
+        : t('joinEvent');
 
   const onToggleJoin = useCallback(async () => {
     if (!event) {
@@ -48,9 +57,9 @@ export function useEventJoinActions(event?: AppEvent | null) {
     }
 
     try {
-      if (isJoined) {
+      if (canLeave) {
         await leaveEventMutation.mutateAsync(event.id);
-        Alert.alert(t('eventLeft'));
+        Alert.alert(isWaitlisted ? t('waitlistLeft') : t('eventLeft'));
         return;
       }
 
@@ -67,15 +76,31 @@ export function useEventJoinActions(event?: AppEvent | null) {
 
       promptForEventChat(joinedEvent);
     } catch {
-      Alert.alert(isJoined ? t('leaveEventFailed') : t('joinEventFailed'));
+      Alert.alert(canLeave ? t('leaveEventFailed') : t('joinEventFailed'));
     }
-  }, [event, isJoined, joinEventMutation, leaveEventMutation, promptForEventChat, startPaidJoin, t]);
+  }, [canLeave, event, isWaitlisted, joinEventMutation, leaveEventMutation, promptForEventChat, startPaidJoin, t]);
+
+  const openEventChat = useCallback(async () => {
+    if (!event || !canOpenEventChat) {
+      return;
+    }
+
+    try {
+      const room = await eventChatMutation.mutateAsync(event.id);
+      router.push(`/chat/${room.id}`);
+    } catch {
+      router.push('/(tabs)/messages');
+    }
+  }, [canOpenEventChat, event, eventChatMutation, router]);
 
   return {
-    isJoined,
+    isJoined: canLeave,
     isJoinDisabled,
     isJoinPending,
     joinButtonTitle,
     onToggleJoin,
+    canOpenEventChat,
+    isEventChatPending: eventChatMutation.isPending,
+    openEventChat,
   };
 }

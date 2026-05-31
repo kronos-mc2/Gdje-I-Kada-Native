@@ -104,6 +104,15 @@ export const addChatNotificationResponseListener = () => {
         // Some notification runtimes do not expose response clearing.
       }
     }
+    const eventId = notification.request.content.data?.eventId;
+    if (typeof eventId === 'string' && eventId.trim()) {
+      router.push({ pathname: '/event/[id]', params: { id: eventId } });
+      try {
+        Notifications.clearLastNotificationResponse();
+      } catch {
+        // Some notification runtimes do not expose response clearing.
+      }
+    }
   };
 
   const lastResponse = Notifications.getLastNotificationResponse();

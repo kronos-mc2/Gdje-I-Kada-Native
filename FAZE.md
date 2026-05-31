@@ -1,6 +1,6 @@
 # Gdje i Kada - fazni plan rada
 
-Status dokumenta: 2026-05-30
+Status dokumenta: 2026-05-31
 Lokacija master dokumentacije: `README.md`
 
 ## Pravilo rada po fazama
@@ -71,6 +71,10 @@ Aktivna dopuna:
 2026-05-30 - Dopuna Discover/FYP lokacijskog filtera: postojeći backend Nominatim proxy `GET /api/locations/search` dobio je opcionalni `types=city|country` filter. Create event address autocomplete ostaje bez promjene, a FYP filter modal za grad/drzavu sada koristi isti search flow i prikazuje samo odabir gradova ili drzava prije spremanja filtera. Rucno upisani tekst sluzi samo za autocomplete query; FYP filter se moze spremiti kao grad/drzava tek kad korisnik klikne Nominatim prijedlog, a editiranje teksta brise prethodni odabir. Datoteke: backend `LocationController`, `LocationSearchService`, `README.md`; frontend `services/locationSearch/*`, `features/events/hooks/use-location-search.ts`, `features/events/components/fyp/fyp-discover-header.tsx`, `README.md`, `FAZE.md`. Testovi/build/typecheck nisu pokretani po dogovoru.
 
 2026-05-31 - Dopuna u tijeku: event/media/chat cache. Backend event DTO dobiva `updatedAt` i `cacheVersion`, `GET /api/events/{id}/cache-state` sluzi za jeftinu provjeru lokalnog event cachea, uploaded event slike dobivaju backend-generirani thumbnail do 600x400 kroz private `/api/events/{id}/media/{mediaId}/thumbnail`, a chat room/messages endpointi primaju `afterMessageId` i `limit` za inkrementalni dohvat. Frontend dodaje Expo SQLite lokalni cache za evente, chat roomove i chat poruke, koristi `expo-image` disk cache s stabilnim cache keyevima za private media slike, a private event videe sprema u zaseban `FileSystem.cacheDirectory` cache s 350 MB LRU limitom i cache keyem vezanim uz `mediaId` + `event.cacheVersion`. Pri ulasku u event/chat najprije koristi lokalni cache i s backendom provjerava samo verziju ili nove poruke. Testovi/build/typecheck nisu pokretani po dogovoru.
+
+2026-05-31 - Napravljeno: dorade map/waitlist/edit/notification flowa. Mapa sada subtle green highlighta evente na koje je korisnik stvarno prihvacen (`joined/approved`), a friends-only event zadrzava zlatni pin uz zeleni obruc/glow kad je korisnik prihvacen. Event details razlikuje waitlistu od prihvacenog dolaska, prikazuje statusne poruke za waitlist/approved/removed/blocked i CTA `Odjavi se s wait liste`; event chat endpoint backend odbija korisnike bez `joined/approved` statusa, a prihvacanje s waitliste automatski dodaje korisnika u event chat. Owner manage ekran sada dopusta izmjenu prave adrese kroz OSM autocomplete/map preview, start/end datuma, entrance pina, visibility/attendance/cijene/kapaciteta i tagova. Backend salje app/push notifikacije za prihvacanje s waitliste, bitne izmjene eventa i reminder 7 dana/1 dan prije eventa, a frontend tap na event push ili activity notification otvara direct event details. Datoteke: backend `EventService`, `EventMapper`, `NotificationService`, `NotificationMapper`, `MessageService`, `EventNotificationRecipientRow`; frontend map marker/theme, shared event details, join hook, owner manage screen, push routing, activity notifications, i18n, README/FAZE. Testovi/build/typecheck nisu pokretani po dogovoru.
+
+2026-05-31 - Dopuna: shared event details sada uz `Leave event` prikazuje ikon-only `Open messages` gumb za korisnike sa stvarnim `joined/approved` statusom, tako da mogu naknadno otvoriti ili kreirati event chat ako ga nisu otvorili odmah nakon joina. Gumb nije vidljiv korisnicima na waitlisti.
 
 ## Faza 0 - Dokumentacija i smjer
 

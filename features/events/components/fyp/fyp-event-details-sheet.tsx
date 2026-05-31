@@ -74,7 +74,15 @@ export function FypEventDetailsSheet({ event, locale, topInset, bottomInset, onC
   const canUseLiquidGlass = useMemo(() => Platform.OS === 'ios' && isLiquidGlassAvailable() && isGlassEffectAPIAvailable(), []);
   const { data: resolvedEvent } = useEventQuery(event.id, event);
   const detailEvent = resolvedEvent ?? event;
-  const { isJoined, isJoinDisabled, joinButtonTitle, onToggleJoin } = useEventJoinActions(detailEvent);
+  const {
+    isJoined,
+    isJoinDisabled,
+    joinButtonTitle,
+    onToggleJoin,
+    canOpenEventChat,
+    isEventChatPending,
+    openEventChat,
+  } = useEventJoinActions(detailEvent);
   const closeSheet = useCallback(() => {
     if (sheetRef.current) {
       sheetRef.current.close();
@@ -164,6 +172,9 @@ export function FypEventDetailsSheet({ event, locale, topInset, bottomInset, onC
           isJoinDisabled={isJoinDisabled}
           joinButtonTitle={joinButtonTitle}
           onToggleJoin={onToggleJoin}
+          canOpenEventChat={canOpenEventChat}
+          isEventChatPending={isEventChatPending}
+          onOpenEventChat={() => void openEventChat()}
           expanded
         />
       </View>

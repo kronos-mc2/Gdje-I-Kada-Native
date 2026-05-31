@@ -19,6 +19,8 @@ export type ThemeColors = {
   info: string;
   mapAccent: string;
   mapAccentSoft: string;
+  eventJoinedAccent: string;
+  eventJoinedAccentSoft: string;
   friendEventAccent: string;
   friendEventAccentSoft: string;
   todayAccent: string;

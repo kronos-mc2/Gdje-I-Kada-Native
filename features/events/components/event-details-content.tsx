@@ -26,6 +26,9 @@ type EventDetailsContentProps = {
   isJoinDisabled: boolean;
   joinButtonTitle?: string;
   onToggleJoin: () => void;
+  canOpenEventChat?: boolean;
+  isEventChatPending?: boolean;
+  onOpenEventChat?: () => void;
   expanded?: boolean;
 };
 
@@ -38,6 +41,9 @@ export function EventDetailsContent({
   isJoinDisabled,
   joinButtonTitle,
   onToggleJoin,
+  canOpenEventChat = false,
+  isEventChatPending = false,
+  onOpenEventChat,
   expanded = true,
 }: EventDetailsContentProps) {
   const { t } = useI18n();
@@ -106,15 +112,30 @@ export function EventDetailsContent({
               </AppText>
             </View>
           </View>
-          <AppButton
-            title={joinButtonTitle ?? (isJoined ? t('leaveEvent') : t('joinEvent'))}
-            variant={isJoined ? 'secondary' : 'primary'}
-            disabled={isJoinDisabled}
-            onPress={onToggleJoin}
-            style={styles.joinButton}
-          />
+          <View style={styles.eventActionRow}>
+            <AppButton
+              title={joinButtonTitle ?? (isJoined ? t('leaveEvent') : t('joinEvent'))}
+              variant={isJoined ? 'secondary' : 'primary'}
+              disabled={isJoinDisabled}
+              onPress={onToggleJoin}
+              style={styles.joinButton}
+            />
+            {canOpenEventChat ? (
+              <AppButton
+                variant="secondary"
+                accessibilityLabel={t('openMessages')}
+                disabled={isEventChatPending}
+                onPress={onOpenEventChat}
+                style={styles.eventChatButton}
+              >
+                <Ionicons name="chatbubbles-outline" size={18} color={theme.colors.textSecondary} />
+              </AppButton>
+            ) : null}
+          </View>
         </View>
       </View>
+
+      <AttendanceStatusNotice event={event} />
 
       <View style={[styles.statRow, { borderTopColor: theme.colors.border, borderBottomColor: theme.colors.border }]}>
         <StatCell
@@ -281,9 +302,22 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   joinButton: {
-    alignSelf: 'flex-start',
+    flexShrink: 1,
     minHeight: 32,
     paddingHorizontal: 16,
+    borderRadius: 16,
+  },
+  eventActionRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  eventChatButton: {
+    width: 38,
+    height: 32,
+    minHeight: 32,
+    paddingHorizontal: 0,
     borderRadius: 16,
   },
   statRow: {
@@ -408,9 +442,88 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
   },
+  attendanceNotice: {
+    borderRadius: 14,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 9,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  attendanceNoticeCopy: {
+    flex: 1,
+    gap: 2,
+    minWidth: 0,
+  },
 });
 
 type TranslateFn = ReturnType<typeof useI18n>['t'];
+
+function AttendanceStatusNotice({ event }: { event: AppEvent }) {
+  const { t } = useI18n();
+  const { theme } = useAppTheme();
+  const content = getAttendanceStatusNotice(event.attendanceStatus, t);
+
+  if (!content) {
+    return null;
+  }
+
+  return (
+    <View
+      style={[
+        styles.attendanceNotice,
+        {
+          borderColor: content.kind === 'success' ? theme.colors.eventJoinedAccent : theme.colors.border,
+          backgroundColor: content.kind === 'success' ? theme.colors.eventJoinedAccentSoft : theme.colors.surfaceElevated,
+        },
+      ]}
+    >
+      <Ionicons name={content.icon} size={18} color={content.kind === 'success' ? theme.colors.eventJoinedAccent : theme.colors.textSecondary} />
+      <View style={styles.attendanceNoticeCopy}>
+        <AppText variant="bodyStrong">{content.title}</AppText>
+        <AppText variant="caption" color="textMuted">
+          {content.body}
+        </AppText>
+      </View>
+    </View>
+  );
+}
+
+function getAttendanceStatusNotice(status: AppEvent['attendanceStatus'], t: TranslateFn) {
+  if (status === 'waitlisted') {
+    return {
+      icon: 'hourglass-outline' as IconName,
+      kind: 'neutral' as const,
+      title: t('waitlistStatusTitle'),
+      body: t('waitlistStatusBody'),
+    };
+  }
+  if (status === 'approved' || status === 'joined') {
+    return {
+      icon: 'checkmark-circle-outline' as IconName,
+      kind: 'success' as const,
+      title: t('attendanceApproved'),
+      body: t('attendanceApprovedBody'),
+    };
+  }
+  if (status === 'rejected') {
+    return {
+      icon: 'remove-circle-outline' as IconName,
+      kind: 'neutral' as const,
+      title: t('attendanceRemoved'),
+      body: t('attendanceRemovedBody'),
+    };
+  }
+  if (status === 'blocked') {
+    return {
+      icon: 'ban-outline' as IconName,
+      kind: 'neutral' as const,
+      title: t('attendanceBlocked'),
+      body: t('attendanceBlockedBody'),
+    };
+  }
+  return null;
+}
 
 function StatCell({
   icon,

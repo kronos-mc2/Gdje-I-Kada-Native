@@ -6,7 +6,8 @@ import { useEffect, useState } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
 
 import { EventImagePreviewModal } from '@/components/events/event-image-preview-modal';
-import { AppButton, AppCard, AppIconButton, AppInput, AppScreen, AppText, SectionHeader } from '@/components/primitives';
+import { EventMap } from '@/components/map';
+import { AppButton, AppCard, AppDateTimeField, AppIconButton, AppInput, AppScreen, AppText, SectionHeader } from '@/components/primitives';
 import { getApiErrorMessage } from '@/core/api/http-client';
 import {
   useApproveEventParticipantMutation,
@@ -33,9 +34,15 @@ import {
   isSupportedEventVideo,
   normalizePickedEventVideo,
 } from '@/core/events/event-video-assets';
+import { useAppStore } from '@/core/store/app-store';
 import { useAppTheme } from '@/core/theme';
-import { EventMedia, EventParticipant, LocalEventImage, LocalEventVideo } from '@/core/types/domain';
+import { Coordinates, EventAttendanceMode, EventMedia, EventParticipant, EventVisibility, LocalEventImage, LocalEventVideo } from '@/core/types/domain';
+import { CreateEventAddressField } from '@/features/events/create/create-event-address-field';
+import { parseOptionalMoneyAmount, parseOptionalPositiveInteger } from '@/features/events/create/create-event-form';
+import { CreateEventSegmentedControl } from '@/features/events/create/create-event-segmented-control';
+import { CreateEventTagSelector } from '@/features/events/create/create-event-tag-selector';
 import { ProfileAvatar } from '@/features/profile/components/profile-avatar';
+import { LocationSearchResult } from '@/services/locationSearch';
 
 export default function ManageCreatedEventScreen() {
   const router = useRouter();
@@ -43,6 +50,9 @@ export default function ManageCreatedEventScreen() {
   const eventId = Array.isArray(params.id) ? params.id[0] : params.id;
   const { t, locale } = useI18n();
   const { theme } = useAppTheme();
+  const userLocation = useAppStore((state) => state.userLocation);
+  const pickedEntranceCoordinates = useAppStore((state) => state.fypEntranceCoordinates);
+  const clearEntranceCoordinates = useAppStore((state) => state.clearFypEntranceCoordinates);
   const { data: event } = useEventQuery(eventId);
   const { data: participants = [] } = useEventParticipantsQuery(eventId);
   const updateEventMutation = useUpdateEventMutation();
@@ -51,7 +61,19 @@ export default function ManageCreatedEventScreen() {
   const deleteMediaMutation = useDeleteEventMediaMutation();
   const [title, setTitle] = useState('');
   const [where, setWhere] = useState('');
+  const [address, setAddress] = useState('');
   const [about, setAbout] = useState('');
+  const [startAt, setStartAt] = useState('');
+  const [endAt, setEndAt] = useState('');
+  const [entryInstructions, setEntryInstructions] = useState('');
+  const [visibility, setVisibility] = useState<EventVisibility>('public');
+  const [attendanceMode, setAttendanceMode] = useState<EventAttendanceMode>('open');
+  const [priceAmount, setPriceAmount] = useState('');
+  const [priceCurrency, setPriceCurrency] = useState('EUR');
+  const [capacity, setCapacity] = useState('');
+  const [eventCoordinates, setEventCoordinates] = useState<Coordinates | null>(null);
+  const [entranceCoordinates, setEntranceCoordinates] = useState<Coordinates | null>(null);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [previewMedia, setPreviewMedia] = useState<EventMedia | null>(null);
 
   useEffect(() => {
@@ -60,13 +82,94 @@ export default function ManageCreatedEventScreen() {
     }
     setTitle(event.title[locale] ?? '');
     setWhere(event.where[locale] ?? '');
+    setAddress(event.address ?? '');
     setAbout(event.about[locale] ?? '');
-  }, [event, locale]);
+    setStartAt(event.startAt ?? event.whenISO ?? '');
+    setEndAt(event.endAt ?? '');
+    setEntryInstructions(event.entryInstructions?.[locale] ?? '');
+    setVisibility(event.visibility ?? 'public');
+    setAttendanceMode(event.attendanceMode ?? 'open');
+    setPriceAmount(event.priceAmount == null ? '' : String(event.priceAmount));
+    setPriceCurrency(event.priceCurrency ?? 'EUR');
+    setCapacity(event.capacity == null ? '' : String(event.capacity));
+    setEventCoordinates(event.coordinates);
+    setEntranceCoordinates(event.entranceCoordinates ?? null);
+    setSelectedTags(event.tags ?? []);
+    clearEntranceCoordinates();
+  }, [clearEntranceCoordinates, event, locale]);
+
+  useEffect(() => {
+    if (!pickedEntranceCoordinates) {
+      return;
+    }
+
+    setEntranceCoordinates(pickedEntranceCoordinates);
+    clearEntranceCoordinates();
+  }, [clearEntranceCoordinates, pickedEntranceCoordinates]);
+
+  const updateAddress = (value: string) => {
+    setAddress(value);
+    setEventCoordinates(null);
+    setEntranceCoordinates(null);
+    clearEntranceCoordinates();
+  };
+
+  const selectAddress = (result: LocationSearchResult) => {
+    setEventCoordinates(result.coordinates);
+    setWhere((current) => (current.trim() ? current : result.title));
+  };
+
+  const openEntrancePicker = () => {
+    if (!eventCoordinates) {
+      return;
+    }
+
+    router.push({
+      pathname: '/entrance-map-picker',
+      params: {
+        centerLat: String(entranceCoordinates?.latitude ?? eventCoordinates.latitude),
+        centerLng: String(entranceCoordinates?.longitude ?? eventCoordinates.longitude),
+      },
+    });
+  };
 
   const save = async () => {
     if (!eventId || !event) {
       return;
     }
+    if (!title.trim() || !where.trim() || !address.trim() || !about.trim() || !startAt.trim()) {
+      Alert.alert(t('validation'), t('fillAllFields'));
+      return;
+    }
+    if (Number.isNaN(new Date(startAt).getTime()) || (endAt.trim() && Number.isNaN(new Date(endAt).getTime()))) {
+      Alert.alert(t('validation'), t('invalidDate'));
+      return;
+    }
+    if (endAt.trim() && new Date(endAt).getTime() < new Date(startAt).getTime()) {
+      Alert.alert(t('validation'), t('invalidEndDate'));
+      return;
+    }
+    if (!eventCoordinates) {
+      Alert.alert(t('validation'), t('selectAddressFromSuggestions'));
+      return;
+    }
+
+    const parsedCapacity = parseOptionalPositiveInteger(capacity);
+    if (parsedCapacity === null) {
+      Alert.alert(t('validation'), t('invalidCapacity'));
+      return;
+    }
+
+    const parsedPriceAmount = attendanceMode === 'paid' ? parseOptionalMoneyAmount(priceAmount) : undefined;
+    if (attendanceMode === 'paid' && parsedPriceAmount === null) {
+      Alert.alert(t('validation'), t('invalidPrice'));
+      return;
+    }
+    if (attendanceMode === 'paid' && priceCurrency.trim().toUpperCase().length !== 3) {
+      Alert.alert(t('validation'), t('invalidCurrency'));
+      return;
+    }
+
     try {
       await updateEventMutation.mutateAsync({
         eventId,
@@ -74,19 +177,20 @@ export default function ManageCreatedEventScreen() {
           title: title.trim(),
           where: where.trim(),
           about: about.trim(),
-          address: event.address,
-          startAt: event.startAt,
-          whenISO: event.whenISO,
-          endAt: event.endAt,
-          coordinates: event.coordinates,
-          entranceCoordinates: event.entranceCoordinates,
-          entryInstructions: event.entryInstructions?.[locale],
-          visibility: event.visibility,
-          attendanceMode: event.attendanceMode,
-          priceAmount: event.priceAmount,
-          priceCurrency: event.priceCurrency,
-          capacity: event.capacity,
+          address: address.trim(),
+          startAt,
+          whenISO: startAt,
+          endAt: endAt.trim(),
+          coordinates: eventCoordinates,
+          entranceCoordinates: entranceCoordinates ?? undefined,
+          entryInstructions: entryInstructions.trim(),
+          visibility,
+          attendanceMode,
+          priceAmount: typeof parsedPriceAmount === 'number' ? parsedPriceAmount : undefined,
+          priceCurrency: attendanceMode === 'paid' ? priceCurrency.trim().toUpperCase() : undefined,
+          capacity: typeof parsedCapacity === 'number' ? parsedCapacity : undefined,
           status: event.status,
+          tags: selectedTags,
         },
       });
       Alert.alert(t('eventSaved'));
@@ -249,6 +353,116 @@ export default function ManageCreatedEventScreen() {
             <AppInput label={t('titleLabel')} value={title} onChangeText={setTitle} />
             <AppInput label={t('locationLabel')} value={where} onChangeText={setWhere} />
             <AppInput label={t('aboutLabel')} value={about} onChangeText={setAbout} multiline style={styles.textArea} />
+            <AppDateTimeField label={t('startDateLabel')} locale={locale} valueISO={startAt} onChangeISO={setStartAt} />
+            <AppDateTimeField
+              label={`${t('endDateLabel')} (${t('optional')})`}
+              locale={locale}
+              valueISO={endAt}
+              onChangeISO={setEndAt}
+              onClear={() => setEndAt('')}
+              clearAccessibilityLabel={t('clearDateTime')}
+            />
+            <CreateEventAddressField
+              label={t('addressLabel')}
+              value={address}
+              onChangeText={updateAddress}
+              onSelectAddress={selectAddress}
+              placeholder={t('createEventAddressPlaceholder')}
+              locale={locale}
+              proximity={userLocation}
+              searchingLabel={t('searchingLocations')}
+              noResultsLabel={t('noLocationsFound')}
+              hintLabel={t('typeToSearchLocation')}
+              providerLabel={t('mapSearchSource')}
+            />
+            <View style={[styles.mapPreview, { borderColor: theme.colors.border, backgroundColor: theme.colors.surface }]}>
+              <EventMap
+                key={eventCoordinates ? `${eventCoordinates.latitude}:${eventCoordinates.longitude}` : 'empty-edit-address-map'}
+                events={[]}
+                locale={locale}
+                userLocation={eventCoordinates ?? userLocation}
+                selectedEventId={null}
+                searchMarker={eventCoordinates}
+                focusCoordinate={eventCoordinates}
+                initialZoomLevel={eventCoordinates ? 16.8 : 13.2}
+                interactive={false}
+                onSelectEvent={() => undefined}
+              />
+              {!eventCoordinates ? (
+                <View style={[styles.mapPlaceholder, { backgroundColor: theme.colors.overlay }]}>
+                  <Ionicons name="location-outline" size={22} color={theme.colors.textPrimary} />
+                  <AppText variant="caption" color="textSecondary" style={styles.mapPlaceholderText}>
+                    {t('selectAddressForMapPreview')}
+                  </AppText>
+                </View>
+              ) : null}
+            </View>
+            <AppInput
+              label={`${t('entryInstructions')} (${t('optional')})`}
+              value={entryInstructions}
+              onChangeText={setEntryInstructions}
+              placeholder={t('createEventEntryInstructionsPlaceholder')}
+              multiline
+              style={styles.textAreaSmall}
+            />
+            <AppButton
+              title={eventCoordinates && entranceCoordinates ? t('changeEntrancePin') : t('chooseEntrancePin')}
+              variant="glass"
+              disabled={!eventCoordinates}
+              onPress={openEntrancePicker}
+            />
+            <AppText variant="caption" color="textMuted">
+              {eventCoordinates && entranceCoordinates
+                ? `${entranceCoordinates.latitude.toFixed(5)}, ${entranceCoordinates.longitude.toFixed(5)}`
+                : eventCoordinates
+                  ? t('noEntrancePin')
+                  : t('chooseAddressBeforeEntrance')}
+            </AppText>
+            <CreateEventTagSelector selectedTags={selectedTags} locale={locale} onChange={setSelectedTags} />
+            <CreateEventSegmentedControl
+              label={t('eventVisibility')}
+              value={visibility}
+              onChange={setVisibility}
+              options={[
+                { label: t('publicOption'), value: 'public' },
+                { label: t('friendsOption'), value: 'friends' },
+              ]}
+            />
+            <CreateEventSegmentedControl
+              label={t('attendanceMode')}
+              value={attendanceMode}
+              onChange={setAttendanceMode}
+              options={[
+                { label: t('openAttendance'), value: 'open' },
+                { label: t('waitlistAttendance'), value: 'waitlist' },
+                { label: t('paidAttendance'), value: 'paid' },
+              ]}
+            />
+            {attendanceMode === 'paid' ? (
+              <View style={styles.paidFields}>
+                <AppInput
+                  label={t('priceAmountLabel')}
+                  value={priceAmount}
+                  onChangeText={setPriceAmount}
+                  placeholder="10.00"
+                  keyboardType="decimal-pad"
+                />
+                <AppInput
+                  label={t('priceCurrencyLabel')}
+                  value={priceCurrency}
+                  onChangeText={setPriceCurrency}
+                  placeholder="EUR"
+                  autoCapitalize="characters"
+                />
+              </View>
+            ) : null}
+            <AppInput
+              label={t('capacityLabel')}
+              value={capacity}
+              onChangeText={setCapacity}
+              placeholder="-"
+              keyboardType="number-pad"
+            />
             <AppButton title={updateEventMutation.isPending ? t('loading') : t('submit')} onPress={() => void save()} />
           </AppCard>
 
@@ -511,6 +725,29 @@ const styles = StyleSheet.create({
   textArea: {
     minHeight: 110,
     textAlignVertical: 'top',
+  },
+  textAreaSmall: {
+    minHeight: 82,
+    textAlignVertical: 'top',
+  },
+  mapPreview: {
+    height: 180,
+    borderRadius: 16,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  mapPlaceholder: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingHorizontal: 20,
+  },
+  mapPlaceholderText: {
+    textAlign: 'center',
+  },
+  paidFields: {
+    gap: 10,
   },
   mediaRow: {
     flexDirection: 'row',

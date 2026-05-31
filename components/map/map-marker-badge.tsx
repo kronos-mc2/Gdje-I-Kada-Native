@@ -18,6 +18,7 @@ type MapMarkerBadgeProps = Readonly<{
     colorKey: 'todayAccent' | 'tomorrowAccent' | 'weekAccent';
   } | null;
   isFriendsOnly?: boolean;
+  isJoinedByMe?: boolean;
   onImageLoad?: () => void;
 }>;
 
@@ -29,12 +30,19 @@ export function MapMarkerBadge({
   count = 1,
   dateBadge,
   isFriendsOnly = false,
+  isJoinedByMe = false,
   onImageLoad,
 }: MapMarkerBadgeProps) {
   const { theme } = useAppTheme();
   const size = kind === 'search' ? 20 : 44;
   const [imageFailed, setImageFailed] = useState(false);
-  const borderColor = isFriendsOnly ? theme.colors.friendEventAccent : selected ? theme.colors.mapAccent : theme.colors.accent;
+  const borderColor = isFriendsOnly
+    ? theme.colors.friendEventAccent
+    : isJoinedByMe
+      ? theme.colors.eventJoinedAccent
+      : selected
+        ? theme.colors.mapAccent
+        : theme.colors.accent;
   const visibleSources = coverImageSources?.length ? coverImageSources.slice(0, 4) : coverImageSource ? [coverImageSource] : [];
   const hasDateBadge = Boolean(dateBadge);
 
@@ -62,6 +70,17 @@ export function MapMarkerBadge({
     <View style={styles.markerWrap} collapsable={false}>
       <View style={styles.markerHead}>
         {isFriendsOnly ? <View style={[styles.friendGlow, { borderColor: theme.colors.friendEventAccentSoft }]} /> : null}
+        {isJoinedByMe ? (
+          <View
+            style={[
+              styles.joinedGlow,
+              {
+                borderColor: theme.colors.eventJoinedAccent,
+                backgroundColor: theme.colors.eventJoinedAccentSoft,
+              },
+            ]}
+          />
+        ) : null}
         <View
           style={[
             styles.badge,
@@ -69,9 +88,10 @@ export function MapMarkerBadge({
               width: size,
               height: size,
               borderColor,
-              shadowColor: isFriendsOnly ? theme.colors.friendEventAccent : theme.colors.background,
+              shadowColor: isJoinedByMe ? theme.colors.eventJoinedAccent : isFriendsOnly ? theme.colors.friendEventAccent : theme.colors.background,
             },
             isFriendsOnly ? styles.friendsBadge : null,
+            isJoinedByMe ? styles.joinedBadge : null,
             hasDateBadge && Platform.OS === 'android' ? styles.badgeUnderDate : null,
           ]}
         >
@@ -151,20 +171,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'flex-start',
     width: 72,
-    height: 56,
+    height: 68,
     overflow: 'visible',
   },
   markerHead: {
     position: 'relative',
     width: 72,
-    height: 46,
+    height: 58,
     alignItems: 'center',
     justifyContent: 'flex-start',
     overflow: 'visible',
   },
   badge: {
     position: 'absolute',
-    top: 0,
+    top: 8,
     borderRadius: 999,
     borderWidth: 3,
     overflow: 'hidden',
@@ -179,15 +199,28 @@ const styles = StyleSheet.create({
     shadowRadius: 14,
     elevation: 12,
   },
+  joinedBadge: {
+    shadowOpacity: 0.34,
+    shadowRadius: 12,
+    elevation: 11,
+  },
   badgeUnderDate: {
     elevation: 0,
     zIndex: 0,
   },
   friendGlow: {
     position: 'absolute',
-    top: -5,
+    top: 3,
     width: 54,
     height: 54,
+    borderRadius: 999,
+    borderWidth: 2,
+  },
+  joinedGlow: {
+    position: 'absolute',
+    top: 2,
+    width: 56,
+    height: 56,
     borderRadius: 999,
     borderWidth: 2,
   },

@@ -16,6 +16,7 @@ export type EventMapMarker = {
   } | null;
   isSelected: boolean;
   isFriendsOnly?: boolean;
+  isJoinedByMe?: boolean;
 };
 
 export type MapCameraState = {

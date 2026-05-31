@@ -76,7 +76,15 @@ export function EventDetailSheet({ event, locale, onClose, topInset = 0, bottomI
   const snapPoints = useMemo(() => ['38%', '86%'], []);
   const { data: resolvedEvent } = useEventQuery(event.id, event);
   const detailEvent = resolvedEvent ?? event;
-  const { isJoined, isJoinDisabled, joinButtonTitle, onToggleJoin } = useEventJoinActions(detailEvent);
+  const {
+    isJoined,
+    isJoinDisabled,
+    joinButtonTitle,
+    onToggleJoin,
+    canOpenEventChat,
+    isEventChatPending,
+    openEventChat,
+  } = useEventJoinActions(detailEvent);
 
   useEffect(() => {
     setSheetIndex(0);
@@ -227,6 +235,9 @@ export function EventDetailSheet({ event, locale, onClose, topInset = 0, bottomI
                     isJoinDisabled={isJoinDisabled}
                     joinButtonTitle={joinButtonTitle}
                     onToggleJoin={onToggleJoin}
+                    canOpenEventChat={canOpenEventChat}
+                    isEventChatPending={isEventChatPending}
+                    onOpenEventChat={() => void openEventChat()}
                     expanded
                   />
                 </View>
@@ -307,6 +318,9 @@ export function EventDetailSheet({ event, locale, onClose, topInset = 0, bottomI
             isJoinDisabled={isJoinDisabled}
             joinButtonTitle={joinButtonTitle}
             onToggleJoin={onToggleJoin}
+            canOpenEventChat={canOpenEventChat}
+            isEventChatPending={isEventChatPending}
+            onOpenEventChat={() => void openEventChat()}
             expanded={sheetIndex >= 1}
           />
         </View>
