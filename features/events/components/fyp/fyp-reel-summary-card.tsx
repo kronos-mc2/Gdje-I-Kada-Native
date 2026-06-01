@@ -1,4 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/primitives';
@@ -17,29 +18,41 @@ type FypReelSummaryCardProps = Readonly<{
   onOpenDetails: () => void;
 }>;
 
+type MetaItemProps = Readonly<{
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+}>;
+
 const MAX_VISIBLE_TAG_BUBBLES = 5;
 
 export function FypReelSummaryCard({ event, locale, activeMediaIndex, mediaPageCount, onOpenDetails }: FypReelSummaryCardProps) {
   const { t } = useI18n();
   const { theme } = useAppTheme();
+  const [collapsed, setCollapsed] = useState(false);
   const organizerName = event.creatorName ?? t('organizerFallback');
   const addressLabel = event.address.trim() || event.where[locale];
-  const metaText = [
-    formatEventTime(event.whenISO, locale),
-    addressLabel,
-    `${event.participantCount} ${t('participants')}`,
-  ].join(' | ');
   const visibleTags = (event.tags ?? []).slice(0, MAX_VISIBLE_TAG_BUBBLES);
   const hiddenTagCount = Math.max((event.tags?.length ?? 0) - visibleTags.length, 0);
+  useEffect(() => {
+    setCollapsed(false);
+  }, [event.id]);
+  const handleSummaryPress = () => {
+    if (collapsed) {
+      setCollapsed(false);
+      return;
+    }
+
+    onOpenDetails();
+  };
 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={t('details')}
-      onPress={onOpenDetails}
+      accessibilityLabel={collapsed ? t('fypExpandSummary') : t('details')}
+      onPress={handleSummaryPress}
       style={({ pressed }) => ({ opacity: pressed ? 0.9 : 1 })}
     >
-      <View style={styles.content}>
+      <View style={[styles.content, collapsed ? styles.collapsedContent : null]}>
         <View style={styles.badgeRow}>
           <View style={[styles.dateBadge, { backgroundColor: theme.colors.mapAccentSoft }]}>
             <AppText variant="caption" maxFontSizeMultiplier={FYP_REEL_TEXT_MAX_FONT_MULTIPLIER} style={styles.badgeText} numberOfLines={1}>
@@ -75,124 +88,166 @@ export function FypReelSummaryCard({ event, locale, activeMediaIndex, mediaPageC
           {event.title[locale]}
         </AppText>
 
-        <View style={styles.organizerRow}>
-          <ProfileAvatar name={organizerName} avatarUrl={event.creatorAvatarUrl} size={28} />
-          <View style={styles.titleBlock}>
-            <AppText variant="caption" color="textSecondary" maxFontSizeMultiplier={FYP_REEL_TEXT_MAX_FONT_MULTIPLIER} numberOfLines={1}>
-              {organizerName}
-            </AppText>
-            <AppText variant="caption" color="textSecondary" maxFontSizeMultiplier={FYP_REEL_TEXT_MAX_FONT_MULTIPLIER} numberOfLines={1}>
-              {event.where[locale]}
-            </AppText>
-          </View>
-        </View>
-
-        <AppText
-          variant="caption"
-          color="textSecondary"
-          maxFontSizeMultiplier={FYP_REEL_TEXT_MAX_FONT_MULTIPLIER}
-          numberOfLines={2}
-          style={styles.about}
-        >
-          {event.about[locale]}
-        </AppText>
-
-        <AppText
-          variant="caption"
-          color="textSecondary"
-          maxFontSizeMultiplier={FYP_REEL_TEXT_MAX_FONT_MULTIPLIER}
-          numberOfLines={2}
-          style={styles.metaText}
-        >
-          {metaText}
-        </AppText>
-
-        {visibleTags.length ? (
-          <View style={styles.tagRow}>
-            {visibleTags.map((tag) => (
-              <View
-                key={tag}
-                style={[
-                  styles.tagBubble,
-                  {
-                    borderColor: theme.colors.mapAccent,
-                    backgroundColor: theme.colors.mapAccentSoft,
-                  },
-                ]}
-              >
-                <AppText
-                  variant="caption"
-                  color="mapAccent"
-                  maxFontSizeMultiplier={FYP_REEL_TEXT_MAX_FONT_MULTIPLIER}
-                  numberOfLines={1}
-                  style={styles.tagText}
-                >
-                  {tag}
+        {collapsed ? null : (
+          <>
+            <View style={styles.organizerRow}>
+              <ProfileAvatar name={organizerName} avatarUrl={event.creatorAvatarUrl} size={28} />
+              <View style={styles.titleBlock}>
+                <AppText variant="caption" color="textSecondary" maxFontSizeMultiplier={FYP_REEL_TEXT_MAX_FONT_MULTIPLIER} numberOfLines={1}>
+                  {organizerName}
+                </AppText>
+                <AppText variant="caption" color="textSecondary" maxFontSizeMultiplier={FYP_REEL_TEXT_MAX_FONT_MULTIPLIER} numberOfLines={1}>
+                  {event.where[locale]}
                 </AppText>
               </View>
-            ))}
-            {hiddenTagCount > 0 ? (
-              <View
-                style={[
-                  styles.tagBubble,
-                  styles.tagOverflowBubble,
-                  { borderColor: theme.colors.border, backgroundColor: theme.colors.overlay },
-                ]}
-              >
-                <AppText
-                  variant="caption"
-                  color="textPrimary"
-                  maxFontSizeMultiplier={FYP_REEL_TEXT_MAX_FONT_MULTIPLIER}
-                  numberOfLines={1}
-                  style={styles.tagText}
-                >
-                  +{hiddenTagCount}
-                </AppText>
+            </View>
+
+            <AppText
+              variant="caption"
+              color="textSecondary"
+              maxFontSizeMultiplier={FYP_REEL_TEXT_MAX_FONT_MULTIPLIER}
+              numberOfLines={2}
+              style={styles.about}
+            >
+              {event.about[locale]}
+            </AppText>
+
+            <View style={styles.metaRow}>
+              <MetaItem icon="time-outline" label={formatEventTime(event.whenISO, locale)} />
+              <MetaItem icon="people-outline" label={`${event.participantCount} ${t('participants')}`} />
+              <MetaItem icon="location-outline" label={addressLabel} />
+            </View>
+
+            {visibleTags.length ? (
+              <View style={styles.tagRow}>
+                {visibleTags.map((tag) => (
+                  <View
+                    key={tag}
+                    style={[
+                      styles.tagBubble,
+                      {
+                        borderColor: theme.colors.mapAccent,
+                        backgroundColor: theme.colors.mapAccentSoft,
+                      },
+                    ]}
+                  >
+                    <AppText
+                      variant="caption"
+                      color="mapAccent"
+                      maxFontSizeMultiplier={FYP_REEL_TEXT_MAX_FONT_MULTIPLIER}
+                      numberOfLines={1}
+                      style={styles.tagText}
+                    >
+                      {tag}
+                    </AppText>
+                  </View>
+                ))}
+                {hiddenTagCount > 0 ? (
+                  <View
+                    style={[
+                      styles.tagBubble,
+                      styles.tagOverflowBubble,
+                      { borderColor: theme.colors.border, backgroundColor: theme.colors.overlay },
+                    ]}
+                  >
+                    <AppText
+                      variant="caption"
+                      color="textPrimary"
+                      maxFontSizeMultiplier={FYP_REEL_TEXT_MAX_FONT_MULTIPLIER}
+                      numberOfLines={1}
+                      style={styles.tagText}
+                    >
+                      +{hiddenTagCount}
+                    </AppText>
+                  </View>
+                ) : null}
               </View>
             ) : null}
-          </View>
-        ) : null}
 
-        <View
-          style={[
-            styles.detailsButton,
-            {
-              borderColor: theme.colors.mapAccent,
-              backgroundColor: theme.colors.mapAccent,
-            },
-          ]}
-        >
-          <Ionicons name="map-outline" size={18} color="#FFFFFF" />
-          <AppText
-            variant="bodyStrong"
-            maxFontSizeMultiplier={FYP_REEL_TEXT_MAX_FONT_MULTIPLIER}
-            numberOfLines={1}
-            adjustsFontSizeToFit
-            minimumFontScale={0.82}
-            style={styles.detailsButtonText}
-          >
-            {t('detailsCta')}
-          </AppText>
-          <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
-        </View>
-
-        {mediaPageCount > 1 ? (
-          <View style={styles.mediaIndicatorRow}>
-            {Array.from({ length: mediaPageCount }).map((_, index) => (
+            <View style={styles.summaryActionRow}>
               <View
-                key={`media-indicator-${event.id}-${index}`}
                 style={[
-                  styles.mediaIndicator,
+                  styles.detailsButton,
                   {
-                    backgroundColor: index === activeMediaIndex ? theme.colors.mapAccent : 'rgba(240, 240, 240, 0.34)',
+                    borderColor: theme.colors.mapAccent,
+                    backgroundColor: theme.colors.mapAccent,
                   },
                 ]}
-              />
-            ))}
-          </View>
-        ) : null}
+              >
+                <Ionicons name="map-outline" size={18} color="#FFFFFF" />
+                <AppText
+                  variant="bodyStrong"
+                  maxFontSizeMultiplier={FYP_REEL_TEXT_MAX_FONT_MULTIPLIER}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.82}
+                  style={styles.detailsButtonText}
+                >
+                  {t('detailsCta')}
+                </AppText>
+                <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
+              </View>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t('fypCollapseSummary')}
+                hitSlop={8}
+                onPress={(pressEvent) => {
+                  pressEvent.stopPropagation();
+                  setCollapsed(true);
+                }}
+                style={({ pressed }) => [
+                  styles.collapseButton,
+                  {
+                    borderColor: theme.colors.border,
+                    backgroundColor: theme.colors.overlay,
+                    opacity: pressed ? 0.78 : 1,
+                  },
+                ]}
+              >
+                <Ionicons name="chevron-down" size={22} color={theme.colors.textPrimary} />
+              </Pressable>
+            </View>
+
+            {mediaPageCount > 1 ? (
+              <View style={styles.mediaIndicatorRow}>
+                {Array.from({ length: mediaPageCount }).map((_, index) => (
+                  <View
+                    key={`media-indicator-${event.id}-${index}`}
+                    style={[
+                      styles.mediaIndicator,
+                      {
+                        backgroundColor: index === activeMediaIndex ? theme.colors.mapAccent : 'rgba(240, 240, 240, 0.34)',
+                      },
+                    ]}
+                  />
+                ))}
+              </View>
+            ) : null}
+          </>
+        )}
       </View>
     </Pressable>
+  );
+}
+
+function MetaItem({ icon, label }: MetaItemProps) {
+  const { theme } = useAppTheme();
+
+  return (
+    <View
+      style={[
+        styles.metaItem,
+        {
+          borderColor: theme.colors.border,
+          backgroundColor: theme.colors.overlay,
+        },
+      ]}
+    >
+      <Ionicons name={icon} size={13} color={theme.colors.textSecondary} />
+      <AppText variant="caption" maxFontSizeMultiplier={FYP_REEL_TEXT_MAX_FONT_MULTIPLIER} numberOfLines={1} style={styles.metaText}>
+        {label}
+      </AppText>
+    </View>
   );
 }
 
@@ -200,6 +255,9 @@ const styles = StyleSheet.create({
   content: {
     gap: 9,
     paddingBottom: 2,
+  },
+  collapsedContent: {
+    gap: 7,
   },
   badgeRow: {
     alignItems: 'center',
@@ -231,8 +289,23 @@ const styles = StyleSheet.create({
   about: {
     color: 'rgba(240, 240, 240, 0.82)',
   },
+  metaRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 7,
+  },
+  metaItem: {
+    alignItems: 'center',
+    borderRadius: 999,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 5,
+    maxWidth: '100%',
+    minHeight: 30,
+    paddingHorizontal: 9,
+  },
   metaText: {
-    color: 'rgba(240, 240, 240, 0.78)',
+    flexShrink: 1,
   },
   tagRow: {
     flexDirection: 'row',
@@ -254,11 +327,18 @@ const styles = StyleSheet.create({
   tagText: {
     flexShrink: 1,
   },
-  detailsButton: {
+  summaryActionRow: {
     alignItems: 'center',
     alignSelf: 'flex-start',
+    flexDirection: 'row',
+    gap: 10,
+    maxWidth: '100%',
+  },
+  detailsButton: {
+    alignItems: 'center',
     borderRadius: 999,
     borderWidth: 1,
+    flexShrink: 1,
     flexDirection: 'row',
     gap: 10,
     minHeight: 44,
@@ -269,6 +349,14 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     flex: 1,
     textAlign: 'center',
+  },
+  collapseButton: {
+    alignItems: 'center',
+    borderRadius: 22,
+    borderWidth: 1,
+    height: 44,
+    justifyContent: 'center',
+    width: 44,
   },
   mediaIndicatorRow: {
     alignItems: 'center',
