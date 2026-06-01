@@ -64,7 +64,7 @@ Postojece frontend tehnologije i patterni:
   - Shared API: `components/map/event-map.tsx`, `components/map/types.ts`, `MapMarkerBadge`, `EventDetailSheet`.
   - Mapa ima floating nearby preview sheet s manjim horizontalnim cardovima, strelicom za zatvaranje/ponovno otvaranje i `See all` prikazom svih ucitanih eventova u gradu s dva eventa po redu sortiranih po udaljenosti, radius korisnik mijenja direktno u `Settings` od 1 do 20 km, a pinovi se grupiraju samo kad vise eventova ima potpuno istu adresu/koordinatu.
 - Lokacija: `features/events/hooks/use-map-location-bootstrap.ts` odmah trazi native foreground permission kad se mapa otvori, koristi `expo-location`, Android MapLibre fallback i IP/capital fallback; `locationSource` se ne persistira jer se stvarna `userLocation` namjerno ponovno dohvaća na cold startu.
-- Search po eventima na mapi: `features/events/hooks/use-event-map-search.ts`, `MapSearchBar`, `MapSearchResults`. Search pokriva naslov, lokaciju, adresu i tagove; filter gumb u search baru otvara modal za datum/tagove, a ispod su horizontalni brzi filteri.
+- Search po eventima na mapi: `features/events/hooks/use-event-map-search.ts`, `MapSearchBar`, `MapSearchResults`. Search pokriva naslov, lokaciju, adresu i tagove; filter gumb u search baru otvara modal za datum/tagove. Date tab u tom modalu nudi `Svi datumi` i rucni odabir dana/raspona kroz kalendar, bez quick preset gumba. Ispod search bara ostaju horizontalni brzi filteri.
 - Frontend unit testovi: Jest kroz `jest-expo`, trenutno pokrivaju `selectEvents`, date formatting i location search servise/providere.
 
 Postojece backend tehnologije i patterni:
@@ -328,7 +328,7 @@ Trenutno ponasanje:
 - Ako korisnik dopusti lokaciju, prvo se koristi svjeza last-known lokacija za brz prikaz, zatim se u pozadini pokusava dohvatiti precizniji fix.
 - Ako nema precizne lokacije, koristi se IP/capital fallback.
 - User lokacija se vise ne crta kao custom marker: iOS koristi native MapKit user location layer, Android koristi MapLibre user location layer, a accuracy radius se crta kao purple krug oko korisnika kad SDK vrati preciznost.
-- Ispod search bara je date kontrola sa strelicama za dan po dan, date picker modalom, range modeom i opcijom `Svi datumi`. Defaultni `Svi datumi` na mapi salje `from=now`, tako mapa prikazuje samo evente od trenutnog vremena nadalje; stare evente korisnik moze traziti kroz eksplicitni dan/range.
+- Ispod search bara ostaju horizontalni quick filteri za mapu, a filter gumb u search baru otvara date/tags modal. Date tab u modalu ima samo opciju `Svi datumi` kao preset; konkretan dan ili raspon bira se aktivno kroz kalendar. Defaultni `Svi datumi` na mapi salje `from=now`, tako mapa prikazuje samo evente od trenutnog vremena nadalje; stare evente korisnik moze traziti kroz eksplicitni dan/range.
 - Event pinovi su clickable, a friends-only eventi imaju zlatni glow/border marker kako bi bili vizualno odvojeni od public eventova.
 - Klik na pin otvara `EventDetailSheet`.
 - Sheet ima collapsed i expanded state.

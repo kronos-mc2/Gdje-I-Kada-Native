@@ -193,27 +193,6 @@ export function MapFilterModal({
             <ScrollView showsVerticalScrollIndicator={false} style={styles.dateScroll} contentContainerStyle={styles.dateContent}>
               <View style={styles.dateOptions}>
                 <DateOption label={t('allDates')} selected={dateFilter.mode === 'all'} onPress={() => onDateFilterChange({ mode: 'all' })} />
-                <DateOption
-                  label={t('today')}
-                  selected={isSameDayFilter(dateFilter, 0)}
-                  onPress={() => onDateFilterChange({ mode: 'day', dateISO: toDateKey(new Date()) })}
-                />
-                <DateOption
-                  label={t('tomorrow')}
-                  selected={isSameDayFilter(dateFilter, 1)}
-                  onPress={() => onDateFilterChange({ mode: 'day', dateISO: toDateKey(addDays(new Date(), 1)) })}
-                />
-                <DateOption
-                  label={t('thisWeek')}
-                  selected={isThisWeekFilter(dateFilter)}
-                  onPress={() =>
-                    onDateFilterChange({
-                      mode: 'range',
-                      fromISO: toDateKey(new Date()),
-                      toISO: toDateKey(addDays(new Date(), 6)),
-                    })
-                  }
-                />
               </View>
 
               <View style={styles.customDateBlock}>
@@ -400,21 +379,6 @@ function DateOption({ label, selected, onPress }: { label: string; selected: boo
   );
 }
 
-function isSameDayFilter(dateFilter: MapDateFilter, daysFromToday: number) {
-  return dateFilter.mode === 'day' && dateFilter.dateISO === toDateKey(addDays(new Date(), daysFromToday));
-}
-
-function isThisWeekFilter(dateFilter: MapDateFilter) {
-  if (dateFilter.mode !== 'range') {
-    return false;
-  }
-
-  return (
-    dateKeyToLocalDate(dateFilter.fromISO).toDateString() === new Date().toDateString() &&
-    dateKeyToLocalDate(dateFilter.toISO).toDateString() === addDays(new Date(), 6).toDateString()
-  );
-}
-
 function normalizeRange(fromISO: string, toISO: string): MapDateFilter {
   const fromDate = dateKeyToLocalDate(fromISO);
   const toDate = dateKeyToLocalDate(toISO);
@@ -450,12 +414,6 @@ function dateTypeToDate(date: DateType): Date | null {
   }
 
   return null;
-}
-
-function addDays(date: Date, days: number) {
-  const nextDate = new Date(date);
-  nextDate.setDate(nextDate.getDate() + days);
-  return nextDate;
 }
 
 const styles = StyleSheet.create({
