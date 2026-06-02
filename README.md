@@ -1,6 +1,6 @@
 # Gdje i Kada - projektna dokumentacija
 
-Status dokumenta: 2026-05-31
+Status dokumenta: 2026-06-02
 Projekt se ne radi ispocetka. Postojeci React Native/Expo frontend i Spring Boot backend ostaju baza, a nove funkcionalnosti se nadograduju na vec postojece klase, rute, storeove, hookove i dizajn sustav.
 
 Radimo mobilnu event aplikaciju "Gdje i Kada" za iOS i Android. Frontend je React Native kroz Expo Router, backend je Spring Boot s PostgreSQL bazom. Nemoj kretati ispocetka. Prvo procitaj postojeci kod i nadogradi ga prema lokalnim patternima.
@@ -62,7 +62,7 @@ Postojece frontend tehnologije i patterni:
   - iOS: `components/map/event-map-surface.ios.tsx` koristi `react-native-maps` / MapKit.
   - Android: `components/map/event-map-surface.android.tsx` koristi `@maplibre/maplibre-react-native` i prikazuje pojedinacne event pinove bez clusteriranja.
   - Shared API: `components/map/event-map.tsx`, `components/map/types.ts`, `MapMarkerBadge`, `EventDetailSheet`.
-  - Mapa ima floating nearby preview sheet s manjim horizontalnim cardovima, strelicom za zatvaranje/ponovno otvaranje i `See all` prikazom svih ucitanih eventova u gradu s dva eventa po redu sortiranih po udaljenosti, radius korisnik mijenja direktno u `Settings` od 1 do 20 km, a pinovi se grupiraju samo kad vise eventova ima potpuno istu adresu/koordinatu.
+  - Mapa ima floating nearby preview sheet s manjim horizontalnim cardovima, strelicom za zatvaranje/ponovno otvaranje i `See all` prikazom svih ucitanih eventova u gradu s dva eventa po redu sortiranih po udaljenosti, radius korisnik mijenja direktno u `Settings` od 1 do 20 km, a pinovi se grupiraju samo kad vise eventova ima potpuno istu adresu/koordinatu. Grupirani pinovi koriste mozaik slika koji popunjava krug za 2, 3 i 4 eventa i prikazuju tocni broj eventova do `9+`.
 - Lokacija: `features/events/hooks/use-map-location-bootstrap.ts` odmah trazi native foreground permission kad se mapa otvori, koristi `expo-location`, Android MapLibre fallback i IP/capital fallback; `locationSource` se ne persistira jer se stvarna `userLocation` namjerno ponovno dohvaća na cold startu.
 - Search po eventima na mapi: `features/events/hooks/use-event-map-search.ts`, `MapSearchBar`, `MapSearchResults`. Search pokriva naslov, lokaciju, adresu i tagove; filter gumb u search baru otvara modal za datum/tagove. Date tab u tom modalu nudi `Svi datumi` i rucni odabir dana/raspona kroz kalendar, bez quick preset gumba. Ispod search bara ostaju horizontalni brzi filteri.
 - Frontend unit testovi: Jest kroz `jest-expo`, trenutno pokrivaju `selectEvents`, date formatting i location search servise/providere.
@@ -239,6 +239,8 @@ Event trenutno podrzava naslov, lokaciju, adresu, opis, start/end datum, coordin
 Dopuna 2026-05-31: Eventi na koje je korisnik stvarno prihvacen (`joined/approved`) na mapi imaju suptilan svjetlo-zeleni highlight; friends-only pin ostaje zlatan, ali dobiva zeleni obruc/glow kad je korisnik prihvacen. Waitlist status se u event detailsima prikazuje zasebno od prihvacenog dolaska, CTA kaze `Odjavi se s wait liste`, a event chat je dostupan tek nakon `joined/approved` statusa. Shared event details za `joined/approved` korisnike uz join/leave CTA prikazuje ikon-only `Open messages` gumb koji naknadno otvara ili kreira event chat. Owner manage ekran sada koristi isti OSM autocomplete/map preview model za pravu adresu kao create flow i dopusta izmjenu start/end datuma, entrance pina, visibility/attendance/cijene/kapaciteta i tagova. Backend salje app/push notifikacije za prihvacanje s waitliste, bitne izmjene eventa i remindere 7 dana/1 dan prije eventa; tap na event push ili activity notification otvara direct event details.
 
 Dopuna 2026-06-01: Discover summary overlay prikazuje vrijeme, broj sudionika i adresu u tamnim meta bubbleima, dok tagovi ostaju u zasebnom purple bubble redu ispod toga s najvise 5 tagova i overflow bubbleom `+N`. Uz `DETAILS` je dodan chevron-down gumb koji spusta overlay u compact stanje s datumom/statusom i naslovom eventa, da se video bolje vidi; prvi tap na compact overlay samo ga ponovno prosiri, a iduci tap opet otvara detalje. Backend nije mijenjan jer feed DTO vec vraca `address` i `tags`.
+
+Dopuna 2026-06-02: Quick filter bubblei na mapi sada su toggleable: ponovni tap na aktivni bubble, npr. `Danas`, gasi taj filter i vraca mapu na sve buduce evente bez attendance ogranicenja. Grupirani event pinovi na mapi dobili su veci marker canvas bez negativnog badge offseta da Android MapLibre ne odreze vrh kruga, a cluster slike se slazu kao 2/3/4-image mozaik koji popunjava cijelu ikonicu.
 
 Kad implementiras nove stvari, nadogradi postojece:
 

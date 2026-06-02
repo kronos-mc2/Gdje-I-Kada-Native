@@ -14,6 +14,12 @@ export type MapDateFilter =
 
 export type MapQuickFilter = 'today' | 'thisWeek' | 'free' | 'paid' | 'waitlist' | 'weekend';
 
+export type MapQuickFilterState = {
+  dateFilter: MapDateFilter;
+  attendanceModes: EventAttendanceMode[];
+  activeQuickFilter: MapQuickFilter | null;
+};
+
 type UseEventsMapScreenModelInput = {
   dateFilter: MapDateFilter;
   searchQuery: string;
@@ -145,6 +151,54 @@ export function toDateKey(date: Date) {
   const month = `${date.getMonth() + 1}`.padStart(2, '0');
   const day = `${date.getDate()}`.padStart(2, '0');
   return `${year}-${month}-${day}`;
+}
+
+export function getNextMapQuickFilterState(filter: MapQuickFilter, activeFilter: MapQuickFilter | null): MapQuickFilterState {
+  if (activeFilter === filter) {
+    return {
+      dateFilter: createInitialMapDateFilter(),
+      attendanceModes: [],
+      activeQuickFilter: null,
+    };
+  }
+
+  const nextFilterState = getMapQuickFilterState(filter);
+  return {
+    ...nextFilterState,
+    activeQuickFilter: filter,
+  };
+}
+
+export function getMapQuickFilterState(filter: MapQuickFilter): Pick<MapQuickFilterState, 'dateFilter' | 'attendanceModes'> {
+  switch (filter) {
+    case 'today':
+      return { dateFilter: { mode: 'day', dateISO: toDateKey(new Date()) }, attendanceModes: [] };
+    case 'thisWeek':
+      return {
+        dateFilter: { mode: 'range', fromISO: toDateKey(new Date()), toISO: toDateKey(addDays(new Date(), 6)) },
+        attendanceModes: [],
+      };
+    case 'free':
+      return { dateFilter: createInitialMapDateFilter(), attendanceModes: ['open'] };
+    case 'paid':
+      return { dateFilter: createInitialMapDateFilter(), attendanceModes: ['paid'] };
+    case 'waitlist':
+      return { dateFilter: createInitialMapDateFilter(), attendanceModes: ['waitlist'] };
+    case 'weekend':
+      return { dateFilter: getUpcomingWeekendFilter(), attendanceModes: [] };
+  }
+}
+
+function getUpcomingWeekendFilter(): MapDateFilter {
+  const today = new Date();
+  const day = today.getDay();
+  const daysUntilSaturday = (6 - day + 7) % 7;
+  const saturday = addDays(today, daysUntilSaturday);
+  return {
+    mode: 'range',
+    fromISO: toDateKey(saturday),
+    toISO: toDateKey(addDays(saturday, 1)),
+  };
 }
 
 export function dateKeyToLocalDate(dateKey: string) {

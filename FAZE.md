@@ -1,6 +1,6 @@
 # Gdje i Kada - fazni plan rada
 
-Status dokumenta: 2026-05-31
+Status dokumenta: 2026-06-02
 Lokacija master dokumentacije: `README.md`
 
 ## Pravilo rada po fazama
@@ -85,6 +85,8 @@ Aktivna dopuna:
 2026-05-31 - Napravljeno: Discover/FYP nakon kraja filtriranog feeda za `For you`, `Trending` i `Friends` automatski nastavlja opustenim fallback feedom po 2 eventa, bez lokacijskog/tip/preset ogranicenja, ali i dalje samo za future published dostupne evente uz Not interested i block pravila. `Tonight` i `Weekend` ostaju striktno vezani uz svoj date range i nemaju fallback. Backend `GET /api/feed` dobio je opcionalni `excludeEventIds` parametar da fallback ne ponavlja vec prikazane filtrirane evente. Datoteke: backend `EventController`, `EventService`, `EventMapper`, `EventMapper.xml`; frontend `app/(tabs)/fyp.tsx`, `core/api/query-hooks.ts`, `core/types/domain.ts`, `README.md`, `FAZE.md`; backend dokumentacija `backend/README.md`. Testovi/build/typecheck nisu pokretani po dogovoru.
 
 2026-05-31 - Dopuna: feed duplicati su rijeseni na backendu i frontendu. Backend cursor sada nosi vec vracene event id-jeve i iskljucuje ih iz iducih stranica, jer `POST /api/feed/impressions` tokom scrolla mijenja ranking i stari `OFFSET` je mogao vratiti isti event ponovno. Frontend dodatno dedupe-a primarni, fallback i spojeni feed po event `id`. Testovi/build/typecheck nisu pokretani po dogovoru; pokrenut je samo `git diff --check`.
+
+2026-06-02 - Napravljeno: dorada map quick filtera i grupiranih pinova. Aktivni horizontalni quick filter bubble na mapi sada se ponovnim tapom gasi i vraca `all` date filter + prazne attendance filtere, a logika je izdvojena u shared map screen-model helper umjesto dupliciranja u screenovima. Grupirani event pinovi dobili su veci Android-safe marker canvas bez negativnog count badge offseta, tocni count do `9+` i 2/3/4-image mozaik koji popunjava krug bez praznog kvadranta. Backend nije mijenjan jer su problemi bili frontend layout/state regresije. Datoteke: `features/events/hooks/use-events-map-screen-model.ts`, `app/(tabs)/index.tsx`, `features/events/components/events-content.tsx`, `components/map/map-marker-badge.tsx`, `README.md`, `FAZE.md`. Testovi/build/typecheck nisu pokretani po dogovoru; pokrenut je samo `git diff --check`.
 
 ## Faza 0 - Dokumentacija i smjer
 

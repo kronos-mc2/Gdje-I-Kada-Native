@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
 import { useEffect, useState } from 'react';
-import { Platform, StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View, type ImageStyle } from 'react-native';
 
 import type { AuthenticatedImageSource } from '@/core/events/event-cover';
 import { useAppTheme } from '@/core/theme';
@@ -44,11 +44,12 @@ export function MapMarkerBadge({
         ? theme.colors.mapAccent
         : theme.colors.accent;
   const visibleSources = coverImageSources?.length ? coverImageSources.slice(0, 4) : coverImageSource ? [coverImageSource] : [];
+  const visibleSourceKey = visibleSources.map((source) => source.uri).join('|');
   const hasDateBadge = Boolean(dateBadge);
 
   useEffect(() => {
     setImageFailed(false);
-  }, [coverImageSource?.uri]);
+  }, [visibleSourceKey]);
 
   if (kind === 'search') {
     return (
@@ -96,12 +97,12 @@ export function MapMarkerBadge({
           ]}
         >
           {visibleSources.length > 1 && !imageFailed ? (
-            <View style={styles.multiImageGrid}>
+            <View style={styles.multiImageMosaic}>
               {visibleSources.map((source, index) => (
                 <Image
                   key={`${source.uri}:${index}`}
                   source={source}
-                  style={styles.multiImage}
+                  style={[styles.multiImage, getMosaicImageStyle(visibleSources.length, index)]}
                   contentFit="cover"
                   cachePolicy="memory-disk"
                   onLoad={() => onImageLoad?.()}
@@ -134,7 +135,7 @@ export function MapMarkerBadge({
         {count > 1 ? (
           <View style={[styles.countBadge, { backgroundColor: theme.colors.mapAccent }]}>
             <AppText variant="label" color="textPrimary" style={styles.countText}>
-              {count}+
+              {count > 9 ? '9+' : count}
             </AppText>
           </View>
         ) : null}
@@ -150,6 +151,42 @@ export function MapMarkerBadge({
       />
     </View>
   );
+}
+
+function getMosaicImageStyle(total: number, index: number): ImageStyle {
+  if (total === 2) {
+    return {
+      top: 0,
+      left: index === 0 ? 0 : '50%',
+      width: '50%',
+      height: '100%',
+    };
+  }
+
+  if (total === 3) {
+    if (index === 0) {
+      return {
+        top: 0,
+        left: 0,
+        width: '50%',
+        height: '100%',
+      };
+    }
+
+    return {
+      top: index === 1 ? 0 : '50%',
+      left: '50%',
+      width: '50%',
+      height: '50%',
+    };
+  }
+
+  return {
+    top: index < 2 ? 0 : '50%',
+    left: index % 2 === 0 ? 0 : '50%',
+    width: '50%',
+    height: '50%',
+  };
 }
 
 function MarkerDateBadge({ badge }: { badge: NonNullable<MapMarkerBadgeProps['dateBadge']> }) {
@@ -170,21 +207,21 @@ const styles = StyleSheet.create({
   markerWrap: {
     alignItems: 'center',
     justifyContent: 'flex-start',
-    width: 72,
-    height: 68,
+    width: 78,
+    height: 78,
     overflow: 'visible',
   },
   markerHead: {
     position: 'relative',
-    width: 72,
-    height: 58,
+    width: 78,
+    height: 68,
     alignItems: 'center',
     justifyContent: 'flex-start',
     overflow: 'visible',
   },
   badge: {
     position: 'absolute',
-    top: 8,
+    top: 12,
     borderRadius: 999,
     borderWidth: 3,
     overflow: 'hidden',
@@ -210,7 +247,7 @@ const styles = StyleSheet.create({
   },
   friendGlow: {
     position: 'absolute',
-    top: 3,
+    top: 7,
     width: 54,
     height: 54,
     borderRadius: 999,
@@ -218,7 +255,7 @@ const styles = StyleSheet.create({
   },
   joinedGlow: {
     position: 'absolute',
-    top: 2,
+    top: 6,
     width: 56,
     height: 56,
     borderRadius: 999,
@@ -235,25 +272,25 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  multiImageGrid: {
+  multiImageMosaic: {
     flex: 1,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    position: 'relative',
   },
   multiImage: {
-    width: '50%',
-    height: '50%',
+    position: 'absolute',
   },
   countBadge: {
     position: 'absolute',
-    top: -9,
-    right: -3,
+    top: 2,
+    right: 3,
     minWidth: 25,
     height: 25,
     borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 4,
+    zIndex: 60,
+    elevation: 60,
   },
   countText: {
     fontSize: 11,
@@ -261,7 +298,7 @@ const styles = StyleSheet.create({
   },
   dateBadgeRail: {
     position: 'absolute',
-    top: 30,
+    top: 34,
     left: 0,
     right: 0,
     alignItems: 'center',

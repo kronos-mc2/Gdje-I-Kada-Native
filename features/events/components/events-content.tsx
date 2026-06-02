@@ -9,7 +9,12 @@ import { Coordinates, EventAttendanceMode, EventsView, Locale } from '@/core/typ
 import { useAppTheme } from '@/core/theme';
 import { AppEvent } from '@/core/types/domain';
 import { EventsMapExperience } from '@/features/events/components/events-map-experience';
-import { createInitialMapDateFilter, MapDateFilter, MapQuickFilter, toDateKey } from '@/features/events/hooks/use-events-map-screen-model';
+import {
+  createInitialMapDateFilter,
+  getNextMapQuickFilterState,
+  MapDateFilter,
+  MapQuickFilter,
+} from '@/features/events/hooks/use-events-map-screen-model';
 
 type EventsWithDistance = {
   event: AppEvent;
@@ -75,11 +80,11 @@ export function EventsContent({
             setActiveQuickFilter(null);
           }}
           onQuickFilterPress={(quickFilter) => {
-            const nextFilters = getQuickFilterState(quickFilter);
+            const nextFilters = getNextMapQuickFilterState(quickFilter, activeQuickFilter);
             setDateFilter(nextFilters.dateFilter);
             setSelectedTags([]);
             setAttendanceModes(nextFilters.attendanceModes);
-            setActiveQuickFilter(quickFilter);
+            setActiveQuickFilter(nextFilters.activeQuickFilter);
           }}
           onSearchQueryChange={setSearchQuery}
           onCreateEventPress={() => router.push('/create-event')}
@@ -118,42 +123,4 @@ export function EventsContent({
       ))}
     </ScrollView>
   );
-}
-
-function getQuickFilterState(filter: MapQuickFilter): { dateFilter: MapDateFilter; attendanceModes: EventAttendanceMode[] } {
-  switch (filter) {
-    case 'today':
-      return { dateFilter: { mode: 'day', dateISO: toDateKey(new Date()) }, attendanceModes: [] };
-    case 'thisWeek':
-      return {
-        dateFilter: { mode: 'range', fromISO: toDateKey(new Date()), toISO: toDateKey(addDays(new Date(), 6)) },
-        attendanceModes: [],
-      };
-    case 'free':
-      return { dateFilter: createInitialMapDateFilter(), attendanceModes: ['open'] };
-    case 'paid':
-      return { dateFilter: createInitialMapDateFilter(), attendanceModes: ['paid'] };
-    case 'waitlist':
-      return { dateFilter: createInitialMapDateFilter(), attendanceModes: ['waitlist'] };
-    case 'weekend':
-      return { dateFilter: getUpcomingWeekendFilter(), attendanceModes: [] };
-  }
-}
-
-function getUpcomingWeekendFilter(): MapDateFilter {
-  const today = new Date();
-  const day = today.getDay();
-  const daysUntilSaturday = (6 - day + 7) % 7;
-  const saturday = addDays(today, daysUntilSaturday);
-  return {
-    mode: 'range',
-    fromISO: toDateKey(saturday),
-    toISO: toDateKey(addDays(saturday, 1)),
-  };
-}
-
-function addDays(date: Date, days: number) {
-  const nextDate = new Date(date);
-  nextDate.setDate(nextDate.getDate() + days);
-  return nextDate;
 }
