@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
-import { useEffect } from 'react';
-import { Modal, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Modal, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -13,6 +13,8 @@ import { useAppTheme } from '@/core/theme';
 type EventImagePreviewModalProps = Readonly<{
   visible: boolean;
   source?: AuthenticatedImageSource;
+  sources?: AuthenticatedImageSource[];
+  initialIndex?: number;
   title?: string;
   onClose: () => void;
 }>;
@@ -20,10 +22,71 @@ type EventImagePreviewModalProps = Readonly<{
 const MIN_SCALE = 1;
 const MAX_SCALE = 4;
 
-export function EventImagePreviewModal({ visible, source, title, onClose }: EventImagePreviewModalProps) {
+export function EventImagePreviewModal({ visible, source, sources, initialIndex = 0, title, onClose }: EventImagePreviewModalProps) {
   const { theme } = useAppTheme();
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
+  const scrollRef = useRef<ScrollView | null>(null);
+  const imageSources = useMemo(() => sources ?? (source ? [source] : []), [source, sources]);
+  const safeInitialIndex = Math.min(Math.max(initialIndex, 0), Math.max(imageSources.length - 1, 0));
+  const [activeIndex, setActiveIndex] = useState(safeInitialIndex);
+
+  useEffect(() => {
+    if (!visible) {
+      return;
+    }
+
+    setActiveIndex(safeInitialIndex);
+    requestAnimationFrame(() => {
+      scrollRef.current?.scrollTo({ x: safeInitialIndex * width, animated: false });
+    });
+  }, [safeInitialIndex, visible, width]);
+
+  const activeTitle = imageSources.length > 1 ? `${title ?? ''} ${activeIndex + 1}/${imageSources.length}`.trim() : title;
+
+  return (
+    <Modal visible={visible && imageSources.length > 0} transparent animationType="fade" onRequestClose={onClose}>
+      <View style={[styles.backdrop, { backgroundColor: theme.isDark ? 'rgba(0,0,0,0.94)' : 'rgba(17,17,20,0.92)' }]}>
+        <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+          <View style={styles.titleWrap}>
+            <AppText variant="bodyStrong" numberOfLines={1} style={styles.title}>
+              {activeTitle}
+            </AppText>
+          </View>
+          <Pressable accessibilityRole="button" accessibilityLabel="Close" onPress={onClose} hitSlop={10} style={styles.closeButton}>
+            <Ionicons name="close" size={24} color="#FFFFFF" />
+          </Pressable>
+        </View>
+
+        <ScrollView
+          ref={scrollRef}
+          horizontal
+          pagingEnabled
+          bounces={false}
+          showsHorizontalScrollIndicator={false}
+          scrollEventThrottle={16}
+          onMomentumScrollEnd={(event) => setActiveIndex(Math.round(event.nativeEvent.contentOffset.x / width))}
+        >
+          {imageSources.map((imageSource, index) => (
+            <ZoomableImage key={`${imageSource.uri}-${index}`} source={imageSource} width={width} height={height} visible={visible} />
+          ))}
+        </ScrollView>
+      </View>
+    </Modal>
+  );
+}
+
+function ZoomableImage({
+  source,
+  width,
+  height,
+  visible,
+}: {
+  source: AuthenticatedImageSource;
+  width: number;
+  height: number;
+  visible: boolean;
+}) {
   const scale = useSharedValue(1);
   const savedScale = useSharedValue(1);
   const translateX = useSharedValue(0);
@@ -38,7 +101,7 @@ export function EventImagePreviewModal({ visible, source, title, onClose }: Even
     translateY.value = withTiming(0);
     savedTranslateX.value = 0;
     savedTranslateY.value = 0;
-  }, [savedScale, savedTranslateX, savedTranslateY, scale, translateX, translateY, source?.uri, visible]);
+  }, [savedScale, savedTranslateX, savedTranslateY, scale, translateX, translateY, source.uri, visible]);
 
   const pinchGesture = Gesture.Pinch()
     .onUpdate((event) => {
@@ -88,26 +151,11 @@ export function EventImagePreviewModal({ visible, source, title, onClose }: Even
   const gesture = Gesture.Simultaneous(doubleTapGesture, pinchGesture, panGesture);
 
   return (
-    <Modal visible={visible && Boolean(source)} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={[styles.backdrop, { backgroundColor: theme.isDark ? 'rgba(0,0,0,0.94)' : 'rgba(17,17,20,0.92)' }]}>
-        <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-          <View style={styles.titleWrap}>
-            <AppText variant="bodyStrong" numberOfLines={1} style={styles.title}>
-              {title}
-            </AppText>
-          </View>
-          <Pressable accessibilityRole="button" accessibilityLabel="Close" onPress={onClose} hitSlop={10} style={styles.closeButton}>
-            <Ionicons name="close" size={24} color="#FFFFFF" />
-          </Pressable>
-        </View>
-
-        <GestureDetector gesture={gesture}>
-          <Animated.View style={[styles.imageWrap, { width, height }, imageStyle]}>
-            {source ? <Image source={source} style={styles.image} contentFit="contain" /> : null}
-          </Animated.View>
-        </GestureDetector>
-      </View>
-    </Modal>
+    <GestureDetector gesture={gesture}>
+      <Animated.View style={[styles.imageWrap, { width, height }, imageStyle]}>
+        <Image source={source} style={styles.image} contentFit="contain" />
+      </Animated.View>
+    </GestureDetector>
   );
 }
 

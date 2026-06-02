@@ -1,11 +1,12 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
 import * as Linking from 'expo-linking';
-import { useEffect, useRef, useState, type ComponentProps } from 'react';
+import { useState, type ComponentProps } from 'react';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import { ScrollView as GestureScrollView } from 'react-native-gesture-handler';
 
-import { AppButton, AppText } from '@/components/primitives';
+import { EventImagePreviewModal } from '@/components/events/event-image-preview-modal';
+import { AppButton, AppText, GlassSurface } from '@/components/primitives';
 import {
   getAuthenticatedImageSource,
   getEventImageMedia,
@@ -55,10 +56,12 @@ export function EventDetailsContent({
   const dateLabel = formatEventDay(startIso, locale);
   const timeLabel = formatEventTime(startIso, locale);
   const durationLabel = formatEventDuration(startIso, event.endAt, locale);
-  const priceLabel = formatPrice(event);
+  const priceLabel = formatPrice(event, locale, t);
+  const eventRatingLabel = formatRating(event.eventRatingAverage, event.eventRatingCount);
   const hasOrganizerRating = (event.organizerRatingCount ?? 0) > 0;
   const organizerName = event.creatorName ?? t('organizerFallback');
   const distanceLabel = formatDistance(getDistanceKm(userLocation, event.coordinates), locale);
+  const [previewImageIndex, setPreviewImageIndex] = useState<number | null>(null);
 
   const openSource = () => {
     if (event.sourceUrl) {
@@ -95,7 +98,7 @@ export function EventDetailsContent({
         </View>
 
         <View style={styles.heroCopy}>
-          <AppText variant="headline" numberOfLines={3} style={styles.title}>
+          <AppText variant="title" numberOfLines={3} style={styles.title}>
             {event.title[locale]}
           </AppText>
           <View style={styles.whenRow}>
@@ -112,46 +115,59 @@ export function EventDetailsContent({
               </AppText>
             </View>
           </View>
-          <View style={styles.eventActionRow}>
-            <AppButton
-              title={joinButtonTitle ?? (isJoined ? t('leaveEvent') : t('joinEvent'))}
-              variant={isJoined ? 'secondary' : 'primary'}
-              disabled={isJoinDisabled}
-              onPress={onToggleJoin}
-              style={styles.joinButton}
-            />
-            {canOpenEventChat ? (
-              <AppButton
-                variant="secondary"
-                accessibilityLabel={t('openMessages')}
-                disabled={isEventChatPending}
-                onPress={onOpenEventChat}
-                style={styles.eventChatButton}
-              >
-                <Ionicons name="chatbubbles-outline" size={18} color={theme.colors.textSecondary} />
-              </AppButton>
-            ) : null}
-          </View>
         </View>
       </View>
+
+      <View style={styles.eventActionRow}>
+        <AppButton
+          variant={isJoined ? 'secondary' : 'glass'}
+          accessibilityLabel={joinButtonTitle ?? (isJoined ? t('leaveEvent') : t('joinEvent'))}
+          disabled={isJoinDisabled}
+          onPress={onToggleJoin}
+          style={[
+            styles.joinButton,
+            !isJoined
+              ? {
+                  borderColor: theme.colors.mapAccent,
+                  backgroundColor: theme.colors.mapAccent,
+                }
+              : null,
+          ]}
+        >
+          <AppText variant="bodyStrong" style={{ color: isJoined ? theme.colors.textSecondary : '#FFFFFF' }}>
+            {joinButtonTitle ?? (isJoined ? t('leaveEvent') : t('joinEvent'))}
+          </AppText>
+        </AppButton>
+        {canOpenEventChat ? (
+          <AppButton
+            variant="secondary"
+            accessibilityLabel={t('openMessages')}
+            disabled={isEventChatPending}
+            onPress={onOpenEventChat}
+            style={styles.eventChatButton}
+          >
+            <Ionicons name="chatbubbles-outline" size={18} color={theme.colors.textSecondary} />
+          </AppButton>
+        ) : null}
+      </View>
+
+      <EventTagStrip tags={event.tags ?? []} />
 
       <AttendanceStatusNotice event={event} />
 
       <View style={[styles.statRow, { borderTopColor: theme.colors.border, borderBottomColor: theme.colors.border }]}>
-        <StatCell
+        <SummaryStatCell
           icon="star-outline"
-          value={hasOrganizerRating ? event.organizerRatingAverage?.toFixed(1) ?? '0.0' : '-'}
-          label={t('organizer')}
-          caption={hasOrganizerRating ? `${formatCompactCount(event.organizerRatingCount, locale)} ${t('reviews')}` : t('notRatedYet')}
+          value={eventRatingLabel}
+          label={t('ratingShort')}
         />
-        <StatCell
+        <SummaryStatCell
           icon="people-outline"
           value={formatCompactCount(event.participantCount, locale)}
-          label={t('participants')}
-          caption={t('going')}
+          label={t('attendeesLabel')}
         />
-        <TagsCell tags={event.tags ?? []} />
-        <StatCell icon="location" label={t('locationLabel')} caption={distanceLabel} onPress={openMaps} />
+        <SummaryStatCell icon="ticket-outline" value={priceLabel} label={t('priceAmountLabel')} />
+        <SummaryStatCell icon="location-outline" value={distanceLabel} label={t('distanceLabel')} onPress={openMaps} />
       </View>
 
       {expanded ? (
@@ -168,40 +184,66 @@ export function EventDetailsContent({
               style={styles.gallery}
             >
               {imageSources.map((source, index) => (
-                <Image
+                <Pressable
                   key={`${source.uri}-${index}`}
-                  source={source}
-                  style={[styles.galleryImage, { backgroundColor: theme.colors.surfaceElevated }]}
-                  contentFit="cover"
-                  cachePolicy="memory-disk"
-                />
+                  accessibilityRole="imagebutton"
+                  accessibilityLabel={`${t('openImagePreview')} ${index + 1}`}
+                  onPress={() => setPreviewImageIndex(index)}
+                  style={({ pressed }) => [styles.galleryImageButton, { opacity: pressed ? 0.82 : 1 }]}
+                >
+                  <Image
+                    source={source}
+                    style={[styles.galleryImage, { backgroundColor: theme.colors.surfaceElevated }]}
+                    contentFit="cover"
+                    cachePolicy="memory-disk"
+                  />
+                </Pressable>
               ))}
             </GestureScrollView>
           ) : null}
 
-          <AppText variant="body" color="textSecondary" style={styles.aboutText}>
-            {event.about[locale]}
-          </AppText>
+          <View style={styles.sectionBlock}>
+            <AppText variant="headline">{t('aboutLabel')}</AppText>
+            <AppText variant="body" color="textSecondary" style={styles.aboutText}>
+              {event.about[locale]}
+            </AppText>
+          </View>
 
-          <View style={styles.organizerRow}>
-            <ProfileAvatar name={organizerName} avatarUrl={event.creatorAvatarUrl} size={54} />
-            <View style={styles.organizerCopy}>
-              <AppText variant="caption" color="textMuted">
-                {t('organizer')}
-              </AppText>
-              <AppText variant="bodyStrong" numberOfLines={1}>
-                {organizerName}
-              </AppText>
-            </View>
-            <View style={styles.organizerRating}>
-              <AppText variant="headline">
-                {hasOrganizerRating ? event.organizerRatingAverage?.toFixed(1) ?? '0.0' : '-'}
-              </AppText>
-              <AppText variant="caption" color="textMuted">
-                {hasOrganizerRating ? `${formatCompactCount(event.organizerRatingCount, locale)} ${t('reviews')}` : t('notRatedYet')}
-              </AppText>
+          <View style={styles.organizerBlock}>
+            <AppText variant="headline">{t('organizer')}</AppText>
+            <View style={[styles.organizerRow, { borderColor: theme.colors.border, backgroundColor: theme.colors.surfaceElevated }]}>
+              <ProfileAvatar name={organizerName} avatarUrl={event.creatorAvatarUrl} size={54} />
+              <View style={styles.organizerCopy}>
+                <AppText variant="caption" color="textMuted">
+                  {t('organizer')}
+                </AppText>
+                <AppText variant="bodyStrong" numberOfLines={1}>
+                  {organizerName}
+                </AppText>
+              </View>
+              <View style={styles.organizerRating}>
+                <View style={styles.organizerRatingValue}>
+                  <AppText variant="headline">
+                    {hasOrganizerRating ? event.organizerRatingAverage?.toFixed(1) ?? '0.0' : '-'}
+                  </AppText>
+                  <Ionicons name="star" size={18} color={theme.colors.mapAccent} />
+                </View>
+                <AppText variant="caption" color="textMuted">
+                  {hasOrganizerRating ? `${formatCompactCount(event.organizerRatingCount, locale)} ${t('reviews')}` : t('notRatedYet')}
+                </AppText>
+              </View>
             </View>
           </View>
+
+          {imageSources.length > 0 ? (
+            <EventImagePreviewModal
+              visible={previewImageIndex != null}
+              sources={imageSources}
+              initialIndex={previewImageIndex ?? 0}
+              title={event.title[locale]}
+              onClose={() => setPreviewImageIndex(null)}
+            />
+          ) : null}
 
           <View style={styles.detailsBlock}>
             <AppText variant="headline" style={styles.detailsTitle}>
@@ -210,12 +252,11 @@ export function EventDetailsContent({
             <DetailRow label={t('startDateLabel')} value={dateLabel} />
             <DetailRow label={t('eventTimeLabel')} value={timeLabel} />
             {durationLabel ? <DetailRow label={t('durationLabel')} value={durationLabel} /> : null}
-            <DetailRow label={t('addressLabel')} value={event.address ?? event.where[locale]} />
+            <DetailRow label={t('addressLabel')} value={event.address ?? event.where[locale]} onPress={openMaps} />
             <DetailRow label={t('attendanceMode')} value={getAttendanceModeLabel(event, t)} />
             <DetailRow label={t('eventVisibility')} value={getVisibilityLabel(event, t)} />
-            {priceLabel ? <DetailRow label={t('priceAmountLabel')} value={priceLabel} /> : null}
+            <DetailRow label={t('priceAmountLabel')} value={priceLabel} />
             {event.capacity ? <DetailRow label={t('capacityLabel')} value={String(event.capacity)} /> : null}
-            {event.tags?.length ? <DetailRow label={t('eventTags')} value={event.tags.join(', ')} /> : null}
             {event.entranceCoordinates ? (
               <DetailRow
                 label={t('entrancePin')}
@@ -301,17 +342,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 5,
   },
-  joinButton: {
-    flexShrink: 1,
-    minHeight: 32,
-    paddingHorizontal: 16,
-    borderRadius: 16,
-  },
   eventActionRow: {
     alignItems: 'center',
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
+  },
+  joinButton: {
+    flexShrink: 1,
+    minHeight: 32,
+    paddingHorizontal: 16,
+    borderRadius: 16,
   },
   eventChatButton: {
     width: 38,
@@ -319,6 +360,25 @@ const styles = StyleSheet.create({
     minHeight: 32,
     paddingHorizontal: 0,
     borderRadius: 16,
+  },
+  tagStripWrap: {
+    marginTop: -2,
+  },
+  tagStripContent: {
+    gap: 8,
+    paddingVertical: 2,
+  },
+  tagPill: {
+    minHeight: 28,
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  tagOverflowPill: {
+    minWidth: 40,
   },
   statRow: {
     flexDirection: 'row',
@@ -328,13 +388,6 @@ const styles = StyleSheet.create({
   },
   statCell: {
     flex: 1,
-    minWidth: 0,
-    alignItems: 'center',
-    gap: 2,
-    paddingHorizontal: 4,
-  },
-  tagsCell: {
-    flex: 1.18,
     minWidth: 0,
     alignItems: 'center',
     gap: 2,
@@ -352,27 +405,6 @@ const styles = StyleSheet.create({
   statLabel: {
     textAlign: 'center',
   },
-  statCaption: {
-    textAlign: 'center',
-  },
-  statTagsContent: {
-    gap: 5,
-    paddingHorizontal: 2,
-    paddingVertical: 3,
-  },
-  statTagsScroll: {
-    alignSelf: 'stretch',
-    height: 66,
-  },
-  statTagPill: {
-    maxWidth: 92,
-    minHeight: 24,
-    borderRadius: 12,
-    borderWidth: 1,
-    paddingHorizontal: 6,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   gallery: {
     marginHorizontal: -2,
   },
@@ -380,6 +412,9 @@ const styles = StyleSheet.create({
     gap: 14,
     paddingHorizontal: 2,
     paddingVertical: 2,
+  },
+  galleryImageButton: {
+    borderRadius: 14,
   },
   galleryImage: {
     width: 214,
@@ -390,13 +425,22 @@ const styles = StyleSheet.create({
   aboutText: {
     marginTop: 2,
   },
+  sectionBlock: {
+    gap: 8,
+  },
   collapsedAbout: {
     marginTop: -4,
+  },
+  organizerBlock: {
+    gap: 10,
   },
   organizerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    borderRadius: 18,
+    borderWidth: 1,
+    padding: 12,
   },
   organizerCopy: {
     flex: 1,
@@ -405,6 +449,11 @@ const styles = StyleSheet.create({
   organizerRating: {
     alignItems: 'flex-end',
     minWidth: 72,
+  },
+  organizerRatingValue: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 4,
   },
   detailsBlock: {
     gap: 0,
@@ -424,6 +473,13 @@ const styles = StyleSheet.create({
   detailValue: {
     flex: 1,
     textAlign: 'right',
+  },
+  detailValueWrap: {
+    flex: 1,
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 6,
+    justifyContent: 'flex-end',
   },
   detailLabel: {
     maxWidth: '44%',
@@ -525,35 +581,90 @@ function getAttendanceStatusNotice(status: AppEvent['attendanceStatus'], t: Tran
   return null;
 }
 
-function StatCell({
+function EventTagStrip({ tags }: { tags: string[] }) {
+  const { t } = useI18n();
+  const { theme } = useAppTheme();
+  const [expanded, setExpanded] = useState(false);
+  const visibleTags = expanded ? tags : tags.slice(0, 3);
+  const hiddenTagCount = Math.max(tags.length - visibleTags.length, 0);
+
+  if (tags.length === 0) {
+    return null;
+  }
+
+  return (
+    <GestureScrollView
+      horizontal
+      nestedScrollEnabled
+      directionalLockEnabled
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={styles.tagStripContent}
+      style={styles.tagStripWrap}
+    >
+      {visibleTags.map((tag) => (
+        <View
+          key={tag}
+          style={[
+            styles.tagPill,
+            {
+              backgroundColor: theme.colors.mapAccentSoft,
+              borderColor: theme.colors.mapAccent,
+            },
+          ]}
+        >
+          {Platform.OS === 'ios' ? <GlassSurface /> : null}
+          <AppText variant="caption" numberOfLines={1} color="mapAccent">
+            {tag}
+          </AppText>
+        </View>
+      ))}
+      {hiddenTagCount > 0 ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t('showMoreTags')}
+          onPress={() => setExpanded(true)}
+          style={({ pressed }) => [
+            styles.tagPill,
+            styles.tagOverflowPill,
+            {
+              backgroundColor: theme.colors.overlay,
+              borderColor: theme.colors.border,
+              opacity: pressed ? 0.78 : 1,
+            },
+          ]}
+        >
+          {Platform.OS === 'ios' ? <GlassSurface /> : null}
+          <AppText variant="caption" color="textPrimary">
+            +{hiddenTagCount}
+          </AppText>
+        </Pressable>
+      ) : null}
+    </GestureScrollView>
+  );
+}
+
+function SummaryStatCell({
   icon,
   value,
   label,
-  caption,
   onPress,
 }: {
   icon: IconName;
-  value?: string;
+  value: string;
   label: string;
-  caption: string;
   onPress?: () => void;
 }) {
   const { theme } = useAppTheme();
   const Content = (
     <>
       <View style={styles.statValueRow}>
-        <Ionicons name={icon} size={18} color={theme.colors.textPrimary} />
-        {value ? (
-          <AppText variant="headline" numberOfLines={1} adjustsFontSizeToFit style={styles.statValue}>
-            {value}
-          </AppText>
-        ) : null}
+        <Ionicons name={icon} size={20} color={theme.colors.mapAccent} />
       </View>
-      <AppText variant="caption" color="textSecondary" numberOfLines={1} adjustsFontSizeToFit style={styles.statLabel}>
-        {label}
+      <AppText variant="headline" numberOfLines={1} adjustsFontSizeToFit style={styles.statValue}>
+        {value}
       </AppText>
-      <AppText variant="caption" color="textMuted" numberOfLines={1} adjustsFontSizeToFit style={styles.statCaption}>
-        {caption}
+      <AppText variant="caption" color="textMuted" numberOfLines={1} adjustsFontSizeToFit style={styles.statLabel}>
+        {label}
       </AppText>
     </>
   );
@@ -573,115 +684,38 @@ function StatCell({
   );
 }
 
-function TagsCell({ tags }: { tags: string[] }) {
-  const { t } = useI18n();
+function DetailRow({ label, value, onPress }: { label: string; value: string; onPress?: () => void }) {
   const { theme } = useAppTheme();
-  const [expanded, setExpanded] = useState(false);
-  const collapseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(
-    () => () => {
-      if (collapseTimerRef.current) {
-        clearTimeout(collapseTimerRef.current);
-      }
-    },
-    [],
-  );
-
-  const scheduleCollapse = () => {
-    if (collapseTimerRef.current) {
-      clearTimeout(collapseTimerRef.current);
-    }
-
-    collapseTimerRef.current = setTimeout(() => {
-      setExpanded(false);
-      collapseTimerRef.current = null;
-    }, 5000);
-  };
-
-  const showAllTags = () => {
-    if (tags.length === 0) {
-      return;
-    }
-
-    setExpanded(true);
-    scheduleCollapse();
-  };
-
-  const firstTagLabel = tags.length > 1 ? `${tags[0]}...` : tags[0];
-  const header = (
+  const content = (
     <>
-      <View style={styles.statValueRow}>
-        <Ionicons name="pricetags-outline" size={18} color={theme.colors.textPrimary} />
-      </View>
-      <AppText variant="caption" color="textSecondary" numberOfLines={1} style={styles.statLabel}>
-        {t('eventTags')}
+      <AppText variant="body" color="textSecondary" numberOfLines={2} style={styles.detailLabel}>
+        {label}
       </AppText>
+      <View style={styles.detailValueWrap}>
+        <AppText variant="bodyStrong" numberOfLines={2} style={[styles.detailValue, onPress ? { color: theme.colors.mapAccent } : null]}>
+          {value}
+        </AppText>
+        {onPress ? <Ionicons name="open-outline" size={14} color={theme.colors.mapAccent} /> : null}
+      </View>
     </>
   );
 
-  if (expanded && tags.length) {
+  if (onPress) {
     return (
-      <View style={styles.tagsCell} onTouchStart={scheduleCollapse}>
-        {header}
-        <GestureScrollView
-          nestedScrollEnabled
-          directionalLockEnabled
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-          scrollEventThrottle={250}
-          contentContainerStyle={styles.statTagsContent}
-          style={styles.statTagsScroll}
-          onScrollBeginDrag={scheduleCollapse}
-          onScroll={scheduleCollapse}
-          onMomentumScrollEnd={scheduleCollapse}
-          onTouchStart={scheduleCollapse}
-          onTouchEnd={scheduleCollapse}
-        >
-          {tags.map((tag) => (
-            <View key={tag} style={[styles.statTagPill, { backgroundColor: theme.colors.mapAccentSoft, borderColor: theme.colors.mapAccent }]}>
-              <AppText variant="caption" numberOfLines={1} style={{ color: theme.colors.mapAccent }}>
-                {tag}
-              </AppText>
-            </View>
-          ))}
-        </GestureScrollView>
-      </View>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`${label}: ${value}`}
+        onPress={onPress}
+        style={({ pressed }) => [styles.detailRow, { borderBottomColor: theme.colors.border, opacity: pressed ? 0.74 : 1 }]}
+      >
+        {content}
+      </Pressable>
     );
   }
 
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={t('eventTags')}
-      onPress={showAllTags}
-      style={({ pressed }) => [styles.tagsCell, { opacity: pressed && tags.length > 0 ? 0.76 : 1 }]}
-    >
-      {header}
-      {tags.length ? (
-        <AppText variant="caption" color="textMuted" numberOfLines={1} adjustsFontSizeToFit style={styles.statCaption}>
-          {firstTagLabel}
-        </AppText>
-      ) : (
-        <AppText variant="caption" color="textMuted" numberOfLines={1} style={styles.statCaption}>
-          {t('notSpecified')}
-        </AppText>
-      )}
-    </Pressable>
-  );
-}
-
-function DetailRow({ label, value }: { label: string; value: string }) {
-  const { theme } = useAppTheme();
-
-  return (
     <View style={[styles.detailRow, { borderBottomColor: theme.colors.border }]}>
-      <AppText variant="body" color="textSecondary" numberOfLines={2} style={styles.detailLabel}>
-        {label}
-      </AppText>
-      <AppText variant="bodyStrong" numberOfLines={2} style={styles.detailValue}>
-        {value}
-      </AppText>
+      {content}
     </View>
   );
 }
@@ -702,12 +736,24 @@ function getVisibilityLabel(event: AppEvent, t: TranslateFn) {
   return event.visibility === 'friends' ? t('friendsOption') : t('publicOption');
 }
 
-function formatPrice(event: AppEvent) {
+function formatPrice(event: AppEvent, locale: Locale, t: TranslateFn) {
   if (event.attendanceMode !== 'paid' || event.priceAmount == null) {
-    return null;
+    return t('freePrice');
   }
 
-  return `${Number(event.priceAmount).toFixed(2)} ${event.priceCurrency ?? 'EUR'}`;
+  return new Intl.NumberFormat(locale === 'hr' ? 'hr-HR' : 'en-US', {
+    style: 'currency',
+    currency: event.priceCurrency ?? 'EUR',
+    maximumFractionDigits: Number(event.priceAmount) % 1 === 0 ? 0 : 2,
+  }).format(Number(event.priceAmount));
+}
+
+function formatRating(value: number | undefined, count: number | undefined) {
+  if (!count || value == null) {
+    return '-';
+  }
+
+  return Number(value).toFixed(1);
 }
 
 function formatCoordinates(latitude: number, longitude: number) {
