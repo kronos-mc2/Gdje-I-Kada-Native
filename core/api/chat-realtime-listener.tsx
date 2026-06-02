@@ -36,6 +36,26 @@ const refreshChatQueries = (roomId?: string) => {
   void queryClient.invalidateQueries({ queryKey: queryKeys.chatMessages(roomId), refetchType: 'active' });
 };
 
+const refreshPollQueries = (roomId?: string) => {
+  void queryClient.invalidateQueries({ queryKey: queryKeys.chatRoomsRoot, refetchType: 'active' });
+
+  if (!roomId) {
+    void queryClient.invalidateQueries({ queryKey: queryKeys.chatRoomRoot, refetchType: 'active' });
+    void queryClient.invalidateQueries({ queryKey: queryKeys.chatMessagesRoot, refetchType: 'active' });
+    return;
+  }
+
+  void fetchChatRoom(roomId, { forceFullSync: true })
+    .then((detail) => {
+      queryClient.setQueryData(queryKeys.chatRoom(roomId), detail);
+      queryClient.setQueryData(queryKeys.chatMessages(roomId), detail.messages);
+    })
+    .catch(() => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.chatRoom(roomId), refetchType: 'active' });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.chatMessages(roomId), refetchType: 'active' });
+    });
+};
+
 export function ChatRealtimeListener() {
   const accessToken = useAuthStore((state) => state.accessToken);
   const { theme } = useAppTheme();
@@ -73,11 +93,15 @@ export function ChatRealtimeListener() {
   );
 
   const showInAppMessageForRoom = useCallback(
-    (roomId: string) => {
+    (roomId: string, messageId?: string) => {
       void fetchChatRoom(roomId)
         .then((detail) => {
           queryClient.setQueryData(queryKeys.chatRoom(roomId), detail);
-          showInAppMessage(buildInAppMessagePreview(roomId, detail));
+          const message = findMessageForPreview(detail, messageId);
+          if (message?.mine) {
+            return;
+          }
+          showInAppMessage(buildInAppMessagePreview(roomId, detail, messageId));
         })
         .catch(() => undefined);
     },
@@ -156,6 +180,11 @@ export function ChatRealtimeListener() {
         }
 
         const roomId = realtimeEvent.roomId ?? realtimeEvent.payload?.roomId;
+        if (realtimeEvent.type === 'poll.updated') {
+          refreshPollQueries(roomId);
+          return;
+        }
+
         refreshChatQueries(roomId);
         if (
           realtimeEvent.type === 'message.created' &&
@@ -164,7 +193,7 @@ export function ChatRealtimeListener() {
           pathname !== `/chat/${roomId}` &&
           shouldShowInAppMessage(roomId)
         ) {
-          showInAppMessageForRoom(roomId);
+          showInAppMessageForRoom(roomId, realtimeEvent.payload?.messageId);
         }
       };
 
@@ -280,11 +309,19 @@ function findCachedRoom(roomId: string) {
   return undefined;
 }
 
-function buildInAppMessagePreview(roomId: string, source: ChatRoom | ChatRoomDetail): InAppMessagePreview {
+function findMessageForPreview(source: ChatRoomDetail, messageId?: string) {
+  if (messageId) {
+    return source.messages.find((message) => message.id === messageId);
+  }
+
+  return source.messages[source.messages.length - 1];
+}
+
+function buildInAppMessagePreview(roomId: string, source: ChatRoom | ChatRoomDetail, messageId?: string): InAppMessagePreview {
   const room = 'room' in source ? source.room : source;
-  const latestMessage = 'messages' in source ? source.messages[source.messages.length - 1] : undefined;
-  const title = latestMessage?.senderName?.trim() || room.title || 'Nova poruka';
-  const body = latestMessage?.body?.trim() || room.lastMessage?.trim() || room.subtitle?.trim() || '';
+  const previewMessage = 'messages' in source ? findMessageForPreview(source, messageId) : undefined;
+  const title = previewMessage?.senderName?.trim() || room.title || 'Nova poruka';
+  const body = previewMessage?.body?.trim() || room.lastMessage?.trim() || room.subtitle?.trim() || '';
 
   return {
     roomId,

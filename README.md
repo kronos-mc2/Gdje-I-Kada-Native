@@ -242,6 +242,12 @@ Dopuna 2026-06-01: Discover summary overlay prikazuje vrijeme, broj sudionika i 
 
 Dopuna 2026-06-02: Quick filter bubblei na mapi sada su toggleable: ponovni tap na aktivni bubble, npr. `Danas`, gasi taj filter i vraca mapu na sve buduce evente bez attendance ogranicenja. Grupirani event pinovi na mapi dobili su veci marker canvas bez negativnog badge offseta da Android MapLibre ne odreze vrh kruga, a cluster slike se slazu kao 2/3/4-image mozaik koji popunjava cijelu ikonicu.
 
+Dopuna 2026-06-02: FYP/event share modal zatvara transparentni RN modal prije otvaranja native share sheeta, pa izlazak iz share flowa vise ne ostavlja touch-blocking overlay preko aplikacije. Chat websocket `message.created` prije in-app notifikacije dohvaća konkretnu poruku i preskače prikaz ako je poruka korisnikova (`mine`), tako da vlastito slanje poruke/event sharea ne generira in-app notifikaciju. `poll.updated` realtime event radi full chat room sync umjesto inkrementalnog SQLite mergea, jer vote mijenja postojeću poll poruku bez novog message id-ja; time se sprječava vraćanje starog poll cachea odmah nakon glasanja.
+
+Dopuna 2026-06-02: Map pin grouping vise ne ovisi o location nameu ni o identicnim geocoder koordinatama kad event ima stvarnu adresu. Grouping key se gradi iz canonical `street + city + postal` adrese, pa se dva eventa na istoj adresi grupiraju i kad imaju razlicit naziv lokacije ili backend vrati `City of Zagreb/Croatia` nasuprot `Grad Zagreb/Hrvatska`; ako adresa nedostaje, fallback ostaje stabilni coordinate/location key. Grupirani pinovi prikazuju `+N` badge i marker tap otvara selection sheet s eventima iz te grupe.
+
+Dopuna 2026-06-02: Grouped-pin selection sheet sada ima zaseban `selection` variant: ispod `Odaberi event` prikazuje udaljenost zajednicke lokacije s location ikonom, event cardovi u gridu ne prikazuju distance nego compact broj dana do eventa (`7d`), i sheet se pri povlacenju prema dolje zatvara skroz bez preview/nearby medustanja. Normalni expanded nearby/city pregled zadrzava distance u cardu i ispod nje dodaje isti `Nd` label. Event cardovi za evente na koje je korisnik vec prihvacen (`joined/approved`) dobivaju suptilni zeleni border/glow bez bojanja unutrasnjosti carda.
+
 Kad implementiras nove stvari, nadogradi postojece:
 
 - Ako dodajes nova event polja, prosiri `AppEvent`, `AppEventDto`, `CreateEventRequest`, `EventRow`, `EventService`, `EventMapper.xml` i Flyway migraciju.

@@ -364,6 +364,7 @@ export function EventsMapExperience({
           radiusKm={Number.POSITIVE_INFINITY}
           bottomInset={insets.bottom}
           title={t('eventSelection')}
+          variant="selection"
           initiallyExpanded
           onSelectEvent={(event) => {
             setNearbyCloseSignal((signal) => signal + 1);

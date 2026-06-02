@@ -135,7 +135,7 @@ export function MapMarkerBadge({
         {count > 1 ? (
           <View style={[styles.countBadge, { backgroundColor: theme.colors.mapAccent }]}>
             <AppText variant="label" color="textPrimary" style={styles.countText}>
-              {count > 9 ? '9+' : count}
+              {count > 9 ? '9+' : `+${count}`}
             </AppText>
           </View>
         ) : null}

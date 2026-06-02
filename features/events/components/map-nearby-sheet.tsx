@@ -12,6 +12,7 @@ import { AppEvent, Coordinates, Locale } from '@/core/types/domain';
 import { getDistanceKm } from '@/core/utils/location';
 
 export type NearbySheetMode = 'collapsed' | 'preview' | 'expanded';
+type NearbySheetVariant = 'nearby' | 'selection';
 type NearbyCardMode = 'preview' | 'expanded';
 type NearbyEvent = AppEvent & { distanceKm: number };
 type NearbyCardWidth = number | `${number}%`;
@@ -32,6 +33,7 @@ type MapNearbySheetProps = Readonly<{
   radiusKm: number;
   bottomInset: number;
   title?: string;
+  variant?: NearbySheetVariant;
   initiallyExpanded?: boolean;
   closeSignal?: number;
   onModeChange?: (mode: NearbySheetMode) => void;
@@ -47,6 +49,7 @@ export function MapNearbySheet({
   radiusKm,
   bottomInset,
   title,
+  variant = 'nearby',
   initiallyExpanded = false,
   closeSignal = 0,
   onModeChange,
@@ -64,6 +67,7 @@ export function MapNearbySheet({
   const sheetVisibleHeight = useRef(new Animated.Value(COLLAPSED_VISIBLE_HEIGHT)).current;
   const dragStartHeightRef = useRef(COLLAPSED_VISIBLE_HEIGHT);
   const visibleHeightRef = useRef(COLLAPSED_VISIBLE_HEIGHT);
+  const isSelectionVariant = variant === 'selection';
   const shouldLoadEvents = mode !== 'collapsed' && !isDragging;
   const eventsWithDistance = useMemo(
     () =>
@@ -87,10 +91,15 @@ export function MapNearbySheet({
   const previewTitle = title ?? t('eventsNearby').replace('{count}', String(nearbyEvents.length));
   const expandedTitle = title ?? t('allEventsInCity').replace('{city}', cityLabel);
   const visibleTitle = mode === 'expanded' ? expandedTitle : previewTitle;
-  const subtitle =
-    mode === 'expanded' || !Number.isFinite(radiusKm)
-      ? cityLabel
-      : `${cityLabel} · ${t('nearbyRadius').replace('{radius}', String(radiusKm))}`;
+  const selectionDistanceLabel = expandedEvents[0] ? `${expandedEvents[0].distanceKm.toFixed(1)} km` : cityLabel;
+  const subtitle = resolveSheetSubtitle({
+    cityLabel,
+    isExpanded: mode === 'expanded',
+    isSelectionVariant,
+    radiusKm,
+    selectionDistanceLabel,
+    radiusLabel: t('nearbyRadius').replace('{radius}', String(radiusKm)),
+  });
 
   const setVisibleHeight = (visibleHeight: number) => {
     visibleHeightRef.current = visibleHeight;
@@ -120,8 +129,11 @@ export function MapNearbySheet({
 
   const settleDrag = (visibleHeight: number, velocityY: number) => {
     const midpoint = (COLLAPSED_VISIBLE_HEIGHT + previewVisibleHeight) / 2;
-    const nextMode: NearbySheetMode =
-      velocityY < -0.45
+    const nextMode: NearbySheetMode = isSelectionVariant
+      ? velocityY > 0.45 || visibleHeight < expandedVisibleHeight * 0.76
+        ? 'collapsed'
+        : 'expanded'
+      : velocityY < -0.45
         ? mode === 'preview' ? 'expanded' : 'preview'
       : velocityY > 0.45
           ? 'collapsed'
@@ -216,9 +228,12 @@ export function MapNearbySheet({
                 <AppText variant={mode === 'expanded' ? 'headline' : 'bodyStrong'} numberOfLines={1}>
                   {visibleTitle}
                 </AppText>
-                <AppText variant="caption" color="textMuted" numberOfLines={1}>
-                  {subtitle}
-                </AppText>
+                <View style={styles.headerSubtitleRow}>
+                  {isSelectionVariant ? <Ionicons name="location-outline" size={13} color={theme.colors.textMuted} /> : null}
+                  <AppText variant="caption" color="textMuted" numberOfLines={1} style={styles.headerSubtitleText}>
+                    {subtitle}
+                  </AppText>
+                </View>
               </>
             )}
           </View>
@@ -249,6 +264,7 @@ export function MapNearbySheet({
                 event={event}
                 locale={locale}
                 mode="expanded"
+                variant={variant}
                 width="48.2%"
                 onPress={() => {
                   setMode('collapsed');
@@ -267,6 +283,7 @@ export function MapNearbySheet({
               event={event}
               locale={locale}
               mode="preview"
+              variant={variant}
               width={previewCardWidth}
               onPress={() => {
                 setMode('collapsed');
@@ -299,10 +316,37 @@ function NearbySkeleton() {
   );
 }
 
+function resolveSheetSubtitle({
+  cityLabel,
+  isExpanded,
+  isSelectionVariant,
+  radiusKm,
+  selectionDistanceLabel,
+  radiusLabel,
+}: {
+  cityLabel: string;
+  isExpanded: boolean;
+  isSelectionVariant: boolean;
+  radiusKm: number;
+  selectionDistanceLabel: string;
+  radiusLabel: string;
+}) {
+  if (isSelectionVariant) {
+    return selectionDistanceLabel;
+  }
+
+  if (isExpanded || !Number.isFinite(radiusKm)) {
+    return cityLabel;
+  }
+
+  return `${cityLabel} · ${radiusLabel}`;
+}
+
 function NearbyEventCard({
   event,
   locale,
   mode,
+  variant,
   width,
   onPress,
   onToggleLike,
@@ -310,6 +354,7 @@ function NearbyEventCard({
   event: NearbyEvent;
   locale: Locale;
   mode: NearbyCardMode;
+  variant: NearbySheetVariant;
   width: NearbyCardWidth;
   onPress: () => void;
   onToggleLike: () => void;
@@ -318,6 +363,10 @@ function NearbyEventCard({
   const posterSource = getEventPosterSource(event);
   const badge = getEventDateBadge(event.startAt, locale);
   const compact = mode === 'preview';
+  const showRelativeDay = mode === 'expanded';
+  const showDistance = variant !== 'selection';
+  const relativeDayLabel = formatEventDayOffset(event.startAt);
+  const isJoined = event.attendanceStatus === 'joined' || event.attendanceStatus === 'approved';
 
   return (
     <Pressable
@@ -327,7 +376,13 @@ function NearbyEventCard({
         {
           width,
           backgroundColor: theme.colors.surface,
-          borderColor: theme.colors.border,
+          borderColor: isJoined ? theme.colors.eventJoinedAccent : theme.colors.border,
+          borderWidth: isJoined ? 1 : StyleSheet.hairlineWidth,
+          shadowColor: isJoined ? theme.colors.eventJoinedAccent : theme.colors.background,
+          shadowOpacity: isJoined ? 0.18 : 0,
+          shadowRadius: isJoined ? 12 : 0,
+          shadowOffset: { width: 0, height: 0 },
+          elevation: isJoined ? 4 : 0,
           opacity: pressed ? 0.84 : 1,
         },
       ]}
@@ -350,11 +405,23 @@ function NearbyEventCard({
           {event.where[locale]}
         </AppText>
         <View style={styles.cardFooter}>
-          <View style={styles.distance}>
-            <Ionicons name="location-outline" size={13} color={theme.colors.textMuted} />
-            <AppText variant="caption" color="textMuted">
-              {event.distanceKm.toFixed(1)} km
-            </AppText>
+          <View style={styles.cardMeta}>
+            {showDistance ? (
+              <View style={styles.metaRow}>
+                <Ionicons name="location-outline" size={13} color={theme.colors.textMuted} />
+                <AppText variant="caption" color="textMuted">
+                  {event.distanceKm.toFixed(1)} km
+                </AppText>
+              </View>
+            ) : null}
+            {showRelativeDay && relativeDayLabel ? (
+              <View style={styles.metaRow}>
+                <Ionicons name="calendar-outline" size={13} color={theme.colors.textMuted} />
+                <AppText variant="caption" color="textMuted">
+                  {relativeDayLabel}
+                </AppText>
+              </View>
+            ) : null}
           </View>
           <Pressable accessibilityRole="button" onPress={onToggleLike} hitSlop={8}>
             <Ionicons
@@ -367,6 +434,19 @@ function NearbyEventCard({
       </View>
     </Pressable>
   );
+}
+
+function formatEventDayOffset(startAt: string) {
+  const start = new Date(startAt);
+  if (Number.isNaN(start.getTime())) {
+    return '';
+  }
+
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const startOfEventDay = new Date(start.getFullYear(), start.getMonth(), start.getDate()).getTime();
+  const dayDelta = Math.max(0, Math.round((startOfEventDay - startOfToday) / 86400000));
+  return `${dayDelta}d`;
 }
 
 function DateBadge({
@@ -475,6 +555,14 @@ const styles = StyleSheet.create({
   headerCopy: {
     flex: 1,
   },
+  headerSubtitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  headerSubtitleText: {
+    flexShrink: 1,
+  },
   seeAllButton: {
     minHeight: 38,
     borderRadius: 19,
@@ -578,11 +666,15 @@ const styles = StyleSheet.create({
   },
   cardFooter: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-end',
     justifyContent: 'space-between',
     marginTop: 3,
   },
-  distance: {
+  cardMeta: {
+    gap: 2,
+    flexShrink: 1,
+  },
+  metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,

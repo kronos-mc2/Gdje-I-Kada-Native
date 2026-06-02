@@ -1,6 +1,7 @@
 import { useMemo, useRef } from 'react';
 
 import { EventMapSurface } from '@/components/map/event-map-surface';
+import { getEventVenueGroupKey } from '@/components/map/event-map-grouping';
 import { MapCameraState } from '@/components/map/types';
 import { getEventPosterSource } from '@/core/events/event-cover';
 import { AppEvent, Coordinates, Locale } from '@/core/types/domain';
@@ -43,7 +44,7 @@ export function EventMap({
     const groups = new Map<string, AppEvent[]>();
 
     for (const event of events) {
-      const key = getExactVenueKey(event);
+      const key = getEventVenueGroupKey(event);
       groups.set(key, [...(groups.get(key) ?? []), event]);
     }
 
@@ -93,15 +94,6 @@ export function EventMap({
       onUserLocationUpdate={onUserLocationUpdate}
     />
   );
-}
-
-function getExactVenueKey(event: AppEvent) {
-  const address = event.address.trim().toLocaleLowerCase();
-  return [
-    address || event.where.hr.trim().toLocaleLowerCase() || event.where.en.trim().toLocaleLowerCase(),
-    event.coordinates.latitude.toFixed(6),
-    event.coordinates.longitude.toFixed(6),
-  ].join(':');
 }
 
 function getEventDateBadge(startAt: string, locale: Locale) {

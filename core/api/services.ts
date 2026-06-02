@@ -326,9 +326,12 @@ export const fetchChatRooms = async (query?: string): Promise<ChatRoom[]> => {
   return response.data;
 };
 
-export const fetchChatRoom = async (roomId: string): Promise<ChatRoomDetail> => {
+export const fetchChatRoom = async (roomId: string, options?: { forceFullSync?: boolean }): Promise<ChatRoomDetail> => {
   const cachedDetail = await localCache.getChatRoomDetail(roomId).catch(() => null);
-  const afterMessageId = cachedDetail?.messages.length ? cachedDetail.messages[cachedDetail.messages.length - 1].id : undefined;
+  const afterMessageId =
+    !options?.forceFullSync && cachedDetail?.messages.length
+      ? cachedDetail.messages[cachedDetail.messages.length - 1].id
+      : undefined;
   const response = await apiClient.get<ChatRoomDetail>(`/messages/chat-rooms/${roomId}`, {
     params: afterMessageId ? { afterMessageId } : undefined,
   });

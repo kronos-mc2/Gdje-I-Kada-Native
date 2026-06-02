@@ -18,6 +18,8 @@ type EventShareModalProps = {
   onClose: () => void;
 };
 
+const NATIVE_SHARE_DELAY_MS = 120;
+
 export function EventShareModal({ event, visible, locale, onClose }: EventShareModalProps) {
   const { t } = useI18n();
   const { theme } = useAppTheme();
@@ -58,10 +60,17 @@ export function EventShareModal({ event, visible, locale, onClose }: EventShareM
       return;
     }
 
+    const shareTitle = event.title[locale];
+    const shareMessage = nativeMessage;
+    onClose();
+
+    // Avoid stacking the native share sheet on top of our transparent Modal.
+    await new Promise((resolve) => setTimeout(resolve, NATIVE_SHARE_DELAY_MS));
+
     try {
       await Share.share({
-        title: event.title[locale],
-        message: nativeMessage,
+        title: shareTitle,
+        message: shareMessage,
       });
     } catch {
       // ignore native share dismiss/errors
