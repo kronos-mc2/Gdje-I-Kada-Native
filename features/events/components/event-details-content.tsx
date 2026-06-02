@@ -62,6 +62,7 @@ export function EventDetailsContent({
   const organizerName = event.creatorName ?? t('organizerFallback');
   const distanceLabel = formatDistance(getDistanceKm(userLocation, event.coordinates), locale);
   const [previewImageIndex, setPreviewImageIndex] = useState<number | null>(null);
+  const [whenRowWidth, setWhenRowWidth] = useState<number | null>(null);
 
   const openSource = () => {
     if (event.sourceUrl) {
@@ -101,7 +102,10 @@ export function EventDetailsContent({
           <AppText variant="title" numberOfLines={3} style={styles.title}>
             {event.title[locale]}
           </AppText>
-          <View style={styles.whenRow}>
+          <View
+            style={styles.whenRow}
+            onLayout={(layoutEvent) => setWhenRowWidth(layoutEvent.nativeEvent.layout.width)}
+          >
             <View style={[styles.whenPill, { backgroundColor: theme.colors.mapAccentSoft, borderColor: theme.colors.mapAccent }]}>
               <Ionicons name="calendar-outline" size={13} color={theme.colors.mapAccent} />
               <AppText variant="caption" style={{ color: theme.colors.mapAccent }}>
@@ -115,40 +119,40 @@ export function EventDetailsContent({
               </AppText>
             </View>
           </View>
+          <View style={[styles.eventActionRow, !canOpenEventChat && whenRowWidth ? { width: whenRowWidth } : null]}>
+            <AppButton
+              variant={isJoined ? 'secondary' : 'glass'}
+              accessibilityLabel={joinButtonTitle ?? (isJoined ? t('leaveEvent') : t('joinEvent'))}
+              disabled={isJoinDisabled}
+              onPress={onToggleJoin}
+              style={[
+                styles.joinButton,
+                !canOpenEventChat ? styles.joinButtonFull : null,
+                !isJoined
+                  ? {
+                      borderColor: theme.colors.mapAccent,
+                      backgroundColor: theme.colors.mapAccent,
+                    }
+                  : null,
+              ]}
+            >
+              <AppText variant="bodyStrong" style={{ color: isJoined ? theme.colors.textSecondary : '#FFFFFF' }}>
+                {joinButtonTitle ?? (isJoined ? t('leaveEvent') : t('joinEvent'))}
+              </AppText>
+            </AppButton>
+            {canOpenEventChat ? (
+              <AppButton
+                variant="secondary"
+                accessibilityLabel={t('openMessages')}
+                disabled={isEventChatPending}
+                onPress={onOpenEventChat}
+                style={styles.eventChatButton}
+              >
+                <Ionicons name="chatbubbles-outline" size={18} color={theme.colors.textSecondary} />
+              </AppButton>
+            ) : null}
+          </View>
         </View>
-      </View>
-
-      <View style={styles.eventActionRow}>
-        <AppButton
-          variant={isJoined ? 'secondary' : 'glass'}
-          accessibilityLabel={joinButtonTitle ?? (isJoined ? t('leaveEvent') : t('joinEvent'))}
-          disabled={isJoinDisabled}
-          onPress={onToggleJoin}
-          style={[
-            styles.joinButton,
-            !isJoined
-              ? {
-                  borderColor: theme.colors.mapAccent,
-                  backgroundColor: theme.colors.mapAccent,
-                }
-              : null,
-          ]}
-        >
-          <AppText variant="bodyStrong" style={{ color: isJoined ? theme.colors.textSecondary : '#FFFFFF' }}>
-            {joinButtonTitle ?? (isJoined ? t('leaveEvent') : t('joinEvent'))}
-          </AppText>
-        </AppButton>
-        {canOpenEventChat ? (
-          <AppButton
-            variant="secondary"
-            accessibilityLabel={t('openMessages')}
-            disabled={isEventChatPending}
-            onPress={onOpenEventChat}
-            style={styles.eventChatButton}
-          >
-            <Ionicons name="chatbubbles-outline" size={18} color={theme.colors.textSecondary} />
-          </AppButton>
-        ) : null}
       </View>
 
       <EventTagStrip tags={event.tags ?? []} />
@@ -308,13 +312,13 @@ const styles = StyleSheet.create({
   },
   heroRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: 14,
   },
   heroPoster: {
-    width: 84,
-    height: 84,
-    borderRadius: 42,
+    width: 96,
+    height: 96,
+    borderRadius: 48,
     borderWidth: 1,
     overflow: 'hidden',
     alignItems: 'center',
@@ -329,6 +333,7 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   whenRow: {
+    alignSelf: 'flex-start',
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 7,
@@ -353,6 +358,9 @@ const styles = StyleSheet.create({
     minHeight: 32,
     paddingHorizontal: 16,
     borderRadius: 16,
+  },
+  joinButtonFull: {
+    flex: 1,
   },
   eventChatButton: {
     width: 38,

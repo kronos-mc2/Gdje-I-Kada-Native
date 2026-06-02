@@ -46,8 +46,21 @@ export function useEventJoinActions(event?: AppEvent | null) {
 
     try {
       if (canLeave) {
-        await leaveEventMutation.mutateAsync(event.id);
-        Alert.alert(isWaitlisted ? t('waitlistLeft') : t('eventLeft'));
+        Alert.alert(isWaitlisted ? t('leaveWaitlistConfirmTitle') : t('leaveEventConfirmTitle'), t('leaveEventConfirmBody'), [
+          { text: t('cancel'), style: 'cancel' },
+          {
+            text: isWaitlisted ? t('leaveWaitlist') : t('leaveEvent'),
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await leaveEventMutation.mutateAsync(event.id);
+                Alert.alert(isWaitlisted ? t('waitlistLeft') : t('eventLeft'));
+              } catch {
+                Alert.alert(t('leaveEventFailed'));
+              }
+            },
+          },
+        ]);
         return;
       }
 
