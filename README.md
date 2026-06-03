@@ -1,4 +1,6 @@
 # Gdje i Kada - projektna dokumentacija
+Aplikaciju se moze testirati preko test buildova na releases stranici na istom repositoryu: https://github.com/kronos-mc2/Gdje-I-Kada-Native/releases
+Preuzmite zadnju mogucu verziju.
 
 Status dokumenta: 2026-06-02
 Projekt se ne radi ispocetka. Postojeci React Native/Expo frontend i Spring Boot backend ostaju baza, a nove funkcionalnosti se nadograduju na vec postojece klase, rute, storeove, hookove i dizajn sustav.
