@@ -93,7 +93,7 @@ export function EventMapSurface({
     }
 
     return createAccuracyCircleFeature(userLocation, userLocationAccuracyRadius);
-  }, [userLocation.latitude, userLocation.longitude, userLocationAccuracyRadius]);
+  }, [userLocation, userLocationAccuracyRadius]);
 
   useEffect(() => {
     if (!focusCoordinate || !mapLibreModule) {

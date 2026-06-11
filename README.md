@@ -509,6 +509,10 @@ Sto fali:
 - Avatar storage.
 - Account delete/deactivate.
 
+## Frontend architecture
+
+See `ARCHITECTURE.md` for the current frontend layer split, API helper responsibilities, configuration notes and verification commands.
+
 ## Backend dokumentacija
 
 ### Pokretanje

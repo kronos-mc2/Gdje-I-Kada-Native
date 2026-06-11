@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { AxiosRequestConfig } from 'axios';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
@@ -47,6 +47,26 @@ export const apiClient = axios.create({
 });
 
 export const getApiBaseUrl = () => apiClient.defaults.baseURL ?? resolveApiBaseUrl();
+
+export const getData = async <T>(url: string, config?: AxiosRequestConfig): Promise<T> => {
+  const response = await apiClient.get<T>(url, config);
+  return response.data;
+};
+
+export const postData = async <T, P = unknown>(url: string, payload?: P, config?: AxiosRequestConfig): Promise<T> => {
+  const response = await apiClient.post<T>(url, payload, config);
+  return response.data;
+};
+
+export const patchData = async <T, P = unknown>(url: string, payload?: P, config?: AxiosRequestConfig): Promise<T> => {
+  const response = await apiClient.patch<T>(url, payload, config);
+  return response.data;
+};
+
+export const deleteData = async <T = void>(url: string, config?: AxiosRequestConfig): Promise<T> => {
+  const response = await apiClient.delete<T>(url, config);
+  return response.data;
+};
 
 export const getApiErrorMessage = (error: unknown) => {
   if (error instanceof Error && error.message.trim()) {

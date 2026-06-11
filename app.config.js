@@ -24,6 +24,7 @@ const apiBaseUrl = (requireEnvForTest('EXPO_PUBLIC_API_BASE_URL') ?? localApiBas
 const androidApiBaseUrl = (
   requireEnvForTest('EXPO_PUBLIC_ANDROID_API_BASE_URL') ?? (isTestVariant ? apiBaseUrl : 'http://10.0.2.2:8080/api')
 ).trim();
+const usesCleartextTraffic = isHttpUrl(apiBaseUrl) || isHttpUrl(androidApiBaseUrl);
 const googleWebClientId = normalizeConfigValue(process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID);
 
 if (isTestVariant && !easProjectId) {
@@ -143,7 +144,7 @@ const config = {
           buildReactNativeFromSource: true,
         },
         android: {
-          usesCleartextTraffic: true,
+          usesCleartextTraffic,
         },
       },
     ],
@@ -209,4 +210,8 @@ function normalizeConfigValue(value) {
   }
 
   return normalized;
+}
+
+function isHttpUrl(value) {
+  return /^http:\/\//i.test(value?.trim() ?? '');
 }

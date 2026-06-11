@@ -59,7 +59,7 @@ export default function FypScreen() {
   const nearbyRadiusKm = useAppStore((state) => state.nearbyRadiusKm);
   const feedParams = useMemo(
     () => createFypFeedParams(fypFeedFilter, userLocation, nearbyRadiusKm),
-    [feedSeed, fypFeedFilter, nearbyRadiusKm, userLocation],
+    [fypFeedFilter, nearbyRadiusKm, userLocation],
   );
   const {
     data,

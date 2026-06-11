@@ -9,8 +9,7 @@ import {
   getNextMapQuickFilterState,
   useEventsMapScreenModel,
 } from '@/features/events/hooks/use-events-map-screen-model';
-import type { MapDateFilter, MapEventViewport } from '@/features/events/hooks/use-events-map-screen-model';
-import type { MapQuickFilter } from '@/features/events/hooks/use-events-map-screen-model';
+import type { MapDateFilter, MapEventViewport, MapQuickFilter } from '@/features/events/hooks/use-events-map-screen-model';
 import { useAppTheme } from '@/core/theme';
 import type { EventAttendanceMode } from '@/core/types/domain';
 

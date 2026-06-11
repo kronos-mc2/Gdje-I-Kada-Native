@@ -59,7 +59,7 @@ export default function ChatRoomScreen() {
   const [pollOpen, setPollOpen] = useState(false);
   const [visibleDateLabel, setVisibleDateLabel] = useState<string | null>(null);
   const room = data?.room;
-  const messages = data?.messages ?? [];
+  const messages = useMemo(() => data?.messages ?? [], [data?.messages]);
   const chatItems = useMemo(() => buildChatListItems(messages, locale, t), [messages, locale, t]);
   const latestMessage = messages.length > 0 ? messages[messages.length - 1] : null;
   const isInitialLoading = isLoading && !data;
@@ -146,7 +146,7 @@ export default function ChatRoomScreen() {
     return () => clearTimeout(timeout);
   }, [messages.length, performInitialScroll, roomId]);
 
-  const handleViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: Array<{ item?: ChatListItem }> }) => {
+  const handleViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: { item?: ChatListItem }[] }) => {
     const firstVisibleItem = viewableItems.find((viewableItem) => viewableItem.item)?.item;
     if (firstVisibleItem?.type === 'date') {
       setVisibleDateLabel(null);

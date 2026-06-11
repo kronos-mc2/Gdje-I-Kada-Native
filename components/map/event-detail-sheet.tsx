@@ -47,6 +47,8 @@ const getBottomSheetModule = (): OptionalBottomSheetModule | null => {
   }
 
   try {
+    // The bottom sheet native module is optional in some test/native fallback runtimes.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const bottomSheetModule = require('@gorhom/bottom-sheet');
     cachedBottomSheetModule = {
       BottomSheet: bottomSheetModule.default,

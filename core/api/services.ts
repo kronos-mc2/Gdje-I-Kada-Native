@@ -1,6 +1,6 @@
 import * as FileSystem from 'expo-file-system/legacy';
 
-import { apiClient, getApiBaseUrl } from '@/core/api/http-client';
+import { apiClient, deleteData, getApiBaseUrl, getData, patchData, postData } from '@/core/api/http-client';
 import { localCache } from '@/core/cache/local-cache';
 import { useAuthStore } from '@/core/store/auth-store';
 import {
@@ -49,9 +49,9 @@ const MULTIPART_UPLOAD_TIMEOUT_MS = 90_000;
 const VIDEO_UPLOAD_TIMEOUT_MS = 90_000;
 
 export const fetchEvents = async (params?: EventQueryParams): Promise<AppEvent[]> => {
-  const response = await apiClient.get<AppEvent[]>('/events', { params });
-  void localCache.saveEvents(response.data).catch(() => undefined);
-  return response.data;
+  const events = await getData<AppEvent[]>('/events', { params });
+  void localCache.saveEvents(events).catch(() => undefined);
+  return events;
 };
 
 export const fetchEventById = async (eventId: string): Promise<AppEvent> => {
@@ -63,67 +63,57 @@ export const fetchEventById = async (eventId: string): Promise<AppEvent> => {
     }
   }
 
-  const response = await apiClient.get<AppEvent>(`/events/${eventId}`);
-  void localCache.saveEvent(response.data).catch(() => undefined);
-  return response.data;
+  const event = await getData<AppEvent>(`/events/${eventId}`);
+  void localCache.saveEvent(event).catch(() => undefined);
+  return event;
 };
 
 export const fetchEventCacheState = async (eventId: string): Promise<EventCacheState> => {
-  const response = await apiClient.get<EventCacheState>(`/events/${eventId}/cache-state`);
-  return response.data;
+  return getData<EventCacheState>(`/events/${eventId}/cache-state`);
 };
 
 export const fetchMyEvents = async (filter: MyEventsFilter = 'all'): Promise<AppEvent[]> => {
-  const response = await apiClient.get<AppEvent[]>('/users/me/events', { params: { filter } });
-  return response.data;
+  return getData<AppEvent[]>('/users/me/events', { params: { filter } });
 };
 
 export const fetchLikedEvents = async (): Promise<AppEvent[]> => {
-  const response = await apiClient.get<AppEvent[]>('/users/me/liked-events');
-  return response.data;
+  return getData<AppEvent[]>('/users/me/liked-events');
 };
 
 export const fetchSavedEventsOverview = async (): Promise<SavedEventsOverview> => {
-  const response = await apiClient.get<SavedEventsOverview>('/users/me/saved-events/overview');
-  return response.data;
+  return getData<SavedEventsOverview>('/users/me/saved-events/overview');
 };
 
 export const fetchFeedPreferences = async (): Promise<FeedPreference[]> => {
-  const response = await apiClient.get<FeedPreference[]>('/users/me/feed-preferences');
-  return response.data;
+  return getData<FeedPreference[]>('/users/me/feed-preferences');
 };
 
 export const createFeedPreference = async (payload: CreateFeedPreferencePayload): Promise<FeedPreference> => {
-  const response = await apiClient.post<FeedPreference>('/users/me/feed-preferences', payload);
-  return response.data;
+  return postData<FeedPreference, CreateFeedPreferencePayload>('/users/me/feed-preferences', payload);
 };
 
 export const deleteFeedPreference = async (preferenceId: string): Promise<void> => {
-  await apiClient.delete(`/users/me/feed-preferences/${preferenceId}`);
+  await deleteData(`/users/me/feed-preferences/${preferenceId}`);
 };
 
 export const fetchUserUpcomingEvents = async (userId: string): Promise<AppEvent[]> => {
-  const response = await apiClient.get<AppEvent[]>(`/users/${userId}/events/upcoming`);
-  return response.data;
+  return getData<AppEvent[]>(`/users/${userId}/events/upcoming`);
 };
 
 export const updateEvent = async ({ eventId, payload }: { eventId: string; payload: UpdateEventPayload }): Promise<AppEvent> => {
-  const response = await apiClient.patch<AppEvent>(`/events/${eventId}`, payload);
-  return response.data;
+  return patchData<AppEvent, UpdateEventPayload>(`/events/${eventId}`, payload);
 };
 
 export const deleteEvent = async (eventId: string): Promise<void> => {
-  await apiClient.delete(`/events/${eventId}`);
+  await deleteData(`/events/${eventId}`);
 };
 
 export const fetchEventParticipants = async (eventId: string): Promise<EventParticipant[]> => {
-  const response = await apiClient.get<EventParticipant[]>(`/events/${eventId}/participants`);
-  return response.data;
+  return getData<EventParticipant[]>(`/events/${eventId}/participants`);
 };
 
 export const addEventMedia = async ({ eventId, payload }: { eventId: string; payload: EventMediaPayload }): Promise<AppEvent> => {
-  const response = await apiClient.post<AppEvent>(`/events/${eventId}/media`, payload);
-  return response.data;
+  return postData<AppEvent, EventMediaPayload>(`/events/${eventId}/media`, payload);
 };
 
 export const uploadEventMedia = async ({
@@ -145,8 +135,7 @@ export const uploadEventMedia = async ({
 };
 
 export const deleteEventMedia = async ({ eventId, mediaId }: { eventId: string; mediaId: string }): Promise<AppEvent> => {
-  const response = await apiClient.delete<AppEvent>(`/events/${eventId}/media/${mediaId}`);
-  return response.data;
+  return deleteData<AppEvent>(`/events/${eventId}/media/${mediaId}`);
 };
 
 export const approveEventParticipant = async ({
@@ -156,8 +145,7 @@ export const approveEventParticipant = async ({
   eventId: string;
   userId: string;
 }): Promise<EventParticipant[]> => {
-  const response = await apiClient.post<EventParticipant[]>(`/events/${eventId}/participants/${userId}/approve`);
-  return response.data;
+  return postData<EventParticipant[]>(`/events/${eventId}/participants/${userId}/approve`);
 };
 
 export const removeEventParticipant = async ({
@@ -167,8 +155,7 @@ export const removeEventParticipant = async ({
   eventId: string;
   userId: string;
 }): Promise<EventParticipant[]> => {
-  const response = await apiClient.delete<EventParticipant[]>(`/events/${eventId}/participants/${userId}`);
-  return response.data;
+  return deleteData<EventParticipant[]>(`/events/${eventId}/participants/${userId}`);
 };
 
 export const blockEventParticipant = async ({
@@ -178,8 +165,7 @@ export const blockEventParticipant = async ({
   eventId: string;
   userId: string;
 }): Promise<EventParticipant[]> => {
-  const response = await apiClient.post<EventParticipant[]>(`/events/${eventId}/participants/${userId}/block`);
-  return response.data;
+  return postData<EventParticipant[]>(`/events/${eventId}/participants/${userId}/block`);
 };
 
 export const updateProfile = async (payload: UpdateProfilePayload): Promise<UserProfile> => {
@@ -191,38 +177,33 @@ export const updateProfile = async (payload: UpdateProfilePayload): Promise<User
     return sendMultipart<UserProfile>('PATCH', '/users/me/profile', formData);
   }
 
-  const response = await apiClient.patch<UserProfile>('/users/me/profile', payload);
-  return response.data;
+  return patchData<UserProfile, UpdateProfilePayload>('/users/me/profile', payload);
 };
 
 export const changePassword = async (payload: ChangePasswordPayload): Promise<void> => {
-  await apiClient.post('/users/me/password', payload);
+  await postData('/users/me/password', payload);
 };
 
 export const deleteAccount = async (payload: DeleteAccountPayload): Promise<void> => {
-  await apiClient.delete('/users/me/account', { data: payload });
+  await deleteData('/users/me/account', { data: payload });
 };
 
 export const fetchProfileActivity = async (): Promise<ProfileActivity> => {
-  const response = await apiClient.get<ProfileActivity>('/users/me/activity');
-  return response.data;
+  return getData<ProfileActivity>('/users/me/activity');
 };
 
 export const fetchTransactions = async (): Promise<Transaction[]> => {
-  const response = await apiClient.get<Transaction[]>('/users/me/transactions');
-  return response.data;
+  return getData<Transaction[]>('/users/me/transactions');
 };
 
 export const fetchNotificationPreferences = async (): Promise<NotificationPreferences> => {
-  const response = await apiClient.get<NotificationPreferences>('/users/me/notifications/preferences');
-  return response.data;
+  return getData<NotificationPreferences>('/users/me/notifications/preferences');
 };
 
 export const updateNotificationPreferences = async (
   payload: Partial<NotificationPreferences>,
 ): Promise<NotificationPreferences> => {
-  const response = await apiClient.patch<NotificationPreferences>('/users/me/notifications/preferences', payload);
-  return response.data;
+  return patchData<NotificationPreferences, Partial<NotificationPreferences>>('/users/me/notifications/preferences', payload);
 };
 
 export const registerPushToken = async ({
@@ -236,16 +217,15 @@ export const registerPushToken = async ({
   deviceId?: string;
   locale?: Locale;
 }): Promise<void> => {
-  await apiClient.post('/users/me/notifications/push-tokens', { token, platform, deviceId, locale });
+  await postData('/users/me/notifications/push-tokens', { token, platform, deviceId, locale });
 };
 
 export const deletePushToken = async (token: string): Promise<void> => {
-  await apiClient.delete('/users/me/notifications/push-tokens', { params: { token } });
+  await deleteData('/users/me/notifications/push-tokens', { params: { token } });
 };
 
 export const rateOrganizer = async ({ eventId, rating, comment }: OrganizerRatingPayload): Promise<AppEvent> => {
-  const response = await apiClient.post<AppEvent>(`/events/${eventId}/ratings`, { rating, comment });
-  return response.data;
+  return postData<AppEvent>(`/events/${eventId}/ratings`, { rating, comment });
 };
 
 export const rateEvent = async ({
@@ -255,18 +235,16 @@ export const rateEvent = async ({
   eventComment,
   organizerComment,
 }: EventRatingPayload): Promise<AppEvent> => {
-  const response = await apiClient.post<AppEvent>(`/events/${eventId}/ratings/full`, {
+  return postData<AppEvent>(`/events/${eventId}/ratings/full`, {
     eventRating,
     organizerRating,
     eventComment,
     organizerComment,
   });
-  return response.data;
 };
 
 export const createTicketCheckout = async (eventId: string): Promise<TicketCheckout> => {
-  const response = await apiClient.post<TicketCheckout>(`/events/${eventId}/ticket-checkout`);
-  return response.data;
+  return postData<TicketCheckout>(`/events/${eventId}/ticket-checkout`);
 };
 
 export const confirmTicketCheckout = async ({
@@ -276,33 +254,29 @@ export const confirmTicketCheckout = async ({
   orderId: string;
   confirmationToken?: string;
 }): Promise<TicketCheckoutResult> => {
-  const response = await apiClient.post<TicketCheckoutResult>(`/ticket-orders/${orderId}/confirm`, { confirmationToken });
-  return response.data;
+  return postData<TicketCheckoutResult>(`/ticket-orders/${orderId}/confirm`, { confirmationToken });
 };
 
 export const fetchFeed = async (params?: FeedQueryParams): Promise<FeedPage> => {
-  const response = await apiClient.get<FeedPage>('/feed', { params });
-  void localCache.saveEvents(response.data.items).catch(() => undefined);
-  return response.data;
+  const feed = await getData<FeedPage>('/feed', { params });
+  void localCache.saveEvents(feed.items).catch(() => undefined);
+  return feed;
 };
 
 export const recordFeedImpression = async (eventId: string): Promise<void> => {
-  await apiClient.post('/feed/impressions', { eventId });
+  await postData('/feed/impressions', { eventId });
 };
 
 export const fetchFriends = async (): Promise<Friend[]> => {
-  const response = await apiClient.get<Friend[]>('/social/friends');
-  return response.data;
+  return getData<Friend[]>('/social/friends');
 };
 
 export const fetchEventShareRecipients = async (eventId: string): Promise<Friend[]> => {
-  const response = await apiClient.get<Friend[]>(`/social/events/${eventId}/share-recipients`);
-  return response.data;
+  return getData<Friend[]>(`/social/events/${eventId}/share-recipients`);
 };
 
 export const createFriendRequest = async (payload: CreateFriendRequestPayload): Promise<FriendRequest> => {
-  const response = await apiClient.post<FriendRequest>('/social/friend-requests', payload);
-  return response.data;
+  return postData<FriendRequest, CreateFriendRequestPayload>('/social/friend-requests', payload);
 };
 
 export const respondToFriendRequest = async ({
@@ -312,18 +286,15 @@ export const respondToFriendRequest = async ({
   requestId: string;
   status: 'accepted' | 'rejected';
 }): Promise<FriendRequest> => {
-  const response = await apiClient.patch<FriendRequest>(`/social/friend-requests/${requestId}`, { status });
-  return response.data;
+  return patchData<FriendRequest>(`/social/friend-requests/${requestId}`, { status });
 };
 
 export const fetchConversations = async (): Promise<Conversation[]> => {
-  const response = await apiClient.get<Conversation[]>('/messages/conversations');
-  return response.data;
+  return getData<Conversation[]>('/messages/conversations');
 };
 
 export const fetchChatRooms = async (query?: string): Promise<ChatRoom[]> => {
-  const response = await apiClient.get<ChatRoom[]>('/messages/chat-rooms', { params: { query } });
-  return response.data;
+  return getData<ChatRoom[]>('/messages/chat-rooms', { params: { query } });
 };
 
 export const fetchChatRoom = async (roomId: string, options?: { forceFullSync?: boolean }): Promise<ChatRoomDetail> => {
@@ -362,23 +333,19 @@ export const fetchChatMessages = async (roomId: string, params?: ChatMessagesQue
 };
 
 export const fetchChatPeople = async (query?: string): Promise<ChatPerson[]> => {
-  const response = await apiClient.get<ChatPerson[]>('/messages/people', { params: { query: query?.trim() } });
-  return response.data;
+  return getData<ChatPerson[]>('/messages/people', { params: { query: query?.trim() } });
 };
 
 export const createChatRoom = async (payload: CreateChatRoomPayload): Promise<ChatRoom> => {
-  const response = await apiClient.post<ChatRoom>('/messages/chat-rooms', payload);
-  return response.data;
+  return postData<ChatRoom, CreateChatRoomPayload>('/messages/chat-rooms', payload);
 };
 
 export const getOrCreateEventChatRoom = async (eventId: string): Promise<ChatRoom> => {
-  const response = await apiClient.post<ChatRoom>(`/messages/events/${eventId}/chat-room`);
-  return response.data;
+  return postData<ChatRoom>(`/messages/events/${eventId}/chat-room`);
 };
 
 export const updateChatRoom = async ({ roomId, adminOnly }: { roomId: string; adminOnly: boolean }): Promise<ChatRoom> => {
-  const response = await apiClient.patch<ChatRoom>(`/messages/chat-rooms/${roomId}`, { adminOnly });
-  return response.data;
+  return patchData<ChatRoom>(`/messages/chat-rooms/${roomId}`, { adminOnly });
 };
 
 export const updateChatNotificationSettings = async ({
@@ -388,23 +355,19 @@ export const updateChatNotificationSettings = async ({
   roomId: string;
   muted: boolean;
 }): Promise<ChatRoom> => {
-  const response = await apiClient.patch<ChatRoom>(`/messages/chat-rooms/${roomId}/notification-settings`, { muted });
-  return response.data;
+  return patchData<ChatRoom>(`/messages/chat-rooms/${roomId}/notification-settings`, { muted });
 };
 
 export const sendChatMessage = async ({ roomId, body }: { roomId: string; body: string }): Promise<ChatMessage> => {
-  const response = await apiClient.post<ChatMessage>(`/messages/chat-rooms/${roomId}/messages`, { body });
-  return response.data;
+  return postData<ChatMessage>(`/messages/chat-rooms/${roomId}/messages`, { body });
 };
 
 export const createChatPoll = async ({ roomId, payload }: { roomId: string; payload: CreatePollPayload }): Promise<ChatMessage> => {
-  const response = await apiClient.post<ChatMessage>(`/messages/chat-rooms/${roomId}/polls`, payload);
-  return response.data;
+  return postData<ChatMessage, CreatePollPayload>(`/messages/chat-rooms/${roomId}/polls`, payload);
 };
 
 export const votePoll = async ({ pollId, optionIds }: { pollId: string; optionIds: string[] }): Promise<Poll> => {
-  const response = await apiClient.post<Poll>(`/messages/polls/${pollId}/vote`, { optionIds });
-  return response.data;
+  return postData<Poll>(`/messages/polls/${pollId}/vote`, { optionIds });
 };
 
 export const createEvent = async (payload: CreateEventPayload): Promise<AppEvent> => {
@@ -431,8 +394,7 @@ export const createEvent = async (payload: CreateEventPayload): Promise<AppEvent
     }
   }
 
-  const response = await apiClient.post<AppEvent>('/events', payload);
-  return response.data;
+  return postData<AppEvent, CreateEventPayload>('/events', payload);
 };
 
 const toFormDataFile = (file: LocalEventImage | LocalEventVideo) =>
@@ -568,28 +530,23 @@ const resolveApiResponseMessage = (data: unknown, text: string, status: number) 
 };
 
 export const joinEvent = async (eventId: string): Promise<AppEvent> => {
-  const response = await apiClient.post<AppEvent>(`/events/${eventId}/join`);
-  return response.data;
+  return postData<AppEvent>(`/events/${eventId}/join`);
 };
 
 export const leaveEvent = async (eventId: string): Promise<AppEvent> => {
-  const response = await apiClient.delete<AppEvent>(`/events/${eventId}/join`);
-  return response.data;
+  return deleteData<AppEvent>(`/events/${eventId}/join`);
 };
 
 export const likeEvent = async (eventId: string): Promise<AppEvent> => {
-  const response = await apiClient.post<AppEvent>(`/events/${eventId}/like`);
-  return response.data;
+  return postData<AppEvent>(`/events/${eventId}/like`);
 };
 
 export const unlikeEvent = async (eventId: string): Promise<AppEvent> => {
-  const response = await apiClient.delete<AppEvent>(`/events/${eventId}/like`);
-  return response.data;
+  return deleteData<AppEvent>(`/events/${eventId}/like`);
 };
 
 export const shareEventToConversation = async (conversationId: string, eventId: string): Promise<ChatMessage> => {
-  const response = await apiClient.post<ChatMessage>(`/messages/chat-rooms/${conversationId}/share-event`, { eventId });
-  return response.data;
+  return postData<ChatMessage>(`/messages/chat-rooms/${conversationId}/share-event`, { eventId });
 };
 
 const mergeChatMessages = (currentMessages: ChatMessage[], incomingMessages: ChatMessage[]) => {
