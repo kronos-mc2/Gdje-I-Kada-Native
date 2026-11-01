@@ -1,8 +1,13 @@
 #!/usr/bin/env node
 
+require('dotenv/config');
+
 const fs = require('node:fs');
 const path = require('node:path');
 const xcode = require('xcode');
+const plist = require('@expo/plist').default;
+const { patchAppDelegate, patchInfoPlist } = require('../plugins/with-ios-scene-lifecycle');
+const { withGoogleIosUrlScheme } = require('../config/google-ios');
 
 const projectRoot = process.cwd();
 const iosRoot = path.join(projectRoot, 'ios');
@@ -16,6 +21,8 @@ const testScheme = 'gdjeikadanative-test';
 const mapLibrePackageDependency = 'D3822F36DE2C0336E8C55123';
 
 ensureDevFiles();
+ensureSceneLifecycle();
+syncGoogleSignIn();
 
 const project = xcode.project(projectPath);
 project.parse((error) => {
@@ -48,6 +55,22 @@ project.parse((error) => {
   fs.writeFileSync(projectPath, project.writeSync());
   console.log(`Synced iOS targets: ${devTargetName}, ${testTargetName}`);
 });
+
+function syncGoogleSignIn() {
+  const target = process.env.APP_VARIANT === 'test' ? testTargetName : devTargetName;
+  const plistPath = path.join(iosRoot, target, 'Info.plist');
+  const info = plist.parse(fs.readFileSync(plistPath, 'utf8'));
+  fs.writeFileSync(plistPath, plist.build(withGoogleIosUrlScheme(info, process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID)));
+}
+
+function ensureSceneLifecycle() {
+  for (const target of [testTargetName, devTargetName]) {
+    const delegatePath = path.join(iosRoot, target, 'AppDelegate.swift');
+    fs.writeFileSync(delegatePath, patchAppDelegate(fs.readFileSync(delegatePath, 'utf8')));
+    const plistPath = path.join(iosRoot, target, 'Info.plist');
+    fs.writeFileSync(plistPath, plist.build(patchInfoPlist(plist.parse(fs.readFileSync(plistPath, 'utf8')))));
+  }
+}
 
 function ensureDevFiles() {
   const sourceDir = path.join(iosRoot, testTargetName);

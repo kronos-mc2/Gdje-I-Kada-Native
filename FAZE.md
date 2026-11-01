@@ -3,6 +3,10 @@
 Status dokumenta: 2026-06-02
 Lokacija master dokumentacije: `README.md`
 
+2026-10-20 - Rijeseno: iOS 27 launch regresija nakon uspjesnog builda. Dodan je scene lifecycle bridge za Expo 54, scene manifest i pokretanje React Nativea u scene prozoru za GIKTest/GIKDev. Expo plugin i target sync cuvaju promjenu kroz regeneriranje native projekta. Plist validacija, Swift parse i idempotentnost transformacije prolaze. Xcode GIKTest Release build, instalacija i launch na iPhoneu 16 / iOS 27.2 prosli su; vizualno potvrden ucitan map ekran i glavni tabovi. Auth povrati, push deep linkovi i foreground/background ponasanje nisu funkcionalno testirani u ovom prolazu.
+
+2026-10-20 - iOS build regresija: dodan je `plugins/with-ios-fmt-fix.js` za `fmt` 11.0.2 / Apple Clang 21 `consteval` greske. Plugin cuva workaround kroz Expo prebuild i CocoaPods post_install; lokalni Podfile i instalirani header takodjer su popravljeni. Zasebna C++20 syntax provjera `fmt/src/format.cc`, Ruby sintaksa hooka i idempotentnost Podfile patcha prolaze. Puni Xcode GIKTest Release build i instalacija na spojeni iPhone prosli su. Launch blokira nepouzdani Developer App Certificate: korisnik treba na iPhoneu otvoriti Settings > General > VPN & Device Management i potvrditi svoj developer certifikat, zatim ponoviti Run. Release sadrzi JS bundle i ne treba Metro.
+
 ## Pravilo rada po fazama
 
 Prije svake vece promjene odaberi aktivnu fazu u ovom dokumentu i oznaci je kao `U tijeku`. Nakon zavrsenog rada azuriraj:

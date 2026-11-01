@@ -42,6 +42,10 @@ Trenutno stanje tabova:
 
 Postojece frontend tehnologije i patterni:
 
+- iOS 27 SDK zahtijeva scene lifecycle. Expo 54 lokalno koristi `plugins/with-ios-scene-lifecycle.js` i template `plugins/ios/GIKSceneDelegate.swift`: prozor i React Native startaju iz `UIWindowScene`, dok se lifecycle, URL, universal link i shortcut callbackovi prosljeduju postojecem Expo AppDelegateu. Plugin dodaje scene manifest i migrira AppDelegate pri prebuildu; `scripts/sync-ios-targets.js` primjenjuje isti setup na oba lokalna targeta. Ovo je kompatibilnosni bridge do buduce Expo nadogradnje, ne zamjena za punu SDK migraciju.
+
+- iOS build s `fmt` 11.0.2 i Apple Clang 21 (Xcode 26.4/27) koristi lokalni Expo plugin `plugins/with-ios-fmt-fix.js`. Plugin u CocoaPods `post_install` hook dodaje idempotentan patch zajednickog `fmt/base.h` headera koji za taj compiler iskljucuje nekompatibilni `consteval` put. Primjenjuje se nakon `expo prebuild` i `pod install`; samo dodavanje `FMT_USE_CONSTEVAL=0` u Build Settings nije dovoljno jer ova verzija headera ponovno definira makro. Deployment target upozorenja iz starih podova zasebna su od ove compile greske.
+
 - Expo SDK 54, React 19, React Native 0.81, TypeScript.
 - Expo config je u `app.config.js` da ga EAS Build cita bez TypeScript parser regresija; runtime/public build vrijednosti dolaze iz `.env*` lokalno ili `eas.json`/EAS env za remote build.
 - App branding/native icon setup je centraliziran u `config/app-branding.js`. Finalni source asseti idu u `assets/app-icons/` s imenima iz `assets/app-icons/README.md`; dok pojedini file nedostaje config pada natrag na postojece `assets/images/*` ikone. Setup pokriva iOS light/dark/tinted app ikone, Android legacy/adaptive/monochrome ikone, Android notification small icon, splash light/dark i web favicon.

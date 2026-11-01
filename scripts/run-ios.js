@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+require('dotenv/config');
+
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
@@ -19,6 +21,13 @@ const apiBaseUrl = readEnvForVariant('EXPO_PUBLIC_API_BASE_URL', defaultApiBaseU
 const androidApiBaseUrl = readEnvForVariant('EXPO_PUBLIC_ANDROID_API_BASE_URL', appVariant === 'test' ? apiBaseUrl : defaultAndroidApiBaseUrl);
 const iosUsesAppleSignIn =
   process.env.IOS_USES_APPLE_SIGN_IN || (appVariant === 'test' ? 'false' : 'true');
+const { googleIosUrlScheme } = require('../config/google-ios');
+const googleIosClientId = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID?.trim();
+const googleWebClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID?.trim();
+googleIosUrlScheme(googleIosClientId);
+if (!googleWebClientId || googleWebClientId.startsWith('your-')) {
+  throw new Error('Configure EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID before building for iOS.');
+}
 
 const envLines = [
   `export NODE_BINARY=${shellEscape(nodeBinary)}`,
@@ -26,6 +35,8 @@ const envLines = [
   `export EXPO_PUBLIC_API_BASE_URL=${shellEscape(apiBaseUrl)}`,
   `export EXPO_PUBLIC_ANDROID_API_BASE_URL=${shellEscape(androidApiBaseUrl)}`,
   `export IOS_USES_APPLE_SIGN_IN=${shellEscape(iosUsesAppleSignIn)}`,
+  `export EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID=${shellEscape(googleIosClientId)}`,
+  `export EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=${shellEscape(googleWebClientId)}`,
   '',
 ];
 
@@ -58,7 +69,7 @@ const child = spawnSync('npx', runArgs, {
 process.exit(child.status ?? 1);
 
 function shellEscape(value) {
-  return JSON.stringify(String(value));
+  return "'" + String(value).replaceAll("'", "'\\''") + "'";
 }
 
 function readEnvForVariant(name, fallback) {

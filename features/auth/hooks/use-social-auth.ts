@@ -91,6 +91,11 @@ export function useSocialAuth() {
         return;
       }
 
+      if (googleResult.type === 'missing-ios-client-id') {
+        Alert.alert(t('authError'), t('googleIosClientMissing'));
+        return;
+      }
+
       if (googleResult.type === 'native-module-unavailable') {
         Alert.alert(t('authError'), t('googleNativeModuleUnavailable'));
         return;

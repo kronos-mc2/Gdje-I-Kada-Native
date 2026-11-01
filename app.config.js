@@ -119,6 +119,8 @@ const config = {
     favicon: ICON_ASSETS.favicon,
   },
   plugins: [
+    './plugins/with-ios-scene-lifecycle',
+    './plugins/with-ios-fmt-fix',
     'expo-router',
     'expo-secure-store',
     'expo-video',

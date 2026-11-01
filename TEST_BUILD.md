@@ -65,6 +65,10 @@ npm run ios:test:release
 
 This embeds the JS bundle in the app and does not require Metro to be running after install.
 
+Google prijava na iOS-u koristi Googleov sistemski prozor za prijavu i odabir racuna. U `.env.test` postavi `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` za bundle `com.anonymous.GdjeIKadaNative.test` i `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` koji prihvaca backend. Za `GIKDev` koristi odgovarajuce vrijednosti u `.env`.
+
+iOS npm skripte automatski dodaju Google callback URL scheme odabranom targetu i zapisuju oba client ID-a u `ios/.xcode.env.local`, tako da i Release bundle koristi iste vrijednosti. Nakon promjene OAuth konfiguracije potreban je novi iOS build. Google prijava ne zahtijeva ukljucivanje Apple Sign-In capabilityja.
+
 `npm run ios`, `npm run ios:dev`, `npm run ios:test` i `npm run ios:test:release` automatski prepisuju `ios/.xcode.env.local` na odgovarajuci variant prije builda. iOS workspace sada ima dva schemea/targeta: `GIKDev` za lokalni backend i `GIKTest` za test backend.
 
 When building the generated iOS workspace directly from Xcode without ovih npm skripti, make sure `ios/.xcode.env.local` contains:
@@ -75,6 +79,8 @@ export APP_VARIANT=test
 export EXPO_PUBLIC_API_BASE_URL=https://your-test-api.example.com/api
 export EXPO_PUBLIC_ANDROID_API_BASE_URL=https://your-test-api.example.com/api
 export IOS_USES_APPLE_SIGN_IN=false
+export EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID=your-ios-client-id.apps.googleusercontent.com
+export EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=your-web-client-id.apps.googleusercontent.com
 ```
 
 Xcode script phases read this file while bundling JavaScript.

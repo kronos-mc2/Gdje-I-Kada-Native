@@ -8,6 +8,7 @@ export type NativeGoogleSignInResult =
   | { type: 'success'; idToken: string }
   | { type: 'cancelled' }
   | { type: 'missing-web-client-id' }
+  | { type: 'missing-ios-client-id' }
   | { type: 'native-module-unavailable' }
   | { type: 'error'; code?: string };
 
@@ -22,9 +23,13 @@ export async function signInWithNativeGoogle(): Promise<NativeGoogleSignInResult
     return { type: 'missing-web-client-id' };
   }
 
-  configureGoogleSignIn(googleModule, webClientId);
+  const iosClientId = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID?.trim();
+  if (Platform.OS === 'ios' && (!iosClientId || iosClientId.startsWith('your-'))) {
+    return { type: 'missing-ios-client-id' };
+  }
 
   try {
+    configureGoogleSignIn(googleModule, webClientId);
     if (Platform.OS === 'android') {
       await googleModule.GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
     }
