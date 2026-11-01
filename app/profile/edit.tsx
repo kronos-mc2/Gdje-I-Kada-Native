@@ -5,6 +5,7 @@ import { Alert, Pressable, StyleSheet, View } from 'react-native';
 
 import { AppButton, AppCard, AppIconButton, AppInput, AppScreen, AppText } from '@/components/primitives';
 import { useUpdateProfileMutation } from '@/core/api/query-hooks';
+import { getApiErrorMessage } from '@/core/api/http-client';
 import { isEventImageTooLarge, normalizePickedEventImage } from '@/core/events/event-image-assets';
 import { useI18n } from '@/core/i18n/use-i18n';
 import { useAuthStore } from '@/core/store/auth-store';
@@ -38,8 +39,8 @@ export default function EditProfileScreen() {
         avatarImage: avatarImage ?? undefined,
       });
       router.back();
-    } catch {
-      Alert.alert(t('profileUpdateFailed'));
+    } catch (error) {
+      Alert.alert(t('profileUpdateFailed'), getApiErrorMessage(error) ?? undefined);
     }
   };
 

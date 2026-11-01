@@ -69,7 +69,7 @@ export const deleteData = async <T = void>(url: string, config?: AxiosRequestCon
 };
 
 export const getApiErrorMessage = (error: unknown) => {
-  if (error instanceof Error && error.message.trim()) {
+  if (!axios.isAxiosError(error) && error instanceof Error && error.message.trim()) {
     return error.message.trim();
   }
 
@@ -91,7 +91,7 @@ export const getApiErrorMessage = (error: unknown) => {
     }
   }
 
-  return null;
+  return error.message?.trim() || null;
 };
 
 export const isApiNetworkError = (error: unknown) => axios.isAxiosError(error) && !error.response;
